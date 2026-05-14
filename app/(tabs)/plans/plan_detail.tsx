@@ -192,6 +192,21 @@ function withInstanceNumbers(entries: PlanEntryItem[]) {
   });
 }
 
+function buildSeriesSignature(row: any) {
+  const weekday = String(row?.weekday ?? "").trim().toLowerCase();
+  const startTime = String(row?.start_time ?? "").trim();
+  const endTime = String(row?.end_time ?? "").trim();
+  const meetingType = String(row?.meeting_type ?? "").trim().toLowerCase();
+  const slotNumber = Number(row?.slot_number ?? 0);
+  return [weekday, startTime, endTime, meetingType, String(slotNumber)].join("__");
+}
+
+function makeLegacySeriesKey(row: any) {
+  const signature = buildSeriesSignature(row).replace(/[^a-z0-9_-]+/gi, "_");
+  const slotId = String(row?.slot_id ?? makeId()).replace(/[^a-z0-9_-]+/gi, "_");
+  return `legacy_${signature}_${slotId}`;
+}
+
 function mapPlanDetail(row: any): PlanDetail | null {
   const subjectRaw = row?.subject;
   const subject = Array.isArray(subjectRaw) ? subjectRaw[0] : subjectRaw;
@@ -201,13 +216,15 @@ function mapPlanDetail(row: any): PlanDetail | null {
   const school = Array.isArray(schoolRaw) ? schoolRaw[0] : schoolRaw;
 
   const lessonPlanId = String(row?.lesson_plan_id ?? "");
-  const title = String(row?.title ?? "");
-  const term = String(row?.term ?? "");
+  const title = String(row?.title ?? "Untitled Plan");
+  const rawTerm = String(row?.term ?? "").trim().toLowerCase();
+  const term = TERM_OPTIONS.includes(rawTerm as (typeof TERM_OPTIONS)[number]) ? rawTerm : "semester";
   const startDate = String(row?.start_date ?? "");
   const endDate = String(row?.end_date ?? "");
-  const status = String(row?.status ?? "");
+  const rawStatus = String(row?.status ?? "").trim().toLowerCase();
+  const status = rawStatus || "draft";
 
-  if (!lessonPlanId || !title || !term || !startDate || !endDate || !status) return null;
+  if (!lessonPlanId || !startDate || !endDate) return null;
 
   return {
     lesson_plan_id: lessonPlanId,
@@ -228,8 +245,8 @@ function mapPlanDetail(row: any): PlanDetail | null {
 }
 
 function mapPlanEntry(row: any): PlanEntryItem | null {
-  const planEntryId = String(row?.series_key ?? "");
-  const meetingType = row?.meeting_type ? String(row.meeting_type) : row?.room ? String(row.room) : null;
+  const planEntryId = String(row?.series_key ?? row?.slot_id ?? "");
+  const meetingType = row?.meeting_type ? String(row.meeting_type) : null;
 
   if (!planEntryId) return null;
 
@@ -239,9 +256,23 @@ function mapPlanEntry(row: any): PlanEntryItem | null {
     start_time: row?.start_time ? String(row.start_time) : null,
     end_time: row?.end_time ? String(row.end_time) : null,
     meeting_type: meetingType,
-    room: row?.room ? String(row.room) : null,
+    room: meetingType,
     instance_no: typeof row?.slot_number === "number" ? Number(row.slot_number) : null,
   };
+}
+
+const DANGER = "#DC2626";
+
+function statusPalette(status: string): { bg: string; fg: string } {
+  switch (status) {
+    case "active":
+    case "published":
+      return { bg: "rgba(34,197,94,0.14)", fg: "#15803D" };
+    case "archived":
+      return { bg: "rgba(107,114,128,0.16)", fg: "#4B5563" };
+    default:
+      return { bg: "rgba(245,158,11,0.16)", fg: "#B45309" };
+  }
 }
 
 export default function PlanDetailScreen() {
@@ -251,7 +282,8 @@ export default function PlanDetailScreen() {
     [lessonPlanId]
   );
 
-  const { colors: c } = useAppTheme();
+  const { colors: c, scheme } = useAppTheme();
+  const isDark = scheme === "dark";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -281,7 +313,7 @@ export default function PlanDetailScreen() {
       const { data: planRow, error: planError } = await supabase
         .from("lesson_plans")
         .select(
-          "lesson_plan_id, title, academic_year, term, start_date, end_date, status, notes, school:schools(name), subject:subjects(code, title, year), section:sections(name, grade_level)"
+          "lesson_plan_id, title, academic_year, start_date, end_date, status, notes, school:schools(name), subject:subjects(code, title, year), section:sections(name, grade_level)"
         )
         .eq("lesson_plan_id", planId)
         .eq("user_id", user.id)
@@ -302,15 +334,54 @@ export default function PlanDetailScreen() {
       const { data: entryRows, error: entriesError } = await supabase
         .from("slots")
         .select(
-          "slot_id, title, weekday, slot_date, start_time, end_time, meeting_type, room, slot_number, series_key"
+          "slot_id, title, weekday, slot_date, start_time, end_time, meeting_type, slot_number, series_key"
         )
         .eq("lesson_plan_id", mappedPlan.lesson_plan_id)
         .order("slot_date", { ascending: true })
         .order("start_time", { ascending: true });
       if (entriesError) throw entriesError;
 
+      const rowsWithSeriesKey = [...(entryRows ?? [])];
+      const groupedRows = new Map<string, any[]>();
+      for (const row of rowsWithSeriesKey) {
+        const signature = buildSeriesSignature(row);
+        const list = groupedRows.get(signature) ?? [];
+        list.push(row);
+        groupedRows.set(signature, list);
+      }
+
+      const legacyUpdates: PromiseLike<{ error: any }>[] = [];
+      for (const rows of groupedRows.values()) {
+        const existingSeriesKey = rows.find((row) => String(row?.series_key ?? "").trim())?.series_key ?? null;
+        const resolvedSeriesKey = existingSeriesKey ? String(existingSeriesKey) : makeLegacySeriesKey(rows[0]);
+        const missingSlotIds = rows
+          .filter((row) => !String(row?.series_key ?? "").trim() && row?.slot_id)
+          .map((row) => String(row.slot_id));
+
+        for (const row of rows) {
+          if (!String(row?.series_key ?? "").trim()) {
+            row.series_key = resolvedSeriesKey;
+          }
+        }
+
+        if (missingSlotIds.length > 0) {
+          legacyUpdates.push(
+            supabase
+              .from("slots")
+              .update({ series_key: resolvedSeriesKey })
+              .in("slot_id", missingSlotIds)
+          );
+        }
+      }
+
+      if (legacyUpdates.length > 0) {
+        const results = await Promise.all(legacyUpdates);
+        const failedUpdate = results.find((result) => result.error);
+        if (failedUpdate?.error) throw failedUpdate.error;
+      }
+
       const seenSeriesKeys = new Set<string>();
-      const mappedEntries = (entryRows ?? [])
+      const mappedEntries = rowsWithSeriesKey
         .filter((row: any) => {
           const seriesKey = String(row?.series_key ?? "");
           if (!seriesKey || seenSeriesKeys.has(seriesKey)) return false;
@@ -353,6 +424,26 @@ export default function PlanDetailScreen() {
       params: { duplicateFromPlanId: plan.lesson_plan_id },
     });
   }, [plan]);
+
+  const handleRecreate = useCallback(() => {
+    if (!plan) return;
+    router.push({
+      pathname: "/(tabs)/create/lessonplan",
+      params: { duplicateFromPlanId: plan.lesson_plan_id, replacePlanId: plan.lesson_plan_id },
+    });
+  }, [plan]);
+
+  const confirmRecreate = useCallback(() => {
+    if (!plan || deleting || saving) return;
+    Alert.alert(
+      "Recreate this plan?",
+      "We'll rebuild the schedule from your original inputs — subjects, lessons, requirements and exam dates — then replace the current plan once you confirm on the next screen.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Recreate", onPress: () => handleRecreate() },
+      ]
+    );
+  }, [deleting, handleRecreate, plan, saving]);
 
   const handleCancelEdit = useCallback(() => {
     if (plan) setDraft(toPlanDraft(plan));
@@ -482,7 +573,6 @@ export default function PlanDetailScreen() {
         .update({
           title,
           academic_year: academicYear || null,
-          term,
           start_date: startDate,
           end_date: endDate,
           notes: notes || null,
@@ -536,7 +626,6 @@ export default function PlanDetailScreen() {
           start_time: entry.start_time,
           end_time: entry.end_time,
           meeting_type: entry.room,
-          room: entry.room,
           slot_number: nextSlotNumber,
           series_key: entry.plan_entry_id,
           is_locked: false,
@@ -636,13 +725,20 @@ export default function PlanDetailScreen() {
     [recurringEntries]
   );
 
-  const filledFieldBg = c.card;
-  const emptyFieldBg = c.card;
+  const cardBg = c.card;
+  const fieldBg = isDark ? "rgba(255,255,255,0.04)" : "#F8FAFC";
+  const chipBg = isDark ? "rgba(255,255,255,0.06)" : "#EEF2F7";
   const filledText = c.text;
-  const emptyFieldText = c.mutedText;
+  const mutedText = c.mutedText;
+  const status = statusPalette(plan?.status ?? "draft");
+  const subjectLine = plan
+    ? plan.subject_code
+      ? `${plan.subject_code} · ${plan.subject_title}`
+      : plan.subject_title
+    : "";
 
   return (
-    <View style={[styles.page, { backgroundColor: c.background }]}> 
+    <View style={[styles.page, { backgroundColor: c.background }]}>
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={c.tint} />
@@ -655,8 +751,12 @@ export default function PlanDetailScreen() {
         >
           <View style={styles.headingRow}>
             <View style={styles.headingLeft}>
-              <Pressable onPress={() => router.back()} hitSlop={10}>
-                <Ionicons name="caret-back" size={15} color={c.text} />
+              <Pressable
+                onPress={() => router.back()}
+                hitSlop={10}
+                style={[styles.backBtn, { borderColor: c.border, backgroundColor: cardBg }]}
+              >
+                <Ionicons name="chevron-back" size={18} color={c.text} />
               </Pressable>
               <Text style={[styles.pageTitle, { color: c.text }]}>Plan Details</Text>
             </View>
@@ -665,189 +765,217 @@ export default function PlanDetailScreen() {
                 {isEditing ? (
                   <>
                     <Pressable
-                      style={[styles.actionBtn, styles.actionNeutral, { borderColor: c.border }]}
+                      style={[styles.actionBtn, { borderColor: c.border, backgroundColor: cardBg }]}
                       onPress={handleCancelEdit}
                       disabled={saving}
                     >
                       <Text style={[styles.actionText, { color: c.text }]}>Cancel</Text>
                     </Pressable>
                     <Pressable
-                      style={[styles.actionBtn, styles.actionPrimary, { opacity: saving ? 0.7 : 1 }]}
+                      style={[styles.actionBtn, styles.actionPrimary, { backgroundColor: c.tint, borderColor: c.tint, opacity: saving ? 0.7 : 1 }]}
                       onPress={handleSave}
                       disabled={saving}
                     >
-                      <Text style={styles.actionPrimaryText}>{saving ? "Saving..." : "Save"}</Text>
+                      {saving ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <Text style={styles.actionPrimaryText}>Save</Text>
+                      )}
                     </Pressable>
                   </>
                 ) : (
-                  <>
-                    <Pressable
-                      style={[styles.actionIconBtn, styles.actionDanger, { opacity: deleting ? 0.7 : 1 }]}
-                      onPress={confirmDeletePlan}
-                      disabled={deleting}
-                      accessibilityRole="button"
-                      accessibilityLabel="Delete lesson plan"
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
-                    </Pressable>
-                    <Pressable
-                      style={[styles.actionIconBtn, styles.actionNeutral, { borderColor: c.border, opacity: deleting ? 0.7 : 1 }]}
-                      onPress={handleDuplicate}
-                      disabled={deleting}
-                      accessibilityRole="button"
-                      accessibilityLabel="Duplicate lesson plan"
-                    >
-                      <Ionicons name="copy-outline" size={16} color={c.text} />
-                    </Pressable>
-                    <Pressable
-                      style={[styles.actionIconBtn, styles.actionPrimary, { opacity: deleting ? 0.7 : 1 }]}
-                      onPress={handleEdit}
-                      disabled={deleting}
-                      accessibilityRole="button"
-                      accessibilityLabel="Edit lesson plan"
-                    >
-                      <Ionicons name="create-outline" size={16} color="#FFFFFF" />
-                    </Pressable>
-                  </>
+                  <Pressable
+                    style={[styles.actionBtn, styles.actionPrimary, { backgroundColor: c.tint, borderColor: c.tint, opacity: deleting ? 0.6 : 1 }]}
+                    onPress={handleEdit}
+                    disabled={deleting}
+                  >
+                    <Ionicons name="create-outline" size={15} color="#FFFFFF" />
+                    <Text style={styles.actionPrimaryText}>Edit</Text>
+                  </Pressable>
                 )}
               </View>
             ) : null}
           </View>
 
           {!plan ? (
-            <View style={[styles.emptyState, { borderColor: c.border, backgroundColor: c.card }]}> 
-              <Text style={[styles.emptyText, { color: c.mutedText }]}>Plan not found.</Text>
+            <View style={[styles.emptyState, { borderColor: c.border, backgroundColor: cardBg }]}>
+              <Ionicons name="document-text-outline" size={28} color={mutedText} />
+              <Text style={[styles.emptyText, { color: mutedText }]}>Plan not found.</Text>
             </View>
           ) : (
             <>
-              <Text style={[styles.sectionTitle, { color: c.text }]}>Overview</Text>
-
-              <TextInput
-                value={draft?.title ?? ""}
-                onChangeText={(value) => setDraft((prev) => (prev ? { ...prev, title: value } : prev))}
-                editable={isEditing}
-                placeholder="Lesson Plan Name"
-                placeholderTextColor="#B0B0B0"
-                style={[
-                  styles.nameInput,
-                  {
-                    backgroundColor: (draft?.title ?? "").trim() ? filledFieldBg : emptyFieldBg,
-                    color: (draft?.title ?? "").trim() ? filledText : emptyFieldText,
-                  },
-                ]}
-              />
-
-              <View style={styles.row2}>
-                <View style={[styles.boxField, { backgroundColor: filledFieldBg }]}>
-                  {isEditing ? (
-                    <TextInput
-                      value={draft?.academic_year ?? ""}
-                      onChangeText={(value) => setDraft((prev) => (prev ? { ...prev, academic_year: value } : prev))}
-                      editable={isEditing}
-                      placeholder="Academic Year"
-                      placeholderTextColor="#B0B0B0"
-                      style={[styles.boxFieldInput, { color: (draft?.academic_year ?? "").trim() ? filledText : emptyFieldText }]}
-                    />
-                  ) : (
-                    <Text style={[styles.fieldText, { color: filledText }]}>{plan.academic_year || "Academic Year"}</Text>
-                  )}
+              <View style={[styles.heroCard, { backgroundColor: cardBg, borderColor: c.border }]}>
+                {isEditing ? (
+                  <TextInput
+                    value={draft?.title ?? ""}
+                    onChangeText={(value) => setDraft((prev) => (prev ? { ...prev, title: value } : prev))}
+                    placeholder="Lesson plan name"
+                    placeholderTextColor={mutedText}
+                    style={[styles.heroTitleInput, { color: filledText, borderColor: c.border, backgroundColor: fieldBg }]}
+                  />
+                ) : (
+                  <Text style={[styles.heroTitle, { color: filledText }]}>{plan.title || "Untitled Plan"}</Text>
+                )}
+                <View style={styles.heroMetaRow}>
+                  <View style={[styles.badge, { backgroundColor: status.bg }]}>
+                    <Text style={[styles.badgeText, { color: status.fg }]}>{toTitleCase(plan.status)}</Text>
+                  </View>
+                  <View style={[styles.badge, { backgroundColor: chipBg }]}>
+                    <Ionicons name="calendar-outline" size={11} color={mutedText} />
+                    <Text style={[styles.badgeText, { color: mutedText }]}>{toTitleCase(plan.term)}</Text>
+                  </View>
+                  {plan.academic_year ? (
+                    <View style={[styles.badge, { backgroundColor: chipBg }]}>
+                      <Text style={[styles.badgeText, { color: mutedText }]}>{plan.academic_year}</Text>
+                    </View>
+                  ) : null}
                 </View>
-
-                <View style={[styles.boxField, { backgroundColor: filledFieldBg }]}>
-                  {isEditing ? (
-                    <Pressable onPress={() => setDraft((prev) => (prev ? { ...prev, term: prev.term === "quarter" ? "trimester" : prev.term === "trimester" ? "semester" : "quarter" } : prev))}>
-                      <Text style={[styles.fieldText, { color: filledText }]}>{TERM_OPTIONS.includes((draft?.term ?? "") as (typeof TERM_OPTIONS)[number]) ? toTitleCase(draft?.term ?? "") : "Term"}</Text>
-                    </Pressable>
-                  ) : (
-                    <Text style={[styles.fieldText, { color: filledText }]}>{toTitleCase(plan.term)}</Text>
-                  )}
-                </View>
+                <Text style={[styles.heroSubject, { color: mutedText }]} numberOfLines={1}>{subjectLine}</Text>
+                <Text style={[styles.heroLine, { color: mutedText }]} numberOfLines={1}>
+                  {plan.section_name}
+                  {plan.section_grade_level ? `  ·  Grade ${plan.section_grade_level}` : ""}
+                </Text>
+                <Text style={[styles.heroLine, { color: mutedText }]} numberOfLines={1}>{plan.school_name}</Text>
+                <View style={[styles.heroDivider, { backgroundColor: c.border }]} />
+                {isEditing ? (
+                  <View style={styles.editGrid}>
+                    <View style={styles.editField}>
+                      <Text style={[styles.editLabel, { color: mutedText }]}>Academic year</Text>
+                      <TextInput
+                        value={draft?.academic_year ?? ""}
+                        onChangeText={(value) => setDraft((prev) => (prev ? { ...prev, academic_year: value } : prev))}
+                        placeholder="2025-2026"
+                        placeholderTextColor={mutedText}
+                        style={[styles.editInput, { color: filledText, borderColor: c.border, backgroundColor: fieldBg }]}
+                      />
+                    </View>
+                    <View style={styles.editField}>
+                      <Text style={[styles.editLabel, { color: mutedText }]}>Term</Text>
+                      <Pressable
+                        style={[styles.editInput, styles.editPick, { borderColor: c.border, backgroundColor: fieldBg }]}
+                        onPress={() =>
+                          setDraft((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  term:
+                                    prev.term === "quarter"
+                                      ? "trimester"
+                                      : prev.term === "trimester"
+                                        ? "semester"
+                                        : "quarter",
+                                }
+                              : prev
+                          )
+                        }
+                      >
+                        <Text style={{ color: filledText, ...Typography.body }}>
+                          {TERM_OPTIONS.includes((draft?.term ?? "") as (typeof TERM_OPTIONS)[number])
+                            ? toTitleCase(draft?.term ?? "")
+                            : "Term"}
+                        </Text>
+                        <Ionicons name="swap-vertical" size={14} color={mutedText} />
+                      </Pressable>
+                    </View>
+                    <View style={styles.editField}>
+                      <Text style={[styles.editLabel, { color: mutedText }]}>Start date</Text>
+                      <TextInput
+                        value={draft?.start_date ?? ""}
+                        onChangeText={(value) => setDraft((prev) => (prev ? { ...prev, start_date: value } : prev))}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor={mutedText}
+                        autoCapitalize="none"
+                        style={[styles.editInput, { color: filledText, borderColor: c.border, backgroundColor: fieldBg }]}
+                      />
+                    </View>
+                    <View style={styles.editField}>
+                      <Text style={[styles.editLabel, { color: mutedText }]}>End date</Text>
+                      <TextInput
+                        value={draft?.end_date ?? ""}
+                        onChangeText={(value) => setDraft((prev) => (prev ? { ...prev, end_date: value } : prev))}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor={mutedText}
+                        autoCapitalize="none"
+                        style={[styles.editInput, { color: filledText, borderColor: c.border, backgroundColor: fieldBg }]}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.heroDates}>
+                    <Ionicons name="time-outline" size={14} color={mutedText} />
+                    <Text style={[styles.heroDatesText, { color: filledText }]}>
+                      {formatIsoDate(plan.start_date)}  →  {formatIsoDate(plan.end_date)}
+                    </Text>
+                  </View>
+                )}
               </View>
 
-              <View style={styles.dateRow}>
-                <Text style={styles.fromToText}>from</Text>
-                <View style={[styles.datePill, { backgroundColor: filledFieldBg }]}>
-                  {isEditing ? (
-                    <TextInput
-                      value={draft?.start_date ?? ""}
-                      onChangeText={(value) => setDraft((prev) => (prev ? { ...prev, start_date: value } : prev))}
-                      editable={isEditing}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#B0B0B0"
-                      autoCapitalize="none"
-                      style={[styles.dateInputEditable, { color: (draft?.start_date ?? "").trim() ? filledText : emptyFieldText }]}
-                    />
-                  ) : (
-                    <Text style={[styles.dateInput, { color: filledText }]}>{formatIsoDate(plan.start_date)}</Text>
-                  )}
+              {!isEditing ? (
+                <View style={styles.secondaryActions}>
+                  <Pressable
+                    style={[styles.secondaryBtn, { borderColor: c.border, backgroundColor: cardBg, opacity: deleting || saving ? 0.5 : 1 }]}
+                    onPress={confirmRecreate}
+                    disabled={deleting || saving}
+                    accessibilityRole="button"
+                    accessibilityLabel="Recreate lesson plan"
+                  >
+                    <Ionicons name="refresh" size={15} color={c.tint} />
+                    <Text style={[styles.secondaryBtnText, { color: filledText }]}>Recreate</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.secondaryBtn, { borderColor: c.border, backgroundColor: cardBg, opacity: deleting || saving ? 0.5 : 1 }]}
+                    onPress={handleDuplicate}
+                    disabled={deleting || saving}
+                    accessibilityRole="button"
+                    accessibilityLabel="Duplicate lesson plan"
+                  >
+                    <Ionicons name="copy-outline" size={15} color={mutedText} />
+                    <Text style={[styles.secondaryBtnText, { color: filledText }]}>Duplicate</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.secondaryBtn, { borderColor: c.border, backgroundColor: cardBg, opacity: deleting ? 0.5 : 1 }]}
+                    onPress={confirmDeletePlan}
+                    disabled={deleting || saving}
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete lesson plan"
+                  >
+                    {deleting ? (
+                      <ActivityIndicator size="small" color={DANGER} />
+                    ) : (
+                      <Ionicons name="trash-outline" size={15} color={DANGER} />
+                    )}
+                    <Text style={[styles.secondaryBtnText, { color: DANGER }]}>Delete</Text>
+                  </Pressable>
                 </View>
-                <Text style={styles.fromToText}>to</Text>
-                <View style={[styles.datePill, { backgroundColor: filledFieldBg }]}>
-                  {isEditing ? (
-                    <TextInput
-                      value={draft?.end_date ?? ""}
-                      onChangeText={(value) => setDraft((prev) => (prev ? { ...prev, end_date: value } : prev))}
-                      editable={isEditing}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#B0B0B0"
-                      autoCapitalize="none"
-                      style={[styles.dateInputEditable, { color: (draft?.end_date ?? "").trim() ? filledText : emptyFieldText }]}
-                    />
-                  ) : (
-                    <Text style={[styles.dateInput, { color: filledText }]}>{formatIsoDate(plan.end_date)}</Text>
-                  )}
-                </View>
+              ) : null}
+
+              <View style={styles.sectionHeaderRow}>
+                <Text style={[styles.sectionTitle, { color: c.text }]}>Schedule</Text>
+                {isEditing ? (
+                  <Text style={[styles.sectionHint, { color: mutedText }]}>Tap a day to add or remove meetings</Text>
+                ) : null}
               </View>
-
-              <View style={styles.row2}>
-                <View style={[styles.boxField, { backgroundColor: filledFieldBg }]}>
-                  <Text style={[styles.fieldText, { color: filledText }]} numberOfLines={1}>
-                    {plan.subject_code ? `${plan.subject_code} - ${plan.subject_title}` : plan.subject_title}
-                  </Text>
-                </View>
-
-                <View style={[styles.boxField, { backgroundColor: filledFieldBg }]}>
-                  <Text style={[styles.fieldText, { color: filledText }]} numberOfLines={1}>
-                    {plan.section_name}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.row2}>
-                <View style={[styles.boxField, { backgroundColor: filledFieldBg }]}>
-                  <Text style={[styles.fieldText, { color: filledText }]} numberOfLines={1}>
-                    {plan.school_name}
-                  </Text>
-                </View>
-
-                <View style={[styles.boxField, { backgroundColor: filledFieldBg }]}>
-                  <Text style={[styles.fieldText, { color: filledText }]} numberOfLines={1}>
-                    {plan.section_grade_level ? `Grade ${plan.section_grade_level}` : toTitleCase(plan.status)}
-                  </Text>
-                </View>
-              </View>
-
-              <Pressable style={styles.scheduleBar}>
-                <Text style={styles.scheduleBarText}>Schedule</Text>
-              </Pressable>
 
               <View style={styles.dayChipRow}>
                 {DAY_OPTIONS.map((day) => {
                   const active = recurringEntries.some((entry) => entry.day === day);
+                  const chipStyle = [
+                    styles.dayChipPill,
+                    { borderColor: c.border, backgroundColor: cardBg },
+                    active ? { backgroundColor: c.tint, borderColor: c.tint } : undefined,
+                  ];
+                  const label = (
+                    <Text style={[styles.dayChipPillText, { color: active ? "#FFFFFF" : mutedText }]}>
+                      {DAY_LABEL[day].slice(0, 3)}
+                    </Text>
+                  );
                   return isEditing ? (
-                    <Pressable
-                      key={day}
-                      style={[styles.dayChipPill, active ? styles.dayChipPillActive : undefined]}
-                      onPress={() => toggleDraftDay(day)}
-                    >
-                      <Text style={[styles.dayChipPillText, { color: active ? c.card : c.mutedText }]}>{DAY_LABEL[day].slice(0, 3)}</Text>
+                    <Pressable key={day} style={chipStyle} onPress={() => toggleDraftDay(day)}>
+                      {label}
                     </Pressable>
                   ) : (
-                    <View
-                      key={day}
-                      style={[styles.dayChipPill, active ? styles.dayChipPillActive : undefined]}
-                    >
-                      <Text style={[styles.dayChipPillText, { color: active ? c.card : c.mutedText }]}>{DAY_LABEL[day].slice(0, 3)}</Text>
+                    <View key={day} style={chipStyle}>
+                      {label}
                     </View>
                   );
                 })}
@@ -855,100 +983,120 @@ export default function PlanDetailScreen() {
 
               {visibleDays.map((day) => {
                 const rows = recurringEntries.filter((entry) => entry.day === day);
-
                 return (
-                  <View key={day} style={styles.scheduleCard}>
+                  <View key={day} style={[styles.scheduleCard, { backgroundColor: cardBg, borderColor: c.border }]}>
                     <View style={styles.scheduleCardHeader}>
-                      <Text style={styles.dayLabel}>{DAY_LABEL[day]}</Text>
+                      <Text style={[styles.dayLabel, { color: filledText }]}>{DAY_LABEL[day]}</Text>
                       {isEditing ? (
-                        <Pressable style={styles.iconAction} onPress={() => addDraftSchedule(day)}>
-                          <Text style={styles.plusText}>+</Text>
+                        <Pressable
+                          style={[styles.addSlotBtn, { borderColor: c.tint }]}
+                          onPress={() => addDraftSchedule(day)}
+                        >
+                          <Ionicons name="add" size={16} color={c.tint} />
+                          <Text style={[styles.addSlotText, { color: c.tint }]}>Slot</Text>
                         </Pressable>
                       ) : (
-                        <View style={styles.iconAction} />
+                        <Text style={[styles.dayCount, { color: mutedText }]}>
+                          {rows.length} slot{rows.length === 1 ? "" : "s"}
+                        </Text>
                       )}
                     </View>
 
                     <View style={styles.slotStack}>
                       {rows.map((entry) => {
-                        const borderColor = entry.room === "laboratory" ? "#D9534F" : "#2D7BD8";
+                        const isLab = entry.room === "laboratory";
+                        const accent = isLab ? "#D9534F" : "#2D7BD8";
                         return (
-                          <View key={entry.plan_entry_id} style={[styles.instanceWrap, { borderColor }]}>
-                            <View style={styles.instanceHeaderRow}>
-                              <Text style={styles.instanceLabel}>Slot {entry.instance_no ?? 1}</Text>
-                              <View style={styles.instanceHeaderRight}>
-                                <View style={styles.instanceRoomSwitch}>
-                                  {(["lecture", "laboratory"] as const).map((roomOption) => {
-                                    const selected = (entry.room ?? "lecture") === roomOption;
-                                    return (
+                          <View
+                            key={entry.plan_entry_id}
+                            style={[styles.instanceWrap, { borderColor: c.border, backgroundColor: fieldBg }]}
+                          >
+                            <View style={[styles.accentBar, { backgroundColor: accent }]} />
+                            <View style={styles.instanceBody}>
+                              <View style={styles.instanceHeaderRow}>
+                                <Text style={[styles.instanceLabel, { color: mutedText }]}>Slot {entry.instance_no ?? 1}</Text>
+                                <View style={styles.instanceHeaderRight}>
+                                  <View style={styles.instanceRoomSwitch}>
+                                    {(["lecture", "laboratory"] as const).map((roomOption) => {
+                                      const selected = (entry.room ?? "lecture") === roomOption;
+                                      return (
+                                        <Pressable
+                                          key={`${entry.plan_entry_id}_${roomOption}`}
+                                          disabled={!isEditing}
+                                          style={({ pressed }) => [
+                                            styles.roomIconChip,
+                                            { borderColor: c.border, backgroundColor: cardBg },
+                                            selected ? { borderColor: accent, backgroundColor: isLab ? "rgba(217,83,79,0.12)" : "rgba(45,123,216,0.12)" } : undefined,
+                                            isEditing && pressed ? styles.pressScale : undefined,
+                                          ]}
+                                          onPress={() => setEntryField(entry.plan_entry_id, "room", roomOption)}
+                                        >
+                                          <Ionicons
+                                            name={roomOption === "lecture" ? "school-outline" : "flask-outline"}
+                                            size={13}
+                                            color={selected ? accent : mutedText}
+                                          />
+                                          {selected ? (
+                                            <Text style={[styles.roomChipTextActive, { color: accent }]}>{toTitleCase(roomOption)}</Text>
+                                          ) : null}
+                                        </Pressable>
+                                      );
+                                    })}
+                                  </View>
+                                  {isEditing ? (
+                                    <View style={styles.instanceActionRow}>
                                       <Pressable
-                                        key={`${entry.plan_entry_id}_${roomOption}`}
-                                        disabled={!isEditing}
-                                        style={({ pressed }) => [
-                                          styles.roomIconChip,
-                                          selected ? styles.roomIconChipActive : undefined,
-                                          roomOption === "lecture" ? styles.roomChipLecture : styles.roomChipLaboratory,
-                                          isEditing && pressed ? styles.pressScale : undefined,
-                                        ]}
-                                        onPress={() => setEntryField(entry.plan_entry_id, "room", roomOption)}
+                                        style={[styles.removeBtn, { borderColor: c.border }]}
+                                        onPress={() => duplicateDraftSchedule(entry.plan_entry_id)}
                                       >
-                                        <Ionicons
-                                          name={roomOption === "lecture" ? "school-outline" : "flask-outline"}
-                                          size={14}
-                                          color={selected ? "#5E6B7A" : c.mutedText}
-                                        />
-                                        {selected ? <Text style={styles.roomChipTextActive}>{toTitleCase(roomOption)}</Text> : null}
+                                        <Ionicons name="copy-outline" size={13} color={mutedText} />
                                       </Pressable>
-                                    );
-                                  })}
+                                      {rows.length > 1 ? (
+                                        <Pressable
+                                          style={[styles.removeBtn, { borderColor: c.border }]}
+                                          onPress={() => removeDraftSchedule(entry.plan_entry_id)}
+                                        >
+                                          <Ionicons name="close" size={15} color={mutedText} />
+                                        </Pressable>
+                                      ) : null}
+                                    </View>
+                                  ) : null}
                                 </View>
-                                {isEditing ? (
-                                  <View style={styles.instanceActionRow}>
-                                    <Pressable style={styles.removeBtn} onPress={() => duplicateDraftSchedule(entry.plan_entry_id)}>
-                                      <Ionicons name="copy-outline" size={14} color="#8A8A8A" />
-                                    </Pressable>
-                                    {rows.length > 1 ? (
-                                      <Pressable style={styles.removeBtn} onPress={() => removeDraftSchedule(entry.plan_entry_id)}>
-                                        <Ionicons name="close" size={16} color="#8A8A8A" />
-                                      </Pressable>
-                                    ) : null}
-                                  </View>
-                                ) : null}
                               </View>
-                            </View>
 
-                            <View style={styles.timeRowCentered}>
-                              {isEditing ? (
-                                <>
-                                  <TextInput
-                                    value={toTimeInput(entry.start_time)}
-                                    onChangeText={(value) => setEntryField(entry.plan_entry_id, "start_time", value)}
-                                    placeholder="Start HH:MM"
-                                    placeholderTextColor="#B0B0B0"
-                                    autoCapitalize="none"
-                                    style={[styles.timeInputEditable, { borderColor, color: c.text }]}
-                                  />
-                                  <Text style={styles.toText}>to</Text>
-                                  <TextInput
-                                    value={toTimeInput(entry.end_time)}
-                                    onChangeText={(value) => setEntryField(entry.plan_entry_id, "end_time", value)}
-                                    placeholder="End HH:MM"
-                                    placeholderTextColor="#B0B0B0"
-                                    autoCapitalize="none"
-                                    style={[styles.timeInputEditable, { borderColor, color: c.text }]}
-                                  />
-                                </>
-                              ) : (
-                                <>
-                                  <View style={[styles.timeInputButton, { borderColor }]}>
-                                    <Text style={styles.timeInputText}>{formatTime(entry.start_time)}</Text>
-                                  </View>
-                                  <Text style={styles.toText}>to</Text>
-                                  <View style={[styles.timeInputButton, { borderColor }]}>
-                                    <Text style={styles.timeInputText}>{formatTime(entry.end_time)}</Text>
-                                  </View>
-                                </>
-                              )}
+                              <View style={styles.timeRowCentered}>
+                                {isEditing ? (
+                                  <>
+                                    <TextInput
+                                      value={toTimeInput(entry.start_time)}
+                                      onChangeText={(value) => setEntryField(entry.plan_entry_id, "start_time", value)}
+                                      placeholder="08:00"
+                                      placeholderTextColor={mutedText}
+                                      autoCapitalize="none"
+                                      style={[styles.timeInputEditable, { borderColor: accent, color: filledText, backgroundColor: cardBg }]}
+                                    />
+                                    <Text style={[styles.toText, { color: mutedText }]}>to</Text>
+                                    <TextInput
+                                      value={toTimeInput(entry.end_time)}
+                                      onChangeText={(value) => setEntryField(entry.plan_entry_id, "end_time", value)}
+                                      placeholder="10:00"
+                                      placeholderTextColor={mutedText}
+                                      autoCapitalize="none"
+                                      style={[styles.timeInputEditable, { borderColor: accent, color: filledText, backgroundColor: cardBg }]}
+                                    />
+                                  </>
+                                ) : (
+                                  <>
+                                    <View style={[styles.timeChip, { borderColor: accent, backgroundColor: cardBg }]}>
+                                      <Text style={[styles.timeChipText, { color: filledText }]}>{formatTime(entry.start_time)}</Text>
+                                    </View>
+                                    <Text style={[styles.toText, { color: mutedText }]}>to</Text>
+                                    <View style={[styles.timeChip, { borderColor: accent, backgroundColor: cardBg }]}>
+                                      <Text style={[styles.timeChipText, { color: filledText }]}>{formatTime(entry.end_time)}</Text>
+                                    </View>
+                                  </>
+                                )}
+                              </View>
                             </View>
                           </View>
                         );
@@ -959,24 +1107,26 @@ export default function PlanDetailScreen() {
               })}
 
               {recurringEntries.length === 0 ? (
-                <Text style={[styles.emptyText, { color: c.mutedText }]}>No schedule yet.</Text>
+                <View style={[styles.emptyState, { borderColor: c.border, backgroundColor: cardBg }]}>
+                  <Ionicons name="calendar-clear-outline" size={24} color={mutedText} />
+                  <Text style={[styles.emptyText, { color: mutedText }]}>No schedule yet.</Text>
+                </View>
               ) : null}
 
-              <View style={styles.divider} />
-
-              <Text style={[styles.sectionTitle, { color: c.text }]}>Extra Requirements</Text>
+              <Text style={[styles.sectionTitle, { color: c.text, marginTop: Spacing.sm }]}>Extra Requirements</Text>
               <TextInput
                 value={draft?.notes ?? ""}
                 onChangeText={(value) => setDraft((prev) => (prev ? { ...prev, notes: value } : prev))}
                 editable={isEditing}
-                placeholder="Type notes..."
-                placeholderTextColor="#B0B0B0"
+                placeholder={isEditing ? "Type notes…" : "No extra requirements."}
+                placeholderTextColor={mutedText}
                 multiline
                 style={[
                   styles.extraBox,
                   {
-                    backgroundColor: (draft?.notes ?? "").trim() ? filledFieldBg : emptyFieldBg,
-                    color: (draft?.notes ?? "").trim() ? filledText : emptyFieldText,
+                    backgroundColor: cardBg,
+                    borderColor: c.border,
+                    color: (draft?.notes ?? "").trim() ? filledText : mutedText,
                   },
                 ]}
               />
@@ -988,13 +1138,21 @@ export default function PlanDetailScreen() {
   );
 }
 
+const cardShadow = {
+  shadowColor: "#0F172A",
+  shadowOpacity: 0.06,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 2,
+};
+
 const styles = StyleSheet.create({
   page: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   content: {
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.lg,
-    paddingBottom: 80,
+    paddingBottom: 96,
     gap: Spacing.md,
   },
   headingRow: {
@@ -1003,44 +1161,31 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 2,
   },
-  headingLeft: { flexDirection: "row", alignItems: "center", gap: 3 },
-  headerActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  emptyState: {
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    padding: Spacing.md,
-  },
-  actionBtn: {
-    height: 32,
-    minWidth: 66,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-  },
-  actionIconBtn: {
+  headingLeft: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, flexShrink: 1 },
+  backBtn: {
     width: 32,
     height: 32,
-    borderRadius: Radius.sm,
+    borderRadius: Radius.round,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+  },
+  actionBtn: {
+    height: 34,
+    minWidth: 70,
+    borderRadius: Radius.round,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     borderWidth: 1,
   },
-  actionPrimary: {
-    backgroundColor: "#1F2937",
-    borderColor: "#1F2937",
-  },
-  actionDanger: {
-    backgroundColor: "#B42318",
-    borderColor: "#B42318",
-  },
-  actionNeutral: {
-    backgroundColor: "#FFFFFF",
-  },
+  actionPrimary: { ...cardShadow },
   actionText: {
     ...Typography.caption,
     fontWeight: "600",
@@ -1051,125 +1196,141 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   pageTitle: { ...Typography.h1 },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    marginTop: Spacing.xs,
+  },
   sectionTitle: { ...Typography.h2 },
-  row2: { flexDirection: "row", gap: 8 },
-  boxField: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: Radius.sm,
+  sectionHint: { ...Typography.caption, flexShrink: 1, textAlign: "right" },
+
+  emptyState: {
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
-    justifyContent: "center",
+    paddingVertical: Spacing.xxl,
     alignItems: "center",
-    paddingHorizontal: 10,
+    gap: Spacing.sm,
   },
-  boxFieldInput: {
-    ...Typography.body,
-    textAlign: "center",
-    width: "100%",
-  },
-  fieldText: {
-    ...Typography.body,
-    textAlign: "center",
-    width: "100%",
-  },
-  nameInput: {
-    ...Typography.body,
-    minHeight: 48,
-    borderRadius: Radius.sm,
+  emptyText: { ...Typography.body },
+
+  heroCard: {
+    borderRadius: Radius.lg,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
+    padding: Spacing.lg,
+    gap: 6,
+    ...cardShadow,
+  },
+  heroTitle: { ...Typography.h1, fontSize: 22, lineHeight: 28 },
+  heroTitleInput: {
+    ...Typography.h1,
+    fontSize: 20,
+    lineHeight: 26,
+    borderWidth: 1,
+    borderRadius: Radius.md,
     paddingHorizontal: 12,
-    textAlign: "center",
+    paddingVertical: 8,
   },
-  dateRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  fromToText: {
-    ...Typography.caption,
-    color: "#7E7E7E",
-    width: 30,
-    textAlign: "center",
+  heroMetaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 4,
   },
-  datePill: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#D8DDE3",
+  badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
     borderRadius: Radius.round,
-    minHeight: 42,
-    justifyContent: "center",
-    paddingHorizontal: 14,
   },
-  dateInput: {
-    ...Typography.caption,
-    textAlign: "center",
-    paddingVertical: 0,
-  },
-  dateInputEditable: {
-    ...Typography.caption,
-    textAlign: "center",
-    paddingVertical: 0,
-  },
-  notesInput: {
-    minHeight: 84,
-    textAlignVertical: "top",
-  },
-  emptyText: {
+  badgeText: { ...Typography.caption, fontWeight: "600" },
+  heroSubject: { ...Typography.body, fontWeight: "600", marginTop: 8 },
+  heroLine: { ...Typography.caption },
+  heroDivider: { height: 1, marginVertical: 10 },
+  heroDates: { flexDirection: "row", alignItems: "center", gap: 6 },
+  heroDatesText: { ...Typography.body, fontWeight: "600" },
+
+  editGrid: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.sm },
+  editField: { flexGrow: 1, flexBasis: "46%", gap: 4 },
+  editLabel: { ...Typography.caption, fontWeight: "600" },
+  editInput: {
     ...Typography.body,
-  },
-  scheduleBar: {
-    minHeight: 48,
-    borderRadius: Radius.sm,
-    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#D8DDE3",
+    borderRadius: Radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  editPick: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+
+  secondaryActions: { flexDirection: "row", gap: Spacing.sm },
+  secondaryBtn: {
+    flex: 1,
+    height: 40,
+    borderRadius: Radius.md,
+    borderWidth: 1,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
   },
-  scheduleBarText: { ...Typography.h2, color: "#4B5563", fontWeight: "500" },
-  dayChipRow: { flexDirection: "row", gap: 8 },
+  secondaryBtnText: { ...Typography.caption, fontWeight: "700" },
+
+  dayChipRow: { flexDirection: "row", gap: 6 },
   dayChipPill: {
     flex: 1,
-    minHeight: 46,
-    borderRadius: Radius.sm,
+    height: 40,
+    borderRadius: Radius.md,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
   },
-  dayChipPillActive: { backgroundColor: "#6B7280", borderColor: "#6B7280" },
-  dayChipPillText: { ...Typography.h3, fontWeight: "500" },
+  dayChipPillText: { ...Typography.caption, fontWeight: "700" },
+
   scheduleCard: {
-    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#D8DDE3",
-    borderRadius: Radius.md,
-    padding: 10,
-    gap: 8,
+    borderRadius: Radius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    ...cardShadow,
   },
   scheduleCardHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  dayLabel: { ...Typography.body, color: "#7A7A7A", fontWeight: "600" },
-  slotStack: { gap: 8 },
-  instanceWrap: {
-    borderWidth: 2,
-    borderRadius: Radius.sm,
-    backgroundColor: "#FFFFFF",
-    padding: 8,
-    gap: 8,
+  dayLabel: { ...Typography.body, fontWeight: "700" },
+  dayCount: { ...Typography.caption },
+  addSlotBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    borderWidth: 1,
+    borderRadius: Radius.round,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
+  addSlotText: { ...Typography.caption, fontWeight: "700" },
+  slotStack: { gap: Spacing.sm },
+  instanceWrap: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    flexDirection: "row",
+    overflow: "hidden",
+  },
+  accentBar: { width: 4 },
+  instanceBody: { flex: 1, padding: Spacing.sm, gap: Spacing.sm },
   instanceHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  instanceLabel: { ...Typography.caption, color: "#5F5F5F", fontWeight: "600" },
+  instanceLabel: { ...Typography.caption, fontWeight: "700" },
   instanceHeaderRight: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
   },
   instanceActionRow: {
     flexDirection: "row",
@@ -1178,31 +1339,22 @@ const styles = StyleSheet.create({
   },
   instanceRoomSwitch: {
     flexDirection: "row",
-    gap: 6,
+    gap: 4,
   },
   roomIconChip: {
-    minHeight: 28,
-    minWidth: 28,
+    minHeight: 26,
+    minWidth: 26,
     borderRadius: Radius.round,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
-    paddingHorizontal: 8,
+    paddingHorizontal: 7,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
-    gap: 5,
-    backgroundColor: "#FFFFFF",
+    gap: 4,
   },
-  roomIconChipActive: {
-    minWidth: 108,
-    paddingHorizontal: 10,
-  },
-  roomChipLecture: { borderColor: "#C5CCD6", backgroundColor: "#F7FAFC" },
-  roomChipLaboratory: { borderColor: "#C5CCD6", backgroundColor: "#F7FAFC" },
   roomChipTextActive: {
     ...Typography.caption,
-    color: "#6B7280",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   pressScale: {
     transform: [{ scale: 0.96 }],
@@ -1211,55 +1363,43 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: Spacing.sm,
   },
-  timeInputButton: {
-    minHeight: 36,
-    minWidth: 105,
+  timeChip: {
+    minHeight: 34,
+    minWidth: 102,
     borderWidth: 1,
     borderRadius: Radius.round,
-    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 12,
   },
   timeInputEditable: {
     ...Typography.caption,
-    minHeight: 36,
-    minWidth: 105,
+    minHeight: 34,
+    minWidth: 102,
     borderWidth: 1,
     borderRadius: Radius.round,
-    backgroundColor: "#FFFFFF",
     textAlign: "center",
     paddingHorizontal: 12,
   },
-  timeInputText: { ...Typography.caption, color: "#1F2937", textAlign: "center" },
-  toText: { ...Typography.caption, color: "#666666" },
+  timeChipText: { ...Typography.caption, fontWeight: "600", textAlign: "center" },
+  toText: { ...Typography.caption },
   removeBtn: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
     alignItems: "center",
     justifyContent: "center",
   },
-  iconAction: { width: 24, height: 24, alignItems: "center", justifyContent: "center" },
-  plusText: { ...Typography.h2, color: "#6B7280", fontWeight: "600" },
-  divider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    marginTop: 4,
-    marginBottom: 6,
-  },
   extraBox: {
-    minHeight: 170,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    minHeight: 130,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
     ...Typography.body,
     textAlignVertical: "top",
-    fontStyle: "italic",
-    fontWeight: "400",
   },
 });

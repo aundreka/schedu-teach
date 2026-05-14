@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="980" viewBox="0 0 1200 980">
+  <defs>
+    <style>
+      .title { font: 700 34px 'Arial', sans-serif; fill: #17324d; }
+      .stage { font: 700 22px 'Arial', sans-serif; fill: #17324d; }
+      .body { font: 500 17px 'Arial', sans-serif; fill: #27435b; }
+      .small { font: 500 15px 'Arial', sans-serif; fill: #506679; }
+      .box { stroke: #37566f; stroke-width: 3; rx: 22; ry: 22; }
+      .arrow { stroke: #37566f; stroke-width: 4.5; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#37566f"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="980" fill="#fbfcfd"/>
+  <text x="600" y="52" text-anchor="middle" class="title">Deterministic Scheduling and Rebalancing Pipeline</text>
+
+  <rect x="150" y="110" width="900" height="115" class="box" fill="#e5f0fb"/>
+  <text x="600" y="150" text-anchor="middle" class="stage">1. Inputs</text>
+  <text x="195" y="188" class="body">Lesson plan dates, selected lessons, meeting patterns, term rules, existing slots and blocks, school events, delays, and teacher locks.</text>
+
+  <rect x="150" y="285" width="900" height="135" class="box" fill="#ecf8ef"/>
+  <text x="600" y="325" text-anchor="middle" class="stage">2. Slot Creation</text>
+  <text x="195" y="363" class="body">Expand recurring meeting patterns across the date range, assign slot keys and slot numbers, and attach blackout information from events or delays.</text>
+  <text x="195" y="392" class="small">Output: ordered runtime slots with usable and non-usable states.</text>
+
+  <rect x="150" y="480" width="900" height="155" class="box" fill="#fff5e6"/>
+  <text x="600" y="520" text-anchor="middle" class="stage">3. Block Generation</text>
+  <text x="195" y="558" class="body">Transform lessons into instructional blocks; derive written work, performance tasks, exams, and buffer blocks from term requirements and activity metadata.</text>
+  <text x="195" y="587" class="body">Distribute generated content across academic terms and label blocks with term, lesson, quiz, and exam metadata.</text>
+  <text x="195" y="616" class="small">Output: term-aware block stream ready for placement.</text>
+
+  <rect x="150" y="695" width="900" height="145" class="box" fill="#f5ecfb"/>
+  <text x="600" y="735" text-anchor="middle" class="stage">4. Placement and Ordering</text>
+  <text x="195" y="773" class="body">Pin exams to term exam slots, place remaining content in sequence, respect blackout slots and locked schedule state, then sort same-day blocks by category.</text>
+  <text x="195" y="802" class="small">Output: persisted slots, blocks, warnings, metrics, and calendar-ready ordering.</text>
+
+  <rect x="150" y="880" width="900" height="60" class="box" fill="#e8eff4"/>
+  <text x="600" y="918" text-anchor="middle" class="body">When availability changes, rebalance recomputes placements: compress on reduced capacity, restore spread on recovered capacity, and surface displaced locked blocks for re-pinning.</text>
+
+  <path d="M600 225 V285" class="arrow"/>
+  <path d="M600 420 V480" class="arrow"/>
+  <path d="M600 635 V695" class="arrow"/>
+  <path d="M600 840 V880" class="arrow"/>
+</svg>

@@ -1207,6 +1207,7 @@ export default function SubjectScreen() {
   const [year, setYear] = useState("");
   const [schoolYearStart, setSchoolYearStart] = useState<number | null>(null);
   const [selectedSchoolId, setSelectedSchoolId] = useState<string>("");
+  const [schoolPickerOpen, setSchoolPickerOpen] = useState(false);
   const [schoolYearPickerOpen, setSchoolYearPickerOpen] = useState(false);
   const [schoolYearPickerYear, setSchoolYearPickerYear] = useState(nowYear);
   const [coverImageUri, setCoverImageUri] = useState<string | null>(null);
@@ -1219,6 +1220,10 @@ export default function SubjectScreen() {
     if (!schoolYearStart) return "";
     return formatAcademicYear(schoolYearStart);
   }, [schoolYearStart]);
+  const selectedInstitution = useMemo(
+    () => institutions.find((item) => item.school_id === selectedSchoolId) ?? null,
+    [institutions, selectedSchoolId]
+  );
 
   const loadSubjectForm = useCallback(async () => {
     setLoading(true);
@@ -1273,6 +1278,11 @@ export default function SubjectScreen() {
   const openSchoolYearPicker = () => {
     setSchoolYearPickerYear(schoolYearStart ?? nowYear);
     setSchoolYearPickerOpen(true);
+  };
+
+  const openSchoolPicker = () => {
+    if (institutions.length === 0) return;
+    setSchoolPickerOpen(true);
   };
 
   const applyPickedSchoolYear = () => {
@@ -1633,29 +1643,26 @@ export default function SubjectScreen() {
                 },
               ]}
             />
-            <View
+            <Pressable
+              onPress={openSchoolPicker}
+              disabled={institutions.length === 0}
               style={[
                 styles.schoolPickerWrap,
                 {
                   borderColor: c.border,
                   backgroundColor: c.card,
+                  opacity: institutions.length === 0 ? 0.7 : 1,
                 },
               ]}
             >
-              <Picker
-                enabled={institutions.length > 0}
-                selectedValue={selectedSchoolId}
-                onValueChange={(value) => setSelectedSchoolId(String(value))}
-                style={[styles.schoolPicker, { color: selectedSchoolId ? c.text : c.mutedText }]}
+              <Text
+                numberOfLines={1}
+                style={[styles.schoolPickerText, { color: selectedInstitution ? c.text : c.mutedText }]}
               >
-                {institutions.length === 0 ? (
-                  <Picker.Item label="No schools found" value="" color={c.mutedText} />
-                ) : null}
-                {institutions.map((school) => (
-                  <Picker.Item key={school.school_id} label={school.name} value={school.school_id} />
-                ))}
-              </Picker>
-            </View>
+                {selectedInstitution?.name ?? "No schools found"}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color={c.mutedText} />
+            </Pressable>
           </View>
 
           <View style={styles.metaRow}>
@@ -1787,6 +1794,46 @@ export default function SubjectScreen() {
       </KeyboardAvoidingView>
 
       <Modal
+        visible={schoolPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSchoolPickerOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setSchoolPickerOpen(false)}>
+          <Pressable
+            style={[styles.dateModalCard, { borderColor: c.border, backgroundColor: c.card }]}
+            onPress={() => {}}
+          >
+            <Text style={[styles.modalTitle, { color: c.text }]}>Pick Institution</Text>
+            <View style={styles.schoolList}>
+              {institutions.map((school) => {
+                const selected = school.school_id === selectedSchoolId;
+                return (
+                  <Pressable
+                    key={school.school_id}
+                    onPress={() => {
+                      setSelectedSchoolId(school.school_id);
+                      setSchoolPickerOpen(false);
+                    }}
+                    style={[
+                      styles.schoolOption,
+                      {
+                        borderColor: selected ? c.tint : c.border,
+                        backgroundColor: selected ? c.background : c.card,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.schoolOptionText, { color: c.text }]}>{school.name}</Text>
+                    {selected ? <Ionicons name="checkmark" size={18} color={c.tint} /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
         visible={schoolYearPickerOpen}
         transparent
         animationType="fade"
@@ -1912,12 +1959,16 @@ const styles = StyleSheet.create({
     flex: 1.15,
     borderRadius: 8,
     borderWidth: 1,
-    justifyContent: "center",
-    overflow: "hidden",
+    minHeight: 44,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
   },
-  schoolPicker: {
-    width: "100%",
-    height: 44,
+  schoolPickerText: {
+    flex: 1,
+    fontSize: TYPE_SCALE.body,
   },
   overviewInput: {
     marginTop: 6,
@@ -1999,6 +2050,24 @@ const styles = StyleSheet.create({
     fontSize: TYPE_SCALE.h2,
     fontWeight: "700",
     marginBottom: 6,
+  },
+  schoolList: {
+    gap: 8,
+  },
+  schoolOption: {
+    minHeight: 46,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  schoolOptionText: {
+    flex: 1,
+    fontSize: TYPE_SCALE.body,
   },
   modalDoneButton: {
     alignSelf: "flex-end",

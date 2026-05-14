@@ -1,0 +1,357 @@
+\documentclass[12pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+
+\title{Test Results and Evaluation Report\\[0.4em]
+\large SchEDU: Adaptive Academic Pacing Using Deterministic Constraint-Based Greedy Scheduling and Heuristic Rebalancing}
+\author{Software Engineering 2 \\ Lyceum of the Philippines University}
+\date{May 14, 2026}
+
+\setstretch{1.1}
+\setlist[itemize]{noitemsep, topsep=0.4em}
+\setlist[enumerate]{noitemsep, topsep=0.4em}
+\renewcommand{\arraystretch}{1.2}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section*{Revision Sheet}
+\addcontentsline{toc}{section}{Revision Sheet}
+
+\begin{longtable}{|L{2.5cm}|L{2.5cm}|L{9cm}|}
+\hline
+\textbf{Release No.} & \textbf{Date} & \textbf{Revision Description} \\
+\hline
+Rev. 1 & May 14, 2026 & Repository-tailored testing documentation drafted from the current IEEE paper, SRS, and source-backed validation evidence. \\
+\hline
+\end{longtable}
+
+\newpage
+
+\section{General Information}
+
+\subsection{Purpose}
+
+This document records the testing evidence currently supported by the SchEDU repository and presents it in a defense-ready format. Its purpose is to verify that the implemented system behaves correctly, consistently, and safely under realistic academic planning use, while staying aligned with the current IEEE paper and Software Requirements Specification (SRS).
+
+The report is intentionally evidence-based. It distinguishes between validation that was directly observed during repository review, validation that is strongly supported by the implementation wiring, and validation that remains conditional on local dependency cleanup or external service configuration. This prevents the document from overstating automation or maturity that the current repository does not yet demonstrate.
+
+\subsection{Scope}
+
+This report covers the implemented validation approach for the current SchEDU repository state as observed on May 14, 2026.
+
+\textbf{In scope}
+\begin{itemize}
+    \item Authentication and route protection behavior
+    \item Profile, institution, subject, lesson plan, library, and calendar workflows
+    \item Scheduler generation and rebalance logic
+    \item Database-backed persistence for lesson plans, slots, blocks, events, and delays
+    \item PDF extraction request flow
+    \item AI-assisted activity generation request flow
+    \item Static validation through linting
+\end{itemize}
+
+\textbf{Out of scope or only partially covered}
+\begin{itemize}
+    \item Full automated UI test suites
+    \item Large-scale performance or load benchmarking for production-scale usage
+    \item Offline behavior validation
+    \item Exhaustive cross-device compatibility coverage
+    \item Mathematical optimization-score benchmarking, because the implemented scheduler is deterministic, rule-based, and validated through invariants rather than global objective scoring
+\end{itemize}
+
+\subsection{System Overview}
+
+SchEDU is a teacher-facing curriculum and lesson planning workspace built with Expo Router and React Native, backed by Supabase authentication, database, storage, and edge functions. Its core differentiator is an adaptive scheduling engine that creates lesson-plan slots and blocks, then maintains schedule consistency when class availability changes.
+
+\begin{itemize}
+    \item \textbf{Responsible organization:} Software Engineering 2 project team, Lyceum of the Philippines University
+    \item \textbf{System name or title:} SchEDU: Adaptive Academic Pacing Using Deterministic Constraint-Based Greedy Scheduling and Heuristic Rebalancing
+    \item \textbf{System code:} SchEDU
+    \item \textbf{System category:} Major application
+    \item \textbf{Operational status:} Under development; defense prototype
+    \item \textbf{System environment:} Expo/React Native mobile frontend, Supabase backend, repository-local scheduler modules, and auxiliary OCR/AI services
+\end{itemize}
+
+From a testing perspective, the system has four practical layers:
+\begin{enumerate}
+    \item Frontend navigation and user workflows under the Expo Router application.
+    \item Supabase-backed persistence for users, schools, sections, subjects, lesson plans, slots, and blocks.
+    \item Rule-based scheduler logic under the \nolinkurl{algorithm/} directory.
+    \item Auxiliary edge functions for curriculum text extraction and activity generation.
+\end{enumerate}
+
+\subsection{Project References}
+
+\begin{enumerate}
+    \item IEEE paper: \nolinkurl{papers/ieee/ieee.tex}
+    \item Software Requirements Specification: \nolinkurl{papers/srs/srs.tex}
+    \item Repository overview: \nolinkurl{README.md}
+    \item Project manifest and validation scripts: \nolinkurl{package.json}
+    \item Scheduler invariant harness: \nolinkurl{algorithm/__invariants.ts}
+    \item Scheduler wrapper script: \nolinkurl{scripts/run-scheduler-invariants.sh}
+    \item Planning and scheduling schema: \nolinkurl{database-setup/05_planning.sql}
+    \item Row-level security policies: \nolinkurl{database-setup/06_rls.sql}
+    \item PDF extraction edge function: \nolinkurl{supabase/functions/extract-text/index.ts}
+    \item Activity generation edge function: \nolinkurl{supabase/functions/generate-activity/index.ts}
+\end{enumerate}
+
+\subsection{Acronyms and Abbreviations}
+
+\begin{longtable}{|L{4cm}|L{10cm}|}
+\hline
+\textbf{Term} & \textbf{Meaning} \\
+\hline
+API & Application Programming Interface \\
+\hline
+CI & Continuous Integration \\
+\hline
+OCR & Optical Character Recognition \\
+\hline
+POC & Point of Contact \\
+\hline
+RLS & Row-Level Security \\
+\hline
+SRS & Software Requirements Specification \\
+\hline
+UI & User Interface \\
+\hline
+UUID & Universally Unique Identifier \\
+\hline
+\end{longtable}
+
+\subsection{Important Documentation Note}
+
+The SRS currently uses research-oriented terminology such as ``constraint programming'' and ``simulated annealing.'' The implemented repository behavior validated in this report is more accurately described as deterministic, rule-based, and rebalance-capable. This report therefore documents the testing evidence for the current implementation, not for a broader optimization concept that is not fully represented in code.
+
+\newpage
+
+\section{Test Analysis}
+
+\subsection{Testing Objectives}
+
+The testing objectives for the current SchEDU implementation are the following:
+\begin{itemize}
+    \item Confirm correctness of schedule generation and rebalance behavior.
+    \item Confirm integrity of lesson-plan, slot, and block data structures.
+    \item Confirm that critical teacher workflows execute without blocking design defects.
+    \item Confirm access control and ownership safeguards in Supabase-backed flows.
+    \item Confirm acceptable codebase stability through local static validation.
+\end{itemize}
+
+\subsection{Evidence Status Legend}
+
+To avoid overstating evidence, the following status terms are used throughout this report:
+\begin{itemize}
+    \item \textbf{Observed} --- directly executed or verified during preparation of this report.
+    \item \textbf{Repo-backed} --- confirmed by implementation inspection and integration wiring, but not re-executed end-to-end on device during report preparation.
+    \item \textbf{Conditional} --- implemented, but dependent on missing local tooling, external service configuration, or native build prerequisites.
+    \item \textbf{Limitation} --- known gap or documentation issue that affects reproducibility or testing completeness.
+\end{itemize}
+
+\subsection{Testing Approach and Levels}
+
+SchEDU currently follows a mixed validation approach. This is appropriate for the repository because the strongest automation exists in the scheduler layer, while the broader mobile application is validated through static checks, source-backed workflow tracing, and backend guard analysis.
+
+\subsubsection{Static and Build Validation}
+
+Static validation is currently anchored on \texttt{npm run lint}. This step catches unused variables, style issues, and obvious TypeScript or ESLint defects before runtime-oriented validation. On May 14, 2026, the lint command completed with warnings but no blocking errors.
+
+\subsubsection{Algorithm and Logic Testing}
+
+Algorithm validation is centered on \nolinkurl{algorithm/__invariants.ts}. This harness checks initial plan generation, blackout handling, suspension and unsuspension rebalancing, no-data-loss conditions, idempotent maintenance behavior, and locked-block displacement plus re-pin handling. It is the strongest automated validation asset in the repository because it tests schedule consistency and recoverability rather than a purely visual workflow.
+
+\subsubsection{Manual Functional Testing}
+
+User-facing validation is documented as scenario-based testing across authentication, institution management, subject creation, library maintenance, lesson-plan creation, calendar loading, curriculum extraction, and activity generation. During preparation of this report, these scenarios were assessed primarily through repository-backed implementation tracing. Device-level walkthrough evidence may be appended later with screenshots or presenter notes for the final defense package.
+
+\subsubsection{Backend and Data Validation}
+
+Backend and data validation focuses on four concerns: schema constraints, row-level security, edge-function authentication, and ownership controls. This level does not yet constitute a separate automated integration test suite. Instead, it is documented as control verification against the existing schema and edge-function implementations.
+
+\subsection{Test Environment}
+
+\begin{longtable}{|L{3.2cm}|L{5.3cm}|L{6cm}|}
+\hline
+\textbf{Layer} & \textbf{Configuration} & \textbf{Purpose / Notes} \\
+\hline
+Frontend & Expo Router, Expo SDK 54, React Native 0.81.5, React 19.1.0 & Mobile user interface, navigation, and teacher workflows \\
+\hline
+Backend & Supabase Auth, Postgres, Storage, Edge Functions & Authentication, persistence, storage, and service endpoints \\
+\hline
+Scheduler & Repository-local modules under \nolinkurl{algorithm/} & Slot creation, block construction, placement, ordering, and rebalance \\
+\hline
+Local command validation & \texttt{npm run lint}, \texttt{npm run test:scheduler} & Static validation and intended scheduler harness entrypoint \\
+\hline
+Observed workaround execution & Local TypeScript transpilation to \nolinkurl{/private/tmp} plus Node execution & Used to run the invariant harness because the standard wrapper currently depends on missing \texttt{ts-node} \\
+\hline
+\end{longtable}
+
+\subsection{Security Considerations}
+
+Several security controls are directly visible in the repository and were considered during testing analysis:
+\begin{itemize}
+    \item Supabase authentication is used to control access to protected app routes and authenticated backend operations.
+    \item Row-level security is enabled for schools, subjects, lesson plans, slots, blocks, and related tables.
+    \item The PDF extraction edge function requires a bearer token and rejects storage paths that do not belong to the authenticated user.
+    \item The activity-generation edge function requires a bearer token and rejects requests missing required fields.
+    \item Signed URLs are used when loading uploaded assets from storage, reducing direct public exposure of stored files.
+\end{itemize}
+
+At the same time, security testing remains implementation-centered rather than penetration-oriented. No full security audit, abuse-case suite, or production hardening certification is claimed by this report.
+
+\newpage
+
+\section{Test Results and Evaluation}
+
+\subsection{Static Validation Results}
+
+\begin{longtable}{|L{3.5cm}|L{4.2cm}|L{5.5cm}|L{2cm}|}
+\hline
+\textbf{Validation Item} & \textbf{Purpose} & \textbf{Observed Result} & \textbf{Status} \\
+\hline
+\texttt{npm run lint} & Static validation of TypeScript and ESLint rules & Completed on May 14, 2026 with 7 warnings and 0 errors. The current codebase therefore has non-blocking cleanliness issues but no lint-level failures. & Observed \\
+\hline
+\texttt{npm run test:scheduler} & Standard repository entrypoint for scheduler invariants & The wrapper script points to \texttt{ts-node}, but the current repository dependencies do not include \texttt{ts-node}. The command is therefore not fully reproducible as wired. & Limitation \\
+\hline
+Invariant harness workaround execution & Execute the same scheduler harness without changing repository code & The harness was transpiled with the local TypeScript compiler and executed with Node. All invariant checks held successfully. & Observed \\
+\hline
+\end{longtable}
+
+For traceability, the observed scheduler workaround executed the repository's existing invariant source rather than a rewritten test. This preserves the core validation claim while also documenting the script-wrapper issue honestly.
+
+\subsection{Scheduler Validation Matrix}
+
+\begin{longtable}{|L{2.9cm}|L{3.1cm}|L{4.6cm}|L{3.2cm}|L{1.5cm}|}
+\hline
+\textbf{Scenario} & \textbf{Purpose} & \textbf{Expected Behavior} & \textbf{Evidence Source} & \textbf{Result} \\
+\hline
+Initial plan generation & Confirm that the first build produces a coherent schedule & Lessons and required assessments are placed across generated slots with no lost blocks and coherent metrics. & \nolinkurl{algorithm/__invariants.ts} plus observed workaround execution & Pass \\
+\hline
+Blackout handling & Confirm that unavailable days are recognized during planning & Slots affected by suspension or blackout conditions remain unavailable to normal placement logic. & Invariant harness and scheduler rebalance logic & Pass \\
+\hline
+Suspended-day rebalance & Confirm recoverable compression under reduced capacity & When one teaching day is suspended, remaining blocks are re-flowed without data loss. & Invariant harness, observed execution, rebalance modules & Pass \\
+\hline
+Unsuspension restoration & Confirm stability after availability returns & When the suspended day becomes available again, the layout returns to a stable configuration and can match the original arrangement. & Invariant harness, observed execution & Pass \\
+\hline
+Idempotent maintenance & Confirm that repeated maintenance does not introduce drift & Re-running rebalance on an already balanced schedule acts as a no-op. & Invariant harness, observed execution & Pass \\
+\hline
+Locked-block conflict handling & Confirm preservation of teacher intent during conflict & A teacher-locked block on a newly suspended day becomes displaced, remains visible, and receives suggested re-pin options instead of being discarded. & Invariant harness, observed execution & Pass \\
+\hline
+\end{longtable}
+
+\subsection{Functional Test Case Matrix}
+
+The following matrix records defense-relevant user workflow scenarios. Results are labeled according to the evidence-status legend so that repository-backed validation is not confused with full device automation.
+
+\begingroup
+\scriptsize
+\begin{longtable}{|L{0.9cm}|L{1.7cm}|L{1.9cm}|L{1.6cm}|L{2.5cm}|L{2.4cm}|L{2.3cm}|L{1.4cm}|}
+\hline
+\textbf{ID} & \textbf{Module} & \textbf{Test Objective} & \textbf{Preconditions} & \textbf{Procedure} & \textbf{Expected Result} & \textbf{Actual Result} & \textbf{Status} \\
+\hline
+AUTH-01 & Authentication & Validate successful sign-in routing & Valid account credentials & Enter username or email and password, then sign in & User enters the protected tab flow after successful authentication & Password sign-in resolves email, calls Supabase sign-in, and routes to \texttt{/(tabs)}. Root session listeners support the same protected flow. & Repo-backed \\
+\hline
+AUTH-02 & Authentication & Validate unauthenticated route protection & No active session & Open the app or a protected area without an authenticated session & User is redirected to the authentication flow & Root layout checks the current session and replaces unauthenticated access with \texttt{/(auth)}. & Repo-backed \\
+\hline
+PROF-01 & Profile / Institution & Validate institution and section loading & Signed-in user with school membership & Open the institution screen for a linked school & Institution details and related sections are loaded from Supabase & The screen loads \texttt{user\_schools}, school profile fields, signed avatar URLs, and related \texttt{sections}. & Repo-backed \\
+\hline
+SUBJ-01 & Subject / Library & Validate subject creation with structured content persistence & Signed-in user and selected school & Create a subject, optionally add syllabus input, then save & Subject structure is persisted for later planning use & The flow supports syllabus text or asset handling and inserts subject, chapter, lesson, and \texttt{user\_subjects} rows. & Repo-backed \\
+\hline
+LIB-01 & Subject / Library & Validate editing of subject structure and lesson content & Existing subject and lessons & Open subject detail or lesson editor and update titles or content & Chapter, lesson, or lesson-content updates persist & Library screens issue update calls for structure fields and lesson HTML content. & Repo-backed \\
+\hline
+PLAN-01 & Lesson Plan & Validate schedule generation and persistence & Existing subject, section, and lesson content & Complete the lesson-plan form and generate the plan & Plan, slots, blocks, subject-content links, and related events are created & The lesson-plan flow imports scheduler modules and persists plan rows, slot rows, block rows, content links, and related event rows. & Repo-backed \\
+\hline
+PLAN-02 & Lesson Plan & Validate plan inspection and editing & Existing lesson plan & Open plan detail, inspect entries, then enter edit mode & Existing plan metadata and schedule series are loaded and can be updated & Plan detail loads the plan row plus slot rows, derives missing legacy series keys, and persists edits. & Repo-backed \\
+\hline
+CAL-01 & Calendar / Scheduler & Validate sample fallback when no real plan is available & No teacher plan selected or load failure & Open the calendar screen & A non-empty demo schedule renders instead of a blank failure state & Calendar logic falls back to \texttt{DEMO\_SCHEDULE} when no real plan is available or loading fails. & Repo-backed \\
+\hline
+CAL-02 & Calendar / Scheduler & Validate rendering from persisted schedule rows & Persisted plan, slot, and block rows & Select a real lesson plan in the calendar view & Grouped schedule bars render from persisted planning rows & The calendar loader joins plan, slot, and block rows, groups split blocks, and labels them for display. & Repo-backed \\
+\hline
+OCR-01 & Curriculum Extraction & Validate authenticated extraction request flow & Signed-in user, configured storage and extractor service & Upload a PDF or image and invoke extraction & The file is uploaded to the user's storage path and extracted text is returned & UI upload and function invocation are implemented; the edge function enforces bearer-token authentication and user-owned storage paths. Image OCR additionally requires a Dev Build. & Conditional \\
+\hline
+AI-01 & Activity Generation & Validate guarded activity generation flow & Signed-in user and configured generation service & Select category, type, scope, and template, then generate & Backend validates inputs and returns a text draft for the activity & UI invocation is implemented; the edge function enforces authentication, required fields, and plain-text output. External AI configuration remains required. & Conditional \\
+\hline
+\end{longtable}
+\endgroup
+
+\subsection{Backend and Data Validation}
+
+\begin{longtable}{|L{3cm}|L{4cm}|L{6cm}|L{2cm}|}
+\hline
+\textbf{Area} & \textbf{Validation Focus} & \textbf{Observed Implementation Evidence} & \textbf{Status} \\
+\hline
+Planning schema & Data integrity for lesson plans, slots, blocks, events, and delays & Foreign keys, date checks, time checks, unique constraints, category-subcategory pairing checks, indexes, and update triggers are defined in the planning schema. & Repo-backed \\
+\hline
+Row-level security & Access control over schools, subjects, plans, slots, and blocks & RLS is enabled across the planning domain, and policies are defined for own-school or own-user access patterns. & Repo-backed \\
+\hline
+PDF extraction edge function & Authenticated ownership-safe extraction requests & The function accepts only POST, requires a bearer token, validates the caller, limits extraction to \texttt{users/<uid>/} paths, and uses signed URLs. & Repo-backed \\
+\hline
+Activity generation edge function & Authenticated validated document generation requests & The function accepts only POST, requires a bearer token, rejects missing title/category/type fields, and returns text only when the AI response is non-empty. & Repo-backed \\
+\hline
+\end{longtable}
+
+\subsection{Defect and Limitation Table}
+
+\begin{longtable}{|L{4cm}|L{4cm}|L{3.8cm}|L{3cm}|}
+\hline
+\textbf{Issue or Limitation} & \textbf{Impact} & \textbf{Current Workaround} & \textbf{Planned Improvement} \\
+\hline
+Scheduler wrapper depends on missing \texttt{ts-node} & The documented \texttt{npm run test:scheduler} path is not fully reproducible as wired & Execute the same invariant source by transpiling with the installed TypeScript compiler, then run the emitted JavaScript with Node & Add \texttt{ts-node} to dev dependencies or replace the wrapper with a maintained local runner \\
+\hline
+Lint completes with warnings, not a fully clean report & Quality debt remains visible even though no blocking lint failures exist & Treat current lint results as acceptable for defense while recording the warnings transparently & Clean unused variables, array-style warnings, and BOM issues \\
+\hline
+No conventional Jest, Vitest, or UI automation suite & Broader app behavior is not covered by repeatable component or end-to-end automation & Use repository-backed scenario tracing and manual walkthrough evidence for defense & Introduce unit, integration, and UI automation suites with CI execution \\
+\hline
+Some documentation references are stale relative to current scheduler filenames & Readers may be confused when README descriptions no longer match active modules & Use repository paths from the current implementation in the testing report & Refresh README and related internal documentation to match current module names \\
+\hline
+SRS optimization terminology does not exactly match the implemented scheduler & Academic framing can overstate the algorithmic technique present in code & Distinguish proposed concept from implemented repository behavior during defense and in this report & Revise SRS wording so implementation claims consistently describe a rule-based, rebalance-capable scheduler \\
+\hline
+\end{longtable}
+
+\newpage
+
+\section{Summary and Conclusions}
+
+\subsection{Demonstrated Capability}
+
+The current repository demonstrates a coherent academic planning prototype with a particularly strong scheduler-validation story. Static validation completes without blocking errors, the scheduler invariant harness covers the most failure-prone schedule-maintenance scenarios, and the surrounding application workflows are materially supported by implemented frontend, backend, and schema paths.
+
+The most defensible implementation claim is therefore not that SchEDU already has a full production-grade automated test suite. Instead, the evidence shows that SchEDU has a mixed validation strategy: observed static validation, observed invariant-based scheduler testing, repository-backed user workflow coverage, and backend guard verification for sensitive flows such as extraction and activity generation.
+
+\subsection{System Deficiencies}
+
+The principal deficiencies identified during this report are:
+\begin{itemize}
+    \item The standard scheduler test wrapper is not fully reproducible because \texttt{ts-node} is missing from the current dependency set.
+    \item The broader mobile application does not yet have repeatable unit or end-to-end automation.
+    \item Some supporting documentation still uses outdated scheduler module names or broader optimization terminology than the codebase supports.
+\end{itemize}
+
+These deficiencies do not negate the repository's value as a defense implementation, but they do limit how strongly one can claim release readiness or full testing maturity.
+
+\subsection{Recommended Improvements}
+
+\begin{enumerate}
+    \item Restore a clean, reproducible scheduler test command by fixing the \texttt{test:scheduler} wrapper.
+    \item Add conventional unit and integration tests for frontend helpers, data mappers, and utility modules.
+    \item Introduce UI or workflow automation for high-value paths such as authentication, subject creation, lesson-plan generation, and calendar display.
+    \item Align README and SRS terminology with the repository's actual deterministic and rule-based scheduler implementation.
+    \item Add defense appendices containing screenshots or presenter notes from device-level walkthroughs to complement the repository-backed evidence in this report.
+\end{enumerate}
+
+\subsection{System Acceptance}
+
+Based on the evidence documented here, SchEDU is acceptable for academic defense as an implemented and test-documented prototype. The repository demonstrates meaningful functional capability, especially in scheduler behavior and protected backend workflows. However, the system should be presented as under development rather than as a fully release-tested production application.
+
+\end{document}

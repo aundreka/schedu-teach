@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      .bg { fill: #f7faf7; }
+      .title { font: 700 30px Arial, sans-serif; fill: #17324d; }
+      .caption { font: 700 20px Arial, sans-serif; fill: #17324d; }
+      .small { font: 500 13px Arial, sans-serif; fill: #5d7183; }
+      .phone { fill: #111827; }
+      .screen { fill: #ffffff; }
+      .muted { fill: #eef3ef; }
+      .green { fill: #1f8f62; }
+      .green2 { fill: #dff3e9; }
+      .blue { fill: #dfeeff; }
+      .amber { fill: #fff1d6; }
+      .pink { fill: #f6e5ef; }
+      .line { stroke: #d7e1dc; stroke-width: 2; }
+      .text { font: 600 15px Arial, sans-serif; fill: #24394a; }
+      .subtext { font: 500 12px Arial, sans-serif; fill: #627487; }
+      .white { fill: #ffffff; }
+    </style>
+  </defs>
+  <rect width="1200" height="720" class="bg"/>
+  <text x="600" y="54" text-anchor="middle" class="title">Representative Teacher-Facing UI Mockups</text>
+  <text x="600" y="84" text-anchor="middle" class="small">Authentication, home dashboard, and curriculum library views used during the live demo path.</text>
+
+  <g transform="translate(88 126)">
+    <rect x="0" y="0" width="280" height="520" rx="34" class="phone"/>
+    <rect x="18" y="22" width="244" height="476" rx="24" class="screen"/>
+    <circle cx="140" cy="42" r="5" fill="#1f2937"/>
+    <text x="140" y="82" text-anchor="middle" class="caption">SchEDU</text>
+    <text x="140" y="108" text-anchor="middle" class="small">Smarter Lesson Planning</text>
+    <rect x="48" y="146" width="184" height="52" rx="16" class="green2"/>
+    <text x="70" y="177" class="text">Email or username</text>
+    <rect x="48" y="214" width="184" height="52" rx="16" class="muted"/>
+    <text x="70" y="245" class="text">Password</text>
+    <rect x="48" y="292" width="184" height="52" rx="18" class="green"/>
+    <text x="140" y="325" text-anchor="middle" class="text white">Sign In</text>
+    <text x="140" y="374" text-anchor="middle" class="subtext">Forgot password?</text>
+    <line x1="48" y1="414" x2="232" y2="414" class="line"/>
+    <text x="140" y="450" text-anchor="middle" class="subtext">Google, Apple, Facebook OAuth</text>
+  </g>
+
+  <g transform="translate(460 126)">
+    <rect x="0" y="0" width="280" height="520" rx="34" class="phone"/>
+    <rect x="18" y="22" width="244" height="476" rx="24" class="screen"/>
+    <circle cx="140" cy="42" r="5" fill="#1f2937"/>
+    <text x="42" y="82" class="caption">Home</text>
+    <text x="42" y="108" class="small">Good morning, Teacher</text>
+    <rect x="42" y="130" width="196" height="78" rx="18" class="green2"/>
+    <text x="60" y="160" class="text">Current Plan</text>
+    <text x="60" y="184" class="subtext">Mathematics 8 - Q1</text>
+    <rect x="42" y="228" width="88" height="78" rx="16" class="blue"/>
+    <text x="61" y="260" class="text">12</text>
+    <text x="61" y="284" class="subtext">Lessons</text>
+    <rect x="150" y="228" width="88" height="78" rx="16" class="amber"/>
+    <text x="169" y="260" class="text">3</text>
+    <text x="169" y="284" class="subtext">Tasks</text>
+    <text x="42" y="344" class="text">Today</text>
+    <rect x="42" y="362" width="196" height="46" rx="14" class="muted"/>
+    <text x="60" y="391" class="subtext">09:00 - Lesson 4</text>
+    <rect x="42" y="420" width="196" height="46" rx="14" class="muted"/>
+    <text x="60" y="449" class="subtext">13:00 - Quiz Review</text>
+    <rect x="42" y="472" width="196" height="1" class="line"/>
+  </g>
+
+  <g transform="translate(832 126)">
+    <rect x="0" y="0" width="280" height="520" rx="34" class="phone"/>
+    <rect x="18" y="22" width="244" height="476" rx="24" class="screen"/>
+    <circle cx="140" cy="42" r="5" fill="#1f2937"/>
+    <text x="42" y="82" class="caption">Library</text>
+    <rect x="42" y="108" width="196" height="42" rx="14" class="muted"/>
+    <text x="60" y="135" class="subtext">Search subjects</text>
+    <rect x="42" y="174" width="196" height="80" rx="18" class="green2"/>
+    <text x="60" y="206" class="text">Mathematics 8</text>
+    <text x="60" y="230" class="subtext">4 units, 18 lessons</text>
+    <rect x="42" y="274" width="196" height="80" rx="18" class="blue"/>
+    <text x="60" y="306" class="text">Science 9</text>
+    <text x="60" y="330" class="subtext">5 units, 21 lessons</text>
+    <rect x="42" y="374" width="196" height="80" rx="18" class="pink"/>
+    <text x="60" y="406" class="text">English 7</text>
+    <text x="60" y="430" class="subtext">3 units, 14 lessons</text>
+  </g>
+</svg>

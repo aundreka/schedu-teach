@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="860" viewBox="0 0 1200 860">
+  <defs>
+    <style>
+      .title { font: 700 34px 'Arial', sans-serif; fill: #17324d; }
+      .head { font: 700 20px 'Arial', sans-serif; fill: #17324d; }
+      .body { font: 500 16px 'Arial', sans-serif; fill: #24435d; }
+      .arrow { stroke: #45627b; stroke-width: 3.5; fill: none; marker-end: url(#arrow); }
+      .box { stroke: #33546d; stroke-width: 2.5; rx: 18; ry: 18; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#45627b"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="860" fill="#fbfcfe"/>
+  <text x="600" y="50" text-anchor="middle" class="title">Core Academic and Planning Data Model</text>
+
+  <rect x="60" y="120" width="250" height="150" class="box" fill="#e9f3fb"/>
+  <text x="185" y="160" text-anchor="middle" class="head">Users and Institutions</text>
+  <text x="85" y="198" class="body">users</text>
+  <text x="85" y="228" class="body">schools</text>
+  <text x="85" y="258" class="body">sections</text>
+
+  <rect x="370" y="120" width="250" height="200" class="box" fill="#edf8ef"/>
+  <text x="495" y="160" text-anchor="middle" class="head">Academic Repository</text>
+  <text x="395" y="198" class="body">subjects</text>
+  <text x="395" y="228" class="body">units</text>
+  <text x="395" y="258" class="body">chapters</text>
+  <text x="395" y="288" class="body">lessons</text>
+
+  <rect x="680" y="120" width="250" height="200" class="box" fill="#fff5e6"/>
+  <text x="805" y="160" text-anchor="middle" class="head">Lesson Plan Context</text>
+  <text x="705" y="198" class="body">lesson\_plans</text>
+  <text x="705" y="228" class="body">plan\_subject\_content</text>
+  <text x="705" y="258" class="body">teacher rules and term windows</text>
+  <text x="705" y="288" class="body">meeting patterns (runtime input)</text>
+
+  <rect x="940" y="120" width="200" height="200" class="box" fill="#f8ebf6"/>
+  <text x="1040" y="160" text-anchor="middle" class="head">Disruption Inputs</text>
+  <text x="965" y="198" class="body">school\_calendar\_events</text>
+  <text x="965" y="228" class="body">delays</text>
+  <text x="965" y="258" class="body">teacher lock state</text>
+
+  <rect x="310" y="430" width="250" height="180" class="box" fill="#e8f1ff"/>
+  <text x="435" y="470" text-anchor="middle" class="head">Generated Schedule State</text>
+  <text x="335" y="510" class="body">slots</text>
+  <text x="335" y="540" class="body">blocks</text>
+  <text x="335" y="570" class="body">ordered slot/block views</text>
+
+  <rect x="640" y="430" width="250" height="180" class="box" fill="#eef8e9"/>
+  <text x="765" y="470" text-anchor="middle" class="head">Calendar Presentation</text>
+  <text x="665" y="510" class="body">monthly calendar</text>
+  <text x="665" y="540" class="body">daily schedule view</text>
+  <text x="665" y="570" class="body">plan summaries and labels</text>
+
+  <rect x="470" y="690" width="260" height="110" class="box" fill="#fff0d9"/>
+  <text x="600" y="728" text-anchor="middle" class="head">Support Utilities</text>
+  <text x="495" y="764" class="body">text extraction and activity generation</text>
+
+  <path d="M310 195 H370" class="arrow"/>
+  <path d="M620 220 H680" class="arrow"/>
+  <path d="M930 220 H940" class="arrow"/>
+  <path d="M805 320 V400" class="arrow"/>
+  <path d="M495 320 V430" class="arrow"/>
+  <path d="M1040 320 C1040 390, 930 410, 890 480" class="arrow"/>
+  <path d="M560 520 H640" class="arrow"/>
+  <path d="M600 610 V690" class="arrow"/>
+
+  <text x="340" y="182" class="body">owns / belongs to</text>
+  <text x="648" y="204" class="body">selected into</text>
+  <text x="942" y="204" class="body">constrains</text>
+</svg>

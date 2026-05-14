@@ -1,0 +1,47 @@
+\contentsline {section}{Document Control}{iii}{Doc-Start}%
+\contentsline {subsection}{Revision History}{iii}{table.1}%
+\contentsline {section}{\numberline {1}Introduction}{1}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Purpose}{1}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Product Scope}{1}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Intended Audience}{1}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Definitions and Acronyms}{1}{subsection.1.4}%
+\contentsline {subsection}{\numberline {1.5}Document Overview}{2}{subsection.1.5}%
+\contentsline {section}{\numberline {2}Overall Description}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Product Perspective}{2}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}Product Functions}{3}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Scheduling Methodology}{3}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Live Demonstration Profile}{4}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Operational Prerequisites for Defense}{5}{subsection.2.5}%
+\contentsline {subsection}{\numberline {2.6}User Classes and Characteristics}{6}{subsection.2.6}%
+\contentsline {subsection}{\numberline {2.7}Operating Environment}{6}{subsection.2.7}%
+\contentsline {subsection}{\numberline {2.8}Design and Implementation Constraints}{6}{subsection.2.8}%
+\contentsline {subsection}{\numberline {2.9}Assumptions and Dependencies}{7}{subsection.2.9}%
+\contentsline {section}{\numberline {3}External Interface Requirements}{7}{section.3}%
+\contentsline {subsection}{\numberline {3.1}User Interfaces}{7}{subsection.3.1}%
+\contentsline {subsubsection}{\numberline {3.1.1}Representative UI Screens}{8}{subsubsection.3.1.1}%
+\contentsline {subsection}{\numberline {3.2}Hardware Interfaces}{10}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Software Interfaces}{11}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Communication Interfaces}{11}{subsection.3.4}%
+\contentsline {section}{\numberline {4}Data Requirements}{11}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Core Data Entities}{11}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Data Integrity and Business Rules}{12}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Data Lifecycle Requirements}{12}{subsection.4.3}%
+\contentsline {section}{\numberline {5}System Features and Functional Requirements}{13}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Authentication and Session Management}{13}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Profile, Theme, Institution, and Section Management}{13}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Subject, Curriculum, and Lesson Management}{14}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Lesson Planning and Schedule Generation}{15}{subsection.5.4}%
+\contentsline {subsection}{\numberline {5.5}Calendar Viewing and Schedule Maintenance}{17}{subsection.5.5}%
+\contentsline {subsection}{\numberline {5.6}Activity Generation and Document Support}{18}{subsection.5.6}%
+\contentsline {subsection}{\numberline {5.7}Administrative Monitoring}{19}{subsection.5.7}%
+\contentsline {section}{\numberline {6}Non-Functional Requirements}{19}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Performance Requirements}{19}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Security and Privacy Requirements}{20}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Reliability and Data Integrity Requirements}{20}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Usability Requirements}{20}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Maintainability and Portability Requirements}{21}{subsection.6.5}%
+\contentsline {section}{\numberline {7}Acceptance Criteria and Traceability}{21}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Defense Acceptance Criteria}{21}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Requirements Traceability Matrix}{23}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Validation Status for Defense Package}{24}{subsection.7.3}%
+\contentsline {section}{\numberline {8}Current System Boundaries}{25}{section.8}%

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="980" viewBox="0 0 1200 980">
+  <defs>
+    <style>
+      .title { font: 700 34px Arial, sans-serif; fill: #17324d; }
+      .head { font: 700 22px Arial, sans-serif; fill: #17324d; }
+      .body { font: 500 17px Arial, sans-serif; fill: #29455f; }
+      .small { font: 500 15px Arial, sans-serif; fill: #53687a; }
+      .box { stroke: #355770; stroke-width: 3; rx: 20; ry: 20; }
+      .arrow { stroke: #355770; stroke-width: 4.2; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#355770"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="980" fill="#fbfcfd"/>
+  <text x="600" y="50" text-anchor="middle" class="title">Lesson Planning and Schedule Maintenance Lifecycle</text>
+
+  <rect x="160" y="100" width="880" height="105" class="box" fill="#e8f3fb"/>
+  <text x="600" y="140" text-anchor="middle" class="head">1. Prepare Academic Content</text>
+  <text x="210" y="180" class="body">Teacher creates or imports subjects, parses syllabus text, and stores units, chapters, lessons, and lesson metadata.</text>
+
+  <rect x="160" y="255" width="880" height="115" class="box" fill="#edf8ef"/>
+  <text x="600" y="295" text-anchor="middle" class="head">2. Configure Lesson Plan</text>
+  <text x="210" y="335" class="body">Teacher selects institution, section, date range, lesson scope, meeting patterns, and term-related planning constraints.</text>
+
+  <rect x="160" y="420" width="880" height="135" class="box" fill="#fff4e5"/>
+  <text x="600" y="460" text-anchor="middle" class="head">3. Generate Schedule</text>
+  <text x="210" y="500" class="body">Scheduler creates slots, applies blackout information, derives lesson and assessment blocks, places them by term, and persists outputs.</text>
+  <text x="210" y="530" class="small">Outputs: lesson plan record, slots, blocks, warnings, metrics, and calendar-ready ordering.</text>
+
+  <rect x="160" y="605" width="880" height="115" class="box" fill="#f6ebf8"/>
+  <text x="600" y="645" text-anchor="middle" class="head">4. Review and Maintain</text>
+  <text x="210" y="685" class="body">Teacher reviews monthly and daily calendars, creates manual blocks, edits or deletes blocks, and monitors plan detail information.</text>
+
+  <rect x="160" y="770" width="880" height="125" class="box" fill="#e9f0ff"/>
+  <text x="600" y="810" text-anchor="middle" class="head">5. Adapt to Disruption</text>
+  <text x="210" y="850" class="body">When dates become unavailable or restored, the system rebalances the plan, preserves protected state where possible, and exposes conflicts for repair.</text>
+
+  <path d="M600 205 V255" class="arrow"/>
+  <path d="M600 370 V420" class="arrow"/>
+  <path d="M600 555 V605" class="arrow"/>
+  <path d="M600 720 V770" class="arrow"/>
+</svg>

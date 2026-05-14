@@ -9,6 +9,7 @@ export default function CalendarLayout() {
       }}
     >
       <Stack.Screen name="index" />
+      <Stack.Screen name="daily" />
     </Stack>
   );
 }

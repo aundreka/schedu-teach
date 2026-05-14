@@ -459,10 +459,7 @@ export interface QuizRule {
 export interface TermRequirementCounts {
   lesson_count?: number;
 
-  // Quizzes are part of written work, but tracked separately
-  // so repopulate can build quiz scopes correctly.
   written_work_count?: number;
-  quiz_count?: number;
 
   performance_task_count?: number;
   exam_count?: number;
@@ -565,9 +562,21 @@ export type BlockSource =
   | 'generated'
   | 'existing_db';
 
-export interface BlockMetadata extends JsonObject {
+export type BlockMetadata = JsonObject & {
   term_key?: string;
   term_no?: number;
+  exam_subcategory?: ExamSubcategory;
+
+  term_slots?: number;
+  term_ww?: number;
+  term_pt?: number;
+  term_lessons?: number;
+  term_ww_interval?: number;
+  term_pt_interval?: number;
+  excess_slots?: number;
+  exam_date?: ISODateString;
+  exam_slot_key?: SlotKey;
+  exam_slot_is_special?: boolean;
 
   source?: BlockSource;
   source_activity_id?: UUID;
@@ -576,12 +585,14 @@ export interface BlockMetadata extends JsonObject {
   scope_lesson_ids?: UUID[];
   scope_summary?: string;
 
+  lesson_no?: number;
+
   quiz_no?: number;
   quiz_scope_start_label?: string;
   quiz_scope_end_label?: string;
 
   generated_by_algorithm?: boolean;
-}
+};
 
 interface RuntimeBlockBase {
   block_id?: UUID;
@@ -702,7 +713,6 @@ export interface TermBlockGroup {
 
   lesson_blocks: RuntimeLessonBlock[];
   written_work_blocks: RuntimeWrittenWorkBlock[];
-  quiz_blocks: RuntimeWrittenWorkBlock[];
   performance_task_blocks: RuntimePerformanceTaskBlock[];
   exam_blocks: RuntimeExamBlock[];
   buffer_blocks: RuntimeBufferBlock[];
@@ -720,6 +730,39 @@ export interface QuizScope {
 
   first_lesson_label: string;
   last_lesson_label: string;
+}
+
+export interface TermBlockQueues {
+  lesson_block_keys: string[];
+  quiz_block_keys: string[];
+  written_work_block_keys: string[];
+  performance_task_block_keys: string[];
+  exam_block_keys: string[];
+  buffer_block_keys: string[];
+}
+
+export interface TermSchedulePlan {
+  term: TermWindow;
+  term_key: string;
+  term_no: number;
+  exam_subcategory: ExamSubcategory;
+
+  exam_date: ISODateString;
+  exam_slot_key: SlotKey;
+  exam_slot_is_special: boolean;
+
+  term_slot_keys: SlotKey[];
+  content_slot_keys: SlotKey[];
+
+  term_slots: number;
+  term_ww: number;
+  term_pt: number;
+  term_lessons: number;
+  term_ww_interval: number;
+  term_pt_interval: number;
+  excess_slots: number;
+
+  queues: TermBlockQueues;
 }
 
 // ======================================================
@@ -758,6 +801,7 @@ export type AlgorithmMutation =
 export type AlgorithmWarningSeverity = 'info' | 'warning' | 'error';
 
 export type AlgorithmWarningCode =
+  | 'SPECIAL_EXAM_SLOT_CREATED'
   | 'NO_AVAILABLE_SLOT'
   | 'INSUFFICIENT_SLOTS'
   | 'BLOCK_TOO_LONG'
@@ -768,6 +812,12 @@ export type AlgorithmWarningCode =
   | 'INVALID_SESSION_PAIR'
   | 'UNPLACED_BLOCK'
   | 'TERM_RULE_VIOLATION'
+  | 'SLOT_OVERCOMMITTED'
+  | 'BLOCKS_MERGED'
+  | 'COMPRESSION_APPLIED'
+  | 'COMPRESSION_FAILED'
+  | 'VACANCY_AVAILABLE'
+  | 'REPOPULATION_APPLIED'
   | 'UNKNOWN';
 
 export interface AlgorithmWarning {
@@ -792,7 +842,6 @@ export interface AlgorithmMetrics {
 
   lesson_count: number;
   written_work_count: number;
-  quiz_count: number;
   performance_task_count: number;
   exam_count: number;
   buffer_count: number;
@@ -807,6 +856,208 @@ export interface AlgorithmResult {
   mutations: AlgorithmMutation[];
   warnings: AlgorithmWarning[];
   metrics: AlgorithmMetrics;
+}
+
+// ======================================================
+// TERM BALANCE
+// The single source of truth for slack/pressure per term.
+// Always recomputed from live slots+blocks — never trusted
+// from cached block/plan metadata, which goes stale the
+// moment a teacher edits the plan.
+// ======================================================
+
+export interface TermBalance {
+  term_key: string;
+
+  // Content slots usable right now: not blackout, not locked,
+  // and excluding the term's exam slot.
+  usable_content_slots: number;
+
+  // Usable content slots that already hold at least one placed content block.
+  occupied_content_slots: number;
+
+  // Usable content slots holding nothing, in chronological order.
+  vacant_slot_keys: SlotKey[];
+
+  // Content blocks (everything except the exam) belonging to this term.
+  content_blocks: number;
+
+  // content_blocks - usable_content_slots. > 0 ⇒ overcommitted ⇒ compress.
+  slot_pressure: number;
+
+  // usable_content_slots - content_blocks. > 0 ⇒ slack ⇒ repopulate.
+  excess_slots: number;
+
+  // True once the exam block is sitting in the exam slot.
+  exam_placed: boolean;
+}
+
+// ======================================================
+// COMPRESS RESULT TYPES
+// ======================================================
+
+export interface SlotMerge {
+  slot_key: SlotKey;
+  slot_id?: UUID;
+  block_keys: string[];
+  reason: string;
+}
+
+export interface CompressResult {
+  slots: RuntimeSlot[];
+  blocks: RuntimeBlock[];
+  schedule_plan: TermSchedulePlan[];
+  balances: TermBalance[];
+  merges: SlotMerge[];
+
+  // Blocks that were teacher-pinned (`is_locked`) onto a slot that has since
+  // become unusable — e.g. the day got suspended. For now they are
+  // auto-rescheduled (re-flowed like everything else) and listed here so the UI
+  // can prompt the teacher to re-pin them somewhere (one of the freed slots, or
+  // the nearest open day). Future: leave them unplaced and make re-pinning an
+  // explicit decision rather than an auto-move.
+  displaced_block_keys: string[];
+
+  warnings: AlgorithmWarning[];
+}
+
+// `rebalance()` is the deterministic re-flow that handles BOTH directions:
+// fewer slots than blocks ⇒ it compresses (blocks double up); more slots than
+// blocks ⇒ it spreads back out. Same shape as a compress result.
+export type RebalanceResult = CompressResult;
+
+// ======================================================
+// REBALANCE-DAY (one-call entry point for the calendar)
+// "A day's availability changed (suspend/unsuspend/lock/unlock) — recompute."
+// Internally: rebalance() then repopulate() on whatever slack is left over.
+// ======================================================
+
+export interface RebalanceDayParams {
+  slots: RuntimeSlot[];
+  blocks: RuntimeBlock[];
+  lessons: LessonRow[];
+  activities: ActivityRow[];
+  schedule_plan?: TermSchedulePlan[];
+  rules: AlgorithmRules;
+}
+
+// A teacher-pinned block whose day got suspended. It is NOT auto-rescheduled —
+// it stays locked-but-unplaced (`slot_key === null`, `is_locked === true`) until
+// the teacher picks a new day. `suggested_slot_keys` is the ranked re-pin menu.
+export interface DisplacedBlock {
+  block_key: string;
+  title: string;
+  session_category: SessionCategory;
+  session_subcategory: SessionSubcategory;
+  term_key: string;
+
+  // The day it was pinned to before its slot became unavailable, if known.
+  previous_slot_key?: SlotKey;
+  previous_slot_date?: ISODateString;
+
+  // Where it could be re-pinned, best first: empty slots in the term, then
+  // slots with room to share — each tier ordered by closeness to the original
+  // date. The exam slot is never suggested; the teacher may still pick any slot.
+  suggested_slot_keys: SlotKey[];
+}
+
+export interface RebalanceDayResult {
+  slots: RuntimeSlot[];
+  blocks: RuntimeBlock[];
+  schedule_plan: TermSchedulePlan[];
+  balances: TermBalance[];
+  merges: SlotMerge[];
+
+  // Residual slack the curriculum genuinely doesn't need filled — hand these
+  // to the teacher as options. Nothing is inserted automatically.
+  vacancies: VacancyReport[];
+
+  // Teacher-pinned blocks left unplaced because their day was suspended. The
+  // teacher must re-pin each (via applyRepinChoices / by setting slot_key +
+  // re-running rebalanceDay). Until then they're locked-but-unplaced.
+  displaced: DisplacedBlock[];
+
+  warnings: AlgorithmWarning[];
+}
+
+// ======================================================
+// REPOPULATE RESULT TYPES
+// Repopulation only *proposes* options; it never mutates the
+// plan. Feed the teacher's picks back through
+// applyRepopulateChoices() to actually insert blocks.
+// ======================================================
+
+export type VacancyPlacement =
+  | 'mid_term_gap'
+  | 'after_last_quiz'
+  | 'before_exam'
+  | 'term_tail';
+
+export type RepopulateOptionKind =
+  | 'written_work'
+  | 'performance_task'
+  | 'buffer';
+
+export interface RepopulateOption {
+  kind: RepopulateOptionKind;
+  subcategory: SessionSubcategory;
+  label: string;
+}
+
+export interface VacancySuggestion {
+  slot_key: SlotKey;
+  slot_id?: UUID;
+  slot_date: ISODateString;
+  placement: VacancyPlacement;
+  options: RepopulateOption[];
+  recommended_index: number;
+}
+
+export interface VacancyReport {
+  term_key: string;
+  excess_slots: number;
+  vacant_slot_keys: SlotKey[];
+  before_exam: SlotKey[];
+  after_last_quiz: SlotKey[];
+  mid_term_gaps: SlotKey[];
+  suggestions: VacancySuggestion[];
+}
+
+export interface RepopulateResult {
+  reports: VacancyReport[];
+  warnings: AlgorithmWarning[];
+}
+
+export interface RepopulateChoice {
+  slot_key: SlotKey;
+  kind: RepopulateOptionKind;
+  subcategory: SessionSubcategory;
+  title?: string;
+}
+
+export interface ApplyRepopulateChoicesParams {
+  slots: RuntimeSlot[];
+  blocks: RuntimeBlock[];
+  choices: RepopulateChoice[];
+  schedule_plan: TermSchedulePlan[];
+  rules: AlgorithmRules;
+}
+
+export interface ApplyRepopulateChoicesResult {
+  slots: RuntimeSlot[];
+  blocks: RuntimeBlock[];
+  inserted_block_keys: string[];
+  warnings: AlgorithmWarning[];
+}
+
+// ======================================================
+// ORDER RESULT TYPES
+// ======================================================
+
+export interface OrderResult {
+  slots: RuntimeSlot[];
+  blocks: RuntimeBlock[];
+  warnings: AlgorithmWarning[];
 }
 
 // ======================================================
@@ -826,6 +1077,7 @@ export interface CreateSlotsParams {
 
 export interface BuildBlocksParams {
   lesson_plan: LessonPlanRow;
+  slots: RuntimeSlot[];
   lessons: LessonRow[];
   activities: ActivityRow[];
   existing_blocks?: DbBlockRow[];
@@ -839,7 +1091,13 @@ export interface CreateAlgorithmParams {
 export interface PlaceBlocksParams {
   slots: RuntimeSlot[];
   blocks: RuntimeBlock[];
+  schedule_plan?: TermSchedulePlan[];
   rules: AlgorithmRules;
+
+  // When true, blocks that are still validly placed (pinned/locked, the exam,
+  // anything sitting in a usable slot) keep their slot, and only the rest is
+  // re-flowed. This is what makes compress/repopulate/re-run idempotent.
+  respect_existing_placements?: boolean;
 }
 
 export interface RepopulateParams {
@@ -847,12 +1105,14 @@ export interface RepopulateParams {
   blocks: RuntimeBlock[];
   lessons: LessonRow[];
   activities: ActivityRow[];
+  schedule_plan?: TermSchedulePlan[];
   rules: AlgorithmRules;
 }
 
 export interface CompressParams {
   slots: RuntimeSlot[];
   blocks: RuntimeBlock[];
+  schedule_plan?: TermSchedulePlan[];
   rules: AlgorithmRules;
 }
 

@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,6 +23,7 @@ import { supabase } from "../../../lib/supabase";
 
 type SubjectDetail = {
   subject_id: string;
+  school_id: string;
   code: string;
   title: string;
   year: string | null;
@@ -29,6 +31,12 @@ type SubjectDetail = {
   school_name: string;
   subject_image: string | null;
   subject_image_signed_url: string | null;
+};
+
+type Institution = {
+  school_id: string;
+  name: string;
+  is_primary: boolean;
 };
 
 type Chapter = {
@@ -72,7 +80,7 @@ type PlanEntryRow = {
   session_subcategory: string | null;
   title: string | null;
   order_no?: number | null;
-  slot?: { slot_date?: string | null; start_time?: string | null } | Array<{ slot_date?: string | null; start_time?: string | null }> | null;
+  slot?: { slot_date?: string | null; start_time?: string | null } | { slot_date?: string | null; start_time?: string | null }[] | null;
   metadata?: Record<string, unknown> | null;
 };
 
@@ -447,6 +455,7 @@ function normalizeSubjectRow(row: any): SubjectDetail | null {
 
   return {
     subject_id: String(subject.subject_id),
+    school_id: String(subject.school_id ?? ""),
     code: String(subject.code),
     title: String(subject.title),
     year: subject?.year ? String(subject.year) : null,
@@ -479,9 +488,12 @@ export default function SubjectDetailScreen() {
   const [writtenWorks, setWrittenWorks] = useState<PlanItem[]>([]);
   const [performanceTasks, setPerformanceTasks] = useState<PlanItem[]>([]);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [editTitle, setEditTitle] = useState("");
   const [editCode, setEditCode] = useState("");
   const [editYear, setEditYear] = useState("");
+  const [editSchoolId, setEditSchoolId] = useState("");
+  const [schoolPickerOpen, setSchoolPickerOpen] = useState(false);
   const [editImageUri, setEditImageUri] = useState<string | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [deletingSubject, setDeletingSubject] = useState(false);
@@ -512,16 +524,37 @@ export default function SubjectDetailScreen() {
       const { data: subjectRow, error: subjectError } = await supabase
         .from("user_subjects")
         .select(
-          "subject:subjects(subject_id, code, title, year, academic_year, subject_image, school:schools(name))"
+          "subject:subjects(subject_id, school_id, code, title, year, academic_year, subject_image, school:schools(name))"
         )
         .eq("user_id", user.id)
         .eq("subject_id", subjectId)
         .maybeSingle();
       if (subjectError) throw subjectError;
 
+      const { data: schoolRows, error: schoolsError } = await supabase
+        .from("user_schools")
+        .select("is_primary, school:schools(school_id, name)")
+        .eq("user_id", user.id)
+        .order("is_primary", { ascending: false });
+      if (schoolsError) throw schoolsError;
+
       const normalizedSubject = normalizeSubjectRow(subjectRow);
+      const mappedInstitutions = (schoolRows ?? [])
+        .map((row: any) => {
+          const schoolRaw = row.school;
+          const school = Array.isArray(schoolRaw) ? schoolRaw[0] : schoolRaw;
+          if (!school?.school_id || !school?.name) return null;
+          return {
+            school_id: String(school.school_id),
+            name: String(school.name),
+            is_primary: Boolean(row?.is_primary),
+          } satisfies Institution;
+        })
+        .filter((row: Institution | null): row is Institution => Boolean(row));
+
       if (!normalizedSubject) {
         setSubject(null);
+        setInstitutions(mappedInstitutions);
         setAcademicYear(null);
         setChapters([]);
         setOpenChapters(new Set());
@@ -618,6 +651,7 @@ export default function SubjectDetailScreen() {
       }
 
       setSubject(normalizedSubject);
+      setInstitutions(mappedInstitutions);
       setChapters(chapterBase);
       const chapterToOpen =
         (openChapterId && chapterBase.some((chapter) => chapter.chapter_id === openChapterId) && openChapterId) ||
@@ -635,6 +669,7 @@ export default function SubjectDetailScreen() {
       setShowSubjectMenu(false);
     } catch {
       setSubject(null);
+      setInstitutions([]);
       setAcademicYear(null);
       setChapters([]);
       setOpenChapters(new Set());
@@ -664,6 +699,7 @@ export default function SubjectDetailScreen() {
     setEditTitle(subject.title);
     setEditCode(subject.code);
     setEditYear(subject.year ?? "");
+    setEditSchoolId(subject.school_id);
     setEditImageUri(null);
   }, [subject]);
 
@@ -673,6 +709,10 @@ export default function SubjectDetailScreen() {
   const lessonRowB = useMemo(() => (scheme === "dark" ? "#223534" : "#DCE9E4"), [scheme]);
   const unitHeaderBg = useMemo(() => (scheme === "dark" ? "#1E3C35" : "#D8ECE6"), [scheme]);
   const editImagePreview = editImageUri || subject?.subject_image_signed_url || null;
+  const editInstitution = useMemo(
+    () => institutions.find((item) => item.school_id === editSchoolId) ?? null,
+    [editSchoolId, institutions]
+  );
   const groupedChapters = useMemo<UnitGroup[]>(() => {
     const groups = new Map<string, UnitGroup>();
     for (const chapter of chapters) {
@@ -768,6 +808,7 @@ export default function SubjectDetailScreen() {
     setEditTitle(subject.title);
     setEditCode(subject.code);
     setEditYear(subject.year ?? "");
+    setEditSchoolId(subject.school_id);
     setEditImageUri(null);
     setShowEditForm(true);
   };
@@ -966,6 +1007,10 @@ export default function SubjectDetailScreen() {
       Alert.alert("Missing code", "Subject code is required.");
       return;
     }
+    if (!editSchoolId) {
+      Alert.alert("Missing institution", "Choose an institution.");
+      return;
+    }
 
     setSavingEdit(true);
     try {
@@ -993,6 +1038,7 @@ export default function SubjectDetailScreen() {
       const { error } = await supabase
         .from("subjects")
         .update({
+          school_id: editSchoolId,
           title: normalizedTitle,
           code: normalizedCode,
           year: normalizedYear || null,
@@ -1006,6 +1052,8 @@ export default function SubjectDetailScreen() {
         prev
           ? {
               ...prev,
+              school_id: editSchoolId,
+              school_name: editInstitution?.name ?? prev.school_name,
               title: normalizedTitle,
               code: normalizedCode,
               year: normalizedYear || null,
@@ -1158,6 +1206,28 @@ export default function SubjectDetailScreen() {
               style={[styles.editInput, { color: c.text, borderColor: c.border, backgroundColor: c.background }]}
             />
 
+            <Text style={[styles.editLabel, { color: c.text }]}>Institution</Text>
+            <Pressable
+              onPress={() => {
+                if (institutions.length === 0) return;
+                setSchoolPickerOpen(true);
+              }}
+              disabled={institutions.length === 0}
+              style={[
+                styles.editPickerButton,
+                {
+                  borderColor: c.border,
+                  backgroundColor: c.background,
+                  opacity: institutions.length === 0 ? 0.7 : 1,
+                },
+              ]}
+            >
+              <Text style={[styles.editPickerText, { color: editInstitution ? c.text : c.mutedText }]}>
+                {editInstitution?.name ?? "No schools found"}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color={c.mutedText} />
+            </Pressable>
+
             <Text style={[styles.editLabel, { color: c.text }]}>Image</Text>
             <Pressable
               onPress={pickEditImage}
@@ -1180,6 +1250,7 @@ export default function SubjectDetailScreen() {
                   setEditTitle(subject.title);
                   setEditCode(subject.code);
                   setEditYear(subject.year ?? "");
+                  setEditSchoolId(subject.school_id);
                   setEditImageUri(null);
                   setShowEditForm(false);
                 }}
@@ -1574,6 +1645,46 @@ export default function SubjectDetailScreen() {
         </View>
 
       </ScrollView>
+
+      <Modal
+        visible={schoolPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSchoolPickerOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setSchoolPickerOpen(false)}>
+          <Pressable
+            style={[styles.modalCard, { borderColor: c.border, backgroundColor: cardBg }]}
+            onPress={() => {}}
+          >
+            <Text style={[styles.modalTitle, { color: c.text }]}>Pick Institution</Text>
+            <View style={styles.schoolList}>
+              {institutions.map((school) => {
+                const selected = school.school_id === editSchoolId;
+                return (
+                  <Pressable
+                    key={school.school_id}
+                    onPress={() => {
+                      setEditSchoolId(school.school_id);
+                      setSchoolPickerOpen(false);
+                    }}
+                    style={[
+                      styles.schoolOption,
+                      {
+                        borderColor: selected ? c.tint : c.border,
+                        backgroundColor: selected ? c.background : cardBg,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.schoolOptionText, { color: c.text }]}>{school.name}</Text>
+                    {selected ? <Ionicons name="checkmark" size={18} color={c.tint} /> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -1856,6 +1967,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
     marginBottom: Spacing.sm,
   },
+  editPickerButton: {
+    minHeight: 42,
+    borderWidth: 1,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.sm,
+    marginBottom: Spacing.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  editPickerText: {
+    ...Typography.body,
+    flex: 1,
+  },
   editImagePicker: {
     borderRadius: Radius.sm,
     borderWidth: 1,
@@ -1903,5 +2029,39 @@ const styles = StyleSheet.create({
   saveBtnText: {
     ...Typography.body,
     fontWeight: "700",
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "center",
+    padding: Spacing.lg,
+  },
+  modalCard: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  modalTitle: {
+    ...Typography.h3,
+    fontWeight: "700",
+  },
+  schoolList: {
+    gap: Spacing.sm,
+  },
+  schoolOption: {
+    minHeight: 46,
+    borderWidth: 1,
+    borderRadius: Radius.sm,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  schoolOptionText: {
+    ...Typography.body,
+    flex: 1,
   },
 });

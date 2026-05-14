@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="860" viewBox="0 0 1200 860">
+  <defs>
+    <style>
+      .title { font: 700 34px Arial, sans-serif; fill: #17324d; }
+      .head { font: 700 21px Arial, sans-serif; fill: #17324d; }
+      .body { font: 500 16px Arial, sans-serif; fill: #29455f; }
+      .box { stroke: #355770; stroke-width: 2.8; rx: 18; ry: 18; }
+      .arrow { stroke: #355770; stroke-width: 3.8; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#355770"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="860" fill="#fbfcfd"/>
+  <text x="600" y="50" text-anchor="middle" class="title">Major Functional Modules</text>
+
+  <rect x="430" y="90" width="340" height="110" class="box" fill="#ffffff"/>
+  <text x="600" y="130" text-anchor="middle" class="head">SchEDU</text>
+  <text x="482" y="165" class="body">Teacher-facing academic planning platform</text>
+
+  <rect x="80" y="260" width="280" height="150" class="box" fill="#e8f3fb"/>
+  <text x="220" y="300" text-anchor="middle" class="head">Access and Profile</text>
+  <text x="110" y="340" class="body">• sign in and registration</text>
+  <text x="110" y="370" class="body">• profile update and theme</text>
+  <text x="110" y="400" class="body">• institution membership</text>
+
+  <rect x="460" y="260" width="280" height="150" class="box" fill="#edf8ef"/>
+  <text x="600" y="300" text-anchor="middle" class="head">Curriculum Repository</text>
+  <text x="490" y="340" class="body">• subjects, units, chapters</text>
+  <text x="490" y="370" class="body">• lessons and lesson editor</text>
+  <text x="490" y="400" class="body">• syllabus extraction workflow</text>
+
+  <rect x="840" y="260" width="280" height="150" class="box" fill="#fff4e5"/>
+  <text x="980" y="300" text-anchor="middle" class="head">Lesson Plan Builder</text>
+  <text x="870" y="340" class="body">• date range and section selection</text>
+  <text x="870" y="370" class="body">• meeting patterns and rules</text>
+  <text x="870" y="400" class="body">• duplicate existing plans</text>
+
+  <rect x="80" y="520" width="280" height="150" class="box" fill="#f6ebf8"/>
+  <text x="220" y="560" text-anchor="middle" class="head">Calendar and Maintenance</text>
+  <text x="110" y="600" class="body">• monthly and daily views</text>
+  <text x="110" y="630" class="body">• manual block management</text>
+  <text x="110" y="660" class="body">• suspend and refresh flows</text>
+
+  <rect x="460" y="520" width="280" height="150" class="box" fill="#e9f0ff"/>
+  <text x="600" y="560" text-anchor="middle" class="head">Activity Generation</text>
+  <text x="490" y="600" class="body">• written work and PT setup</text>
+  <text x="490" y="630" class="body">• AI-generated drafts</text>
+  <text x="490" y="660" class="body">• PDF and DOCX export</text>
+
+  <rect x="840" y="520" width="280" height="150" class="box" fill="#eef4e7"/>
+  <text x="980" y="560" text-anchor="middle" class="head">Admin Monitoring</text>
+  <text x="870" y="600" class="body">• teacher and plan summaries</text>
+  <text x="870" y="630" class="body">• completion progress</text>
+  <text x="870" y="660" class="body">• recent activity overview</text>
+
+  <path d="M600 200 V260" class="arrow"/>
+  <path d="M600 200 C600 220, 220 220, 220 260" class="arrow"/>
+  <path d="M600 200 C600 220, 980 220, 980 260" class="arrow"/>
+  <path d="M220 410 V520" class="arrow"/>
+  <path d="M600 410 V520" class="arrow"/>
+  <path d="M980 410 V520" class="arrow"/>
+</svg>

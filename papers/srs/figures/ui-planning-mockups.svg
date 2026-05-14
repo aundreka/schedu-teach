@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <style>
+      .bg { fill: #fbfbf7; }
+      .title { font: 700 30px Arial, sans-serif; fill: #17324d; }
+      .caption { font: 700 20px Arial, sans-serif; fill: #17324d; }
+      .small { font: 500 13px Arial, sans-serif; fill: #5d7183; }
+      .phone { fill: #111827; }
+      .screen { fill: #ffffff; }
+      .muted { fill: #eef3ef; }
+      .green { fill: #1f8f62; }
+      .green2 { fill: #dff3e9; }
+      .blue { fill: #dfeeff; }
+      .amber { fill: #fff1d6; }
+      .red { fill: #fee2e2; }
+      .pink { fill: #f6e5ef; }
+      .line { stroke: #d7e1dc; stroke-width: 2; }
+      .text { font: 600 15px Arial, sans-serif; fill: #24394a; }
+      .subtext { font: 500 12px Arial, sans-serif; fill: #627487; }
+      .white { fill: #ffffff; }
+    </style>
+  </defs>
+  <rect width="1200" height="720" class="bg"/>
+  <text x="600" y="54" text-anchor="middle" class="title">Planning, Calendar, and Document Workflow Mockups</text>
+  <text x="600" y="84" text-anchor="middle" class="small">Representative screens for generating a plan, inspecting daily schedules, and creating activity documents.</text>
+
+  <g transform="translate(88 126)">
+    <rect x="0" y="0" width="280" height="520" rx="34" class="phone"/>
+    <rect x="18" y="22" width="244" height="476" rx="24" class="screen"/>
+    <circle cx="140" cy="42" r="5" fill="#1f2937"/>
+    <text x="42" y="82" class="caption">Create Plan</text>
+    <text x="42" y="108" class="small">Select planning constraints</text>
+    <rect x="42" y="132" width="196" height="44" rx="12" class="muted"/>
+    <text x="58" y="160" class="subtext">Subject: Mathematics 8</text>
+    <rect x="42" y="190" width="196" height="44" rx="12" class="muted"/>
+    <text x="58" y="218" class="subtext">Section: Grade 8 - A</text>
+    <rect x="42" y="248" width="88" height="44" rx="12" class="blue"/>
+    <text x="58" y="276" class="subtext">Start date</text>
+    <rect x="150" y="248" width="88" height="44" rx="12" class="blue"/>
+    <text x="166" y="276" class="subtext">End date</text>
+    <text x="42" y="330" class="text">Meeting pattern</text>
+    <rect x="42" y="350" width="196" height="44" rx="12" class="amber"/>
+    <text x="58" y="378" class="subtext">MWF 09:00 - 10:00</text>
+    <rect x="42" y="420" width="196" height="52" rx="18" class="green"/>
+    <text x="140" y="453" text-anchor="middle" class="text white">Generate Schedule</text>
+  </g>
+
+  <g transform="translate(460 126)">
+    <rect x="0" y="0" width="280" height="520" rx="34" class="phone"/>
+    <rect x="18" y="22" width="244" height="476" rx="24" class="screen"/>
+    <circle cx="140" cy="42" r="5" fill="#1f2937"/>
+    <text x="42" y="82" class="caption">Daily Agenda</text>
+    <text x="42" y="108" class="small">June 10, 2026</text>
+    <rect x="42" y="130" width="196" height="50" rx="14" class="red"/>
+    <text x="58" y="160" class="subtext">Suspension: Heavy rain</text>
+    <rect x="42" y="204" width="196" height="58" rx="16" class="green2"/>
+    <text x="58" y="232" class="text">Lesson 6</text>
+    <text x="58" y="250" class="subtext">09:00 - 10:00</text>
+    <rect x="42" y="282" width="196" height="58" rx="16" class="blue"/>
+    <text x="58" y="310" class="text">Written Work</text>
+    <text x="58" y="328" class="subtext">Compressed with lesson</text>
+    <rect x="42" y="360" width="196" height="58" rx="16" class="pink"/>
+    <text x="58" y="388" class="text">Locked PT Conflict</text>
+    <text x="58" y="406" class="subtext">Needs re-pin</text>
+    <rect x="42" y="442" width="196" height="34" rx="12" class="muted"/>
+    <text x="86" y="464" class="subtext">Create / Edit Block</text>
+  </g>
+
+  <g transform="translate(832 126)">
+    <rect x="0" y="0" width="280" height="520" rx="34" class="phone"/>
+    <rect x="18" y="22" width="244" height="476" rx="24" class="screen"/>
+    <circle cx="140" cy="42" r="5" fill="#1f2937"/>
+    <text x="42" y="82" class="caption">Create Activity</text>
+    <text x="42" y="108" class="small">AI-assisted teacher draft</text>
+    <rect x="42" y="132" width="196" height="42" rx="12" class="muted"/>
+    <text x="58" y="158" class="subtext">Category: Written Work</text>
+    <rect x="42" y="188" width="196" height="42" rx="12" class="muted"/>
+    <text x="58" y="214" class="subtext">Type: Quiz</text>
+    <rect x="42" y="244" width="196" height="42" rx="12" class="muted"/>
+    <text x="58" y="270" class="subtext">Scope: Lessons 4-6</text>
+    <rect x="42" y="306" width="196" height="88" rx="14" class="amber"/>
+    <text x="58" y="334" class="text">Components</text>
+    <text x="58" y="358" class="subtext">Multiple choice, rubric,</text>
+    <text x="58" y="378" class="subtext">answer key, instructions</text>
+    <rect x="42" y="420" width="196" height="52" rx="18" class="green"/>
+    <text x="140" y="453" text-anchor="middle" class="text white">Generate + Export</text>
+  </g>
+</svg>
