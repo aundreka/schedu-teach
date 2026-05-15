@@ -1,6 +1,99 @@
-suspension update failed
-written work and lesson blocks avoid laboratory = empty slots
-modify add block ui, make text smaller, smake start and end time text input instead of dropdon
-subject detail ww is unorganized
+# SchEDU Launch Todo — Target: June 1, 2026
 
-admin dashboard
+Full plan: C:\Users\Aundreka\.claude\plans\analyze-this-project-before-stateful-planet.md
+Legend: [YOU] = needs your account/decision  ·  [CLAUDE] = ask Claude to do it  ·  [BOTH] = collaborate
+
+---
+
+## START TODAY (time-sensitive)
+
+- [ ] [YOU] Create Google Play Console developer account ($25 one-time, ~48hr identity verification)
+- [ ] [YOU] Buy schedu.app on Namecheap or Porkbun (~₱850-1100/yr)
+- [ ] [YOU] Rotate Qwen/DashScope API key in console, then in Supabase: `supabase secrets set QWEN_API_KEY=<new-key>`
+
+---
+
+## Phase 0 — Cleanup
+
+- [x] Untrack .env from git, add .env.example (commit f339e60)
+- [x] Bundle ID set to ph.schedu.app (commit 7243db4)
+- [ ] [YOU] Provision production Supabase project (separate from current dev project dqjfnmomvkxetzcescrf)
+- [ ] [YOU] Run database-setup/*.sql files in order (00 → 07) against the new prod project via Supabase SQL editor
+- [ ] [YOU] Copy new prod URL + publishable key into a local .env.production file (untracked)
+
+---
+
+## Phase 1 — Subscription infrastructure (biggest piece)
+
+### Database & enforcement
+- [ ] [CLAUDE] Draft database-setup/08_billing.sql (subscriptions, usage_quotas, paymongo_webhook_events tables)
+- [ ] [CLAUDE] Draft create_lesson_plan RPC + check/increment AI quota RPCs
+- [ ] [CLAUDE] Update database-setup/06_rls.sql to revoke direct INSERT on lesson_plans
+- [ ] [CLAUDE] Extend handle_new_auth_user trigger to insert default free subscription row
+- [ ] [CLAUDE] Add archived_at column migration for lesson_plans downgrade handling
+- [ ] [YOU] Apply 08_billing.sql against prod Supabase project
+- [ ] [BOTH] Verify quota blocks correctly via SQL: create 4 lesson plans on a test user, 4th should error
+
+### Edge Functions
+- [ ] [CLAUDE] Update supabase/functions/generate-activity/index.ts with quota check + increment
+- [ ] [CLAUDE] Create supabase/functions/paymongo-webhook/index.ts (signature verify, idempotent upsert)
+- [ ] [CLAUDE] Add per-user rate limiting (20 req/min) to both edge functions
+- [ ] [YOU] Deploy edge functions: `supabase functions deploy generate-activity paymongo-webhook`
+- [ ] [YOU] Set webhook URL in PayMongo dashboard, copy signing secret to Supabase secrets
+
+### PayMongo & web paywall
+- [ ] [YOU] Sign up for PayMongo merchant account, complete business verification
+- [ ] [YOU] Decide: Subscriptions API (recurring) vs Links API (one-shot, re-charge each month)
+- [ ] [CLAUDE] Scaffold Next.js paywall project (subscribe + success + cancel + account pages)
+- [ ] [YOU] Deploy paywall to Vercel free tier (link to schedu.app once DNS is set)
+- [ ] [BOTH] Test end-to-end: subscribe via PayMongo test mode → webhook → tier flips in DB
+
+### App-side paywall UX
+- [ ] [CLAUDE] Add paywall modal trigger when create_lesson_plan RPC returns quota_exceeded
+- [ ] [CLAUDE] Add current-tier display + "Visit schedu.app to manage subscription" text in profile/settings
+- [ ] [CLAUDE] Show remaining AI quota counter on activities create screen
+
+---
+
+## Phase 2 — Production hardening (parallel with Phase 1)
+
+- [ ] [CLAUDE] Draft eas.json with production (AAB) + preview (APK) Android profiles
+- [ ] [YOU] Run `eas init` and `eas build:configure` (creates Expo project on EAS)
+- [ ] [YOU] First EAS preview build to verify signing works (`eas build -p android --profile preview`)
+- [ ] [CLAUDE] Add Sentry crash reporting to app/_layout.tsx
+- [ ] [YOU] Create free-tier Sentry project, paste DSN into .env
+- [ ] [CLAUDE] Add global React error boundary at root layout
+- [ ] [CLAUDE] Add account deletion flow (button in profile/settings + delete-account edge function)
+- [ ] [CLAUDE] Decide on admin dashboard: hide empty sub-routes OR build minimal stubs
+- [ ] [CLAUDE] Add email_confirmed_at gate on create_lesson_plan RPC
+- [ ] [CLAUDE] Fix the 7 lint warnings
+- [ ] [BOTH] Privacy policy + Terms of Service (draft text → publish at schedu.app/privacy and /terms)
+
+---
+
+## Phase 3 — Soft launch prep (May 25-30)
+
+- [ ] [YOU] Compile email list of 20-50 secondary teacher beta testers
+- [ ] [YOU] Take 4-8 screenshots on a real Android device (calendar, create plan, activity gen, paywall)
+- [ ] [YOU] Create 1024x500 feature graphic for Play Store
+- [ ] [YOU] Fill out Play Console: app name, short desc, full desc, content rating, target audience, data safety form
+- [ ] [BOTH] Bug reporting channel: Google Form OR Supabase-backed feedback table
+- [ ] [CLAUDE] Add "Send feedback" link in profile screen pointing to the form
+- [ ] [CLAUDE] Optional: seed-sample-data RPC for fresh tester accounts
+- [ ] [BOTH] End-to-end smoke test (run the full verification checklist from the plan)
+
+---
+
+## Phase 4 — Launch (May 30 - June 1)
+
+- [ ] [YOU] May 30: `eas build -p android --profile production` → upload AAB to Play Console closed testing
+- [ ] [YOU] May 31: Add tester emails to closed testing track, send opt-in links, test on one device
+- [ ] [YOU] June 1: Email the cohort with the install link
+- [ ] [BOTH] Monitor Sentry + Supabase logs for the first 48hrs
+- [ ] [YOU] Be available for hot-patches via EAS Update (no Play Store re-review needed for JS changes)
+
+---
+
+## Cut-line if time slips
+
+If we hit May 28 and Phase 1 isn't done, skip AI quota meter (ship "unlimited AI for everyone v0"). Keep the lesson-plan cap — that's the monetization core. Plan to add the AI meter in week 2 post-launch.
