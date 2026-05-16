@@ -3,6 +3,7 @@
 /// <reference lib="deno.ns" />
 /// <reference lib="dom" />
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { rateLimitCheck, rateLimitHeaders } from "../_shared/rate-limit.ts";
 
 type Body = {
   title: string;
@@ -23,13 +24,14 @@ Deno.serve(async (req: Request) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     const QWEN_API_KEY = Deno.env.get("QWEN_API_KEY");
     const QWEN_BASE_URL =
       Deno.env.get("QWEN_BASE_URL") || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
     const QWEN_MODEL = Deno.env.get("QWEN_MODEL") || "qwen3.5-plus";
 
-    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-      return json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }, 500);
+    if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !ANON_KEY) {
+      return json({ error: "Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or SUPABASE_ANON_KEY" }, 500);
     }
     if (!QWEN_API_KEY) {
       return json({ error: "Missing QWEN_API_KEY" }, 500);
@@ -45,10 +47,39 @@ Deno.serve(async (req: Request) => {
 
     const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(jwt);
     if (userErr || !userData?.user) return json({ error: "Unauthorized" }, 401);
+    const userId = userData.user.id;
+
+    // Rate limit: 20 requests / minute / user. Applied AFTER auth so anon traffic can't
+    // poison the bucket map.
+    const rl = rateLimitCheck(`generate-activity:${userId}`, 20, 60_000);
+    if (!rl.allowed) {
+      return json({ error: "rate_limited", retry_after_ms: rl.resetAt - Date.now() }, 429, rateLimitHeaders(rl));
+    }
 
     const body = (await req.json()) as Body;
     if (!body?.title || !body?.category || !body?.activityType) {
-      return json({ error: "title, category, and activityType are required" }, 400);
+      return json({ error: "title, category, and activityType are required" }, 400, rateLimitHeaders(rl));
+    }
+
+    // Atomic quota check + increment. RPC reads auth.uid() so it must run as the user, not
+    // service role. Free tier = 5/month; tier1/tier2 = unlimited (RPC returns true and
+    // skips the cap). Raises P0001 'quota_exceeded' when at the limit.
+    const supabaseUser = createClient(SUPABASE_URL, ANON_KEY, {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+    });
+
+    const { error: quotaErr } = await supabaseUser.rpc("increment_ai_quota");
+    if (quotaErr) {
+      const message = String(quotaErr.message ?? "");
+      if (message.includes("quota_exceeded")) {
+        return json(
+          { error: "quota_exceeded", details: "AI generation limit reached for your tier" },
+          402,
+          rateLimitHeaders(rl)
+        );
+      }
+      return json({ error: "quota check failed", details: message }, 500, rateLimitHeaders(rl));
     }
 
     const prompt = buildPrompt(body);
@@ -89,16 +120,17 @@ Deno.serve(async (req: Request) => {
           error: "Qwen request failed",
           details: payload?.message || payload?.error || payload?.raw || qwenResponse.statusText,
         },
-        502
+        502,
+        rateLimitHeaders(rl)
       );
     }
 
     const text = String(payload?.choices?.[0]?.message?.content ?? "").trim();
     if (!text) {
-      return json({ error: "Qwen returned an empty response." }, 502);
+      return json({ error: "Qwen returned an empty response." }, 502, rateLimitHeaders(rl));
     }
 
-    return json({ text }, 200);
+    return json({ text }, 200, rateLimitHeaders(rl));
   } catch (error) {
     return json({ error: "Server error", details: (error as Error)?.message ?? String(error) }, 500);
   }
@@ -174,9 +206,9 @@ function buildPrompt(body: Body) {
     .join("\n");
 }
 
-function json(obj: unknown, status = 200) {
+function json(obj: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...extraHeaders },
   });
 }

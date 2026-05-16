@@ -315,6 +315,9 @@ with check (
 );
 
 -- lesson_plans
+-- INSERT is routed through public.create_lesson_plan() (08_billing.sql) for tier-cap
+-- enforcement, so the table privilege is revoked from anon/authenticated below and
+-- there is no INSERT policy here. UPDATE and DELETE remain owner-only.
 drop policy if exists "users can read own lesson plans" on public.lesson_plans;
 create policy "users can read own lesson plans"
 on public.lesson_plans for select
@@ -324,10 +327,18 @@ using (
 );
 
 drop policy if exists "users can manage own lesson plans" on public.lesson_plans;
-create policy "users can manage own lesson plans"
-on public.lesson_plans for all
+drop policy if exists "users can update own lesson plans" on public.lesson_plans;
+create policy "users can update own lesson plans"
+on public.lesson_plans for update
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+drop policy if exists "users can delete own lesson plans" on public.lesson_plans;
+create policy "users can delete own lesson plans"
+on public.lesson_plans for delete
+using (auth.uid() = user_id);
+
+revoke insert on public.lesson_plans from anon, authenticated;
 
 -- slots
 drop policy if exists "users can read slots from own lesson plans" on public.slots;

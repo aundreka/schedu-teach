@@ -18,7 +18,7 @@ Legend: [YOU] = needs your account/decision  ·  [CLAUDE] = ask Claude to do it 
 - [x] Untrack .env from git, add .env.example (commit f339e60)
 - [x] Bundle ID set to ph.schedu.app (commit 7243db4)
 - [ ] [YOU] Provision production Supabase project (separate from current dev project dqjfnmomvkxetzcescrf)
-- [ ] [YOU] Run database-setup/*.sql files in order (00 → 07) against the new prod project via Supabase SQL editor
+- [ ] [YOU] Run database-setup/*.sql files in order (00 → 08) against the new prod project via Supabase SQL editor
 - [ ] [YOU] Copy new prod URL + publishable key into a local .env.production file (untracked)
 
 ---
@@ -26,20 +26,24 @@ Legend: [YOU] = needs your account/decision  ·  [CLAUDE] = ask Claude to do it 
 ## Phase 1 — Subscription infrastructure (biggest piece)
 
 ### Database & enforcement
-- [ ] [CLAUDE] Draft database-setup/08_billing.sql (subscriptions, usage_quotas, paymongo_webhook_events tables)
-- [ ] [CLAUDE] Draft create_lesson_plan RPC + check/increment AI quota RPCs
-- [ ] [CLAUDE] Update database-setup/06_rls.sql to revoke direct INSERT on lesson_plans
-- [ ] [CLAUDE] Extend handle_new_auth_user trigger to insert default free subscription row
-- [ ] [CLAUDE] Add archived_at column migration for lesson_plans downgrade handling
+- [x] [CLAUDE] Draft database-setup/08_billing.sql (subscriptions, usage_quotas, paymongo_webhook_events tables)
+- [x] [CLAUDE] Draft create_lesson_plan RPC + check/increment AI quota RPCs (in 08_billing.sql: create_lesson_plan, get_ai_quota_status, increment_ai_quota)
+- [x] [CLAUDE] Update database-setup/06_rls.sql to revoke direct INSERT on lesson_plans (split for-all policy into UPDATE+DELETE; revoke insert from anon/authenticated)
+- [x] [CLAUDE] Extend handle_new_auth_user trigger to insert default free subscription row (redefined in 08_billing.sql; includes backfill for existing users)
+- [x] [CLAUDE] Add archived_at column migration for lesson_plans downgrade handling (idempotent ALTER in 08_billing.sql; canonical column added to 05_planning.sql)
 - [ ] [YOU] Apply 08_billing.sql against prod Supabase project
+- [ ] [YOU] Apply 08_billing.sql against current dev project (dqjfnmomvkxetzcescrf) — the ALTER + trigger redefinition + backfill are dev-safe
 - [ ] [BOTH] Verify quota blocks correctly via SQL: create 4 lesson plans on a test user, 4th should error
+- [ ] [BOTH] Verify AI quota: call increment_ai_quota() 6 times on a free user, 6th should raise quota_exceeded
 
 ### Edge Functions
-- [ ] [CLAUDE] Update supabase/functions/generate-activity/index.ts with quota check + increment
-- [ ] [CLAUDE] Create supabase/functions/paymongo-webhook/index.ts (signature verify, idempotent upsert)
-- [ ] [CLAUDE] Add per-user rate limiting (20 req/min) to both edge functions
+- [x] [CLAUDE] Update supabase/functions/generate-activity/index.ts with quota check + increment (calls increment_ai_quota RPC with user JWT; returns 402 quota_exceeded on cap)
+- [x] [CLAUDE] Create supabase/functions/paymongo-webhook/index.ts (HMAC-SHA256 signature verify, idempotent log via paymongo_webhook_events PK, dispatches subscription.* events)
+- [x] [CLAUDE] Add per-user rate limiting (20 req/min) to both edge functions (in-memory token bucket in _shared/rate-limit.ts; generate-activity keyed by user_id, webhook keyed by IP)
+- [ ] [YOU] Set required Supabase secrets before deploy: `supabase secrets set PAYMONGO_WEBHOOK_SECRET=... PAYMONGO_TIER1_PLAN_ID=... PAYMONGO_TIER2_PLAN_ID=...`
 - [ ] [YOU] Deploy edge functions: `supabase functions deploy generate-activity paymongo-webhook`
 - [ ] [YOU] Set webhook URL in PayMongo dashboard, copy signing secret to Supabase secrets
+- [ ] [YOU] Ensure paywall sets `metadata.user_id = <auth.uid()>` when creating PayMongo subscriptions — webhook uses this to identify the user
 
 ### PayMongo & web paywall
 - [ ] [YOU] Sign up for PayMongo merchant account, complete business verification

@@ -15,6 +15,7 @@ create table if not exists public.lesson_plans (
   end_date date not null,
   status public.record_status not null default 'draft',
   notes text,
+  archived_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint lesson_plans_date_check check (end_date >= start_date)
@@ -115,6 +116,7 @@ create index if not exists lesson_plans_subject_id_idx on public.lesson_plans(su
 create index if not exists lesson_plans_section_id_idx on public.lesson_plans(section_id);
 create index if not exists lesson_plans_status_idx on public.lesson_plans(status);
 create index if not exists lesson_plans_date_range_idx on public.lesson_plans(start_date, end_date);
+create index if not exists lesson_plans_archived_at_idx on public.lesson_plans(archived_at);
 
 create index if not exists slots_lesson_plan_id_idx on public.slots(lesson_plan_id);
 create index if not exists slots_slot_date_idx on public.slots(slot_date);
