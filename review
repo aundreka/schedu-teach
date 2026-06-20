@@ -1,0 +1,288 @@
+ScheduTeach (SchEDU Teach) — Production Readiness Review
+Methodology note (read first): This is a full-source + full-schema audit — every route, component, lib, edge function, and all 16 SQL files were traced UI → API → DB. I did not run the app on a physical device (no runtime/emulator was available), so visual-pixel and live-network findings are inferred from code; every such inference is cited to file:line so you can confirm. Findings from runtime-only checks (exact contrast ratios, real device reflow) are flagged as "verify on device."
+
+The single most important framing fact: ScheduTeach is not an LMS. It is a teacher lesson-planning + scheduling tool for the Philippine DepEd context. The review template you supplied assumes a full classroom platform (students, parents, attendance, grade entry, messaging, announcements). Those features do not exist in this codebase at all — there is no students, parents, attendance, grades, enrollments, announcements, or messages table, and no UI for any of them. I will not invent reviews of screens that don't exist; instead I score what's built and report the rest as a feature-gap analysis.
+
+0. EXECUTIVE SUMMARY
+What's actually built: email/password + (broken) OAuth auth, an onboarding wizard, subjects/chapters/lessons CRUD, a syllabus auto-parser, a DepEd-aware scheduling algorithm, a calendar (month + daily), AI activity generation (Gemini), a "library" of written-works/performance-tasks/exams, lesson-plan versioning/rebalancing, a tiered billing system (PayMongo/Stripe webhooks + quota-enforcing RPCs), and a read-only school-admin dashboard.
+
+The engineering under the billing/quota layer and the scheduling algorithm is genuinely sophisticated. But the app is not launch-ready. There is a critical privilege-escalation hole, core auth flows (username login, password reset, OAuth) are broken, payments don't work in the launch market (PH), dark mode is unusable on key screens, and several headline features (vacancy fill, suspension display, version restore, admin CRUD, add-requirement) are dead, stubbed, or silently fail.
+
+Production Readiness Score: 24 / 100.
+Launch Recommendation: DO NOT LAUNCH — Internal Testing Only.
+
+1–3. UX / UI / FUNCTIONAL — PER-SCREEN SCORECARD
+Scores are 1–10. "Func" reflects whether the screen's actions actually work end-to-end (UI→API→DB).
+
+Screen	Purpose	UX	UI	Func	Headline issues
+Sign-in (auth)/index	Email/username + OAuth login	4	6	2	Username login impossible under RLS; OAuth dead; no show-password/keyboard-submit
+Sign-up (auth)/sign-up	Register	5	6	4	Duplicate-username handled by string-match; orphan auth user on partial failure; no email-confirm message
+Forgot/Update password	Reset flow	5	6	2	Reset link deep-links to an unreachable route group → reset broken end-to-end
+Onboarding	2-step wizard	6	6	7	Skip silently drops input; no curriculum-size validation
+Home (tabs)/index	Upcoming + overview	7	6	6	Shows fabricated demo agenda + inline "Polynomials" HTML to new users; unscoped fetch of all slots/blocks
+Calendar month	Month grid	6	5	3	Vacancy banner is dead code; suspended-day dots never supplied; demo schedule always injected
+Calendar daily	Day timeline + CRUD	6	4	4	Demo days blank except one hardcoded date; light-mode-only editor; no server-side overlap guard
+Block editor	Create/edit block	5	3	4	Can't create exam/buffer; Android date picker renders wrong; hardcoded light colors
+Suspend sheet	Suspend a day	5	6	2	Suspends but UI never shows it as suspended; cross-tenant slot query
+Create picker	"What to create?"	5	6	6	Duplicate of the tab bottom-sheet (two inconsistent pickers)
+Create activity (AI)	AI generator	6	3	6	Unusable in dark mode; orphaned storage on insert failure; best error-handling in app
+Create lesson	New lesson	5	6	5	Free-text chapter/lesson numbers; silent "General" chapter; inconsistent draft/published status
+Create lesson plan	Build plan	6	4	5	Non-transactional multi-table write → partial/duplicate plans; review-before-exam always on
+Create subject	Subject + syllabus parse	6	7	5	~1000-line heuristic parser, science-biased, rewrites sequence numbers; dev debug alert
+Library index	Subject grid	6	6	5	N+1 image signing per load; errors swallowed to "no data"
+Subject detail	Chapters/lessons/plan items	5	6	4	Full reload every focus; unvirtualized tree; relabel overwrites sort; dedup can drop activities
+Lesson editor	Rich-text edit	5	5	4	Incomplete JS-injection escaping into WebView; destructive overwrite (no versions)
+Exam/WW/PT detail	View generated item	5	3	4	Dark-mode broken; ww_detail renders any block type (no filter); no version history
+Plans list	Plan cards	6	6	5	Filter button is a no-op () => {}; drops rows missing subject_code; errors swallowed
+Plan detail	Requirements/rebalance	5	5	2	Add WW/PT requirement always fails (DB constraint); Term edit silently lost; restore lossy; fake exam stepper
+Plan history	Version history	—	—	0	0-byte file — latent crash if routed
+Profile	Institutions, sign-out	5	6	3	Set-primary & delete are non-atomic and silently fail under RLS (no user_schools UPDATE/DELETE policy); new institutions hardcoded to "university"
+Institution edit	Edit/delete school	5	6	3	Delete cascade non-atomic & RLS-unsafe; edit not scoped to creator
+Settings	Profile edit, delete acct	4	6	3	Can null out the profile after a failed load + save; no error handling; email-change has no confirm message
+Subscription	My Plan	6	5	4	Hardcoded tier table can drift; PH upgrade is a placeholder URL; billing-history error swallowed
+Admin dashboard	School overview	5	5	4	Term date math inverted (shows "0 days left"); rows look tappable but aren't
+Admin teachers	Roster	5	6	3	Tier badge always "FREE" (no admin RLS read on subscriptions); read-only
+Admin plans	All plans	5	6	4	Wasted placeholder query each load; status differs from dashboard; read-only
+Admin settings	School/depts/join code	6	5	6	"X of Y on Pro" ~always 0; departments CRUD works; admins have no sign-out anywhere
+Cross-cutting UI/accessibility (applies to nearly every screen):
+
+Dark mode is broken on create/activities, block-editor, exam/ww/pt_detail, ErrorBoundary, parts of lessonplan and admin — hardcoded #111111/#FFFFFF/#FAFAFA ignore the real dark palette in constants/colors.ts:10-17. Several screens are white-on-white or black-on-dark. (Critical UI)
+No accessibilityLabel/accessibilityRole on any icon-only button anywhere (search/add/filter/settings/suspend/etc.). Screen readers announce nothing. WebView content is outside the a11y tree.
+No keyboard returnKeyType/onSubmitEditing on auth forms; no show-password toggle.
+Pervasive error-swallowing: most loaders catch to an empty state with no toast, so network/RLS errors masquerade as "no data / not found."
+4. TEACHER WORKFLOW TESTING
+Workflow	Steps	Works?	Pain points
+Register	~6 fields	Partial	No password strength; duplicate-username fragile; no "confirm your email" message
+Login (email)	2	✅	Fine
+Login (username)	2	❌ Broken	Anon can't read users under RLS → always "Account not found" ((auth)/index.tsx:45-49)
+Login (Google/Apple/FB)	1	❌ Broken	Redirect targets unreachable (auth)/callback route group; no browser-result handling
+Reset password	3	❌ Broken	Reset email deep-links to unreachable (auth)/update-password
+Complete profile	several	⚠️	Can be nulled out by save-after-failed-load (settings.tsx:84-152)
+Create "class" (institution+section)	many	⚠️	New institution hardcoded to "university"; set-primary silently fails (RLS)
+Edit class	—	⚠️	Edit not scoped to creator → "saved" while 0 rows change
+Archive class	—	✅ (plans only)	Archiving is a downgrade-side effect, not a user action; no archive button on plans
+Delete class	1 + confirm	❌ likely fails	Cascade is non-atomic and user_schools/schools deletes lack RLS DELETE policy
+Add/edit/remove students	—	❌ Not implemented	No student model exists
+Import students	—	❌ Not implemented	—
+Create schedule	long form	⚠️	Powerful but non-transactional; partial/duplicate plans possible
+Edit / reschedule	varies	⚠️	Works via rebalance, but rebalance uses a different engine than creation
+Handle conflicts (holidays)	suspend sheet	❌ Visually broken	Suspension compresses schedule but never renders as suspended
+Mark/edit/report attendance	—	❌ Not implemented	No attendance model
+Create assessments	AI generator	✅ (as text)	Generates rubric/sheet text only — no points/scoring/structured grading
+Enter/edit grades	—	❌ Not implemented	No grades model
+Generate grade reports	—	❌ Not implemented	—
+Send announcements / contact students/parents	—	❌ Not implemented	No communication model
+Export data / analytics	—	❌ Not implemented	No export button anywhere (devs note this in todo:117)
+Net: The planning workflows are mostly present (with serious bugs). Every classroom-management workflow your template lists (students, attendance, grading, communication, reporting) is entirely absent.
+
+5. EDGE-CASE TESTING
+Empty states: Replaced by fabricated demo data — new users see a fake "Science · Tesla (sample)" calendar and a hardcoded "Polynomials" lesson on Home ((tabs)/index.tsx:284-290, schedule.ts:236). This is misleading; some demo entries reference plan IDs that don't exist, producing dead taps (agenda.ts:651-685).
+Invalid input: Lesson-plan form validates well (6-month cap, date ranges, exam uniqueness). Subject/lesson forms accept free-text numbers and only catch collisions at save. AI input has no length cap (cost risk).
+Duplicate records: Username/email duplicates surface as raw constraint errors on edit (no handling in settings.tsx).
+Large datasets: Dashboard loads all slots+blocks for all plans every focus; library signs every image individually (N+1); subject tree is unvirtualized. Fine for a few plans, slow for a heavy user.
+Slow/failed network: useSubscription falls back to free-tier limits, briefly showing paid users a spurious paywall (useSubscription.ts:37-60).
+Session expiration / cold start: supabase.ts:18 sets persistSession:true without an explicit AsyncStorage adapter — verify sessions survive cold start, or users get logged out every launch.
+Browser refresh / re-entry: Onboarding/admin route gating is racy (_layout.tsx vs index.tsx both redirect) — brief exposure of (tabs) before the async role/onboarding check resolves.
+6. PRODUCTION READINESS — ALPHA
+Reasoning: a security hole that hands any user superadmin; three of four login paths broken; payments non-functional in the launch market; a launch-blocking DB constraint bug on a core action; unusable dark mode; and multiple dead/stub features. The billing schema and scheduler are Beta-quality in isolation, but the app as a whole is Alpha.
+
+7. FEATURE-GAP ANALYSIS (vs. what a teacher reasonably expects)
+Must-have (missing): working username/OAuth login & password reset; functional payment in PH; export/print a lesson plan (todo:117); a real empty state instead of fake data; password-strength validation; email-confirmation gating; a way for admins to sign out.
+Should-have: attendance, gradebook/scoring, student roster, announcements (if you intend to be more than a planner); admin write/CRUD (acknowledged read-only in todo:114); notification preferences (todo:113).
+Nice-to-have: parent access, analytics dashboards, calendar export (.ics), collaborative/department plan sharing.
+
+9. DATABASE AUDIT
+Overall: The schema is, structurally, the strongest part of the project — consistent public_id patterns, thorough indexing, sensible FK on delete rules, CHECK constraints (e.g. blocks_session_pair_check), updated_at triggers, tier-enforcing security definer RPCs, and webhook idempotency tables. But it has several serious correctness/security defects.
+
+Database Findings
+DB-1 — Privilege escalation via unrestricted users self-update — CRITICAL
+
+Affected: public.users, all RLS that trusts role.
+The policy "users can update own profile" (00_users.sql:84-88) is USING (auth.uid()=userID) WITH CHECK (auth.uid()=userID) with no column restriction, and role lives on this table. There is no trigger guarding the column (grep confirms role is only read by helpers, never protected). Any authenticated user can run supabase.from('users').update({ role:'superadmin' }).eq('userid', myId) and become a superadmin, satisfying is_current_user_admin()/is_current_user_school_admin() and unlocking admin reads of every school member's profile and all plans.
+Fix before launch: add a BEFORE UPDATE trigger that rejects NEW.role <> OLD.role unless the caller is already admin (or move role to a table users can't write, and REVOKE UPDATE(role)). Risk: Critical.
+DB-2 — units has RLS disabled — CRITICAL (tenant isolation)
+
+Affected: public.units. 06_rls.sql:7-22 enables RLS on every academic table except units, and no policy is ever created for it. With Supabase's default grants, any authenticated user can read and write all rows in units across all tenants. Add units to the RLS list with a subject-membership policy mirroring chapters. Risk: High–Critical.
+DB-3 — courses / user_courses tables are never created — CRITICAL (schema not reproducible)
+
+Affected: subjects.course_id FK (04_academics.sql:9), 06_rls.sql:11-12,152-195, indexes 04_academics.sql:37-39. These objects are referenced by FK, RLS, and indexes but there is no CREATE TABLE public.courses/user_courses anywhere in database-setup/. Running the migrations fresh (as todo:19 instructs for the prod project) will fail at the subjects FK or at the RLS ALTER. The current dev DB only works because these tables exist from history not captured in the repo. Risk: Critical for the prod cutover.
+DB-4 — user_schools has no UPDATE or DELETE policy — HIGH
+
+Affected: user_schools. Only SELECT/INSERT policies exist (06_rls.sql:94-105). So the app's "set primary institution" (UPDATE) and "delete institution" (DELETE membership) silently affect 0 rows under RLS — the UI reports success while nothing changes. Also blocks any future "admin assigns teacher to department" (no UPDATE on department_id). Risk: High (data/UX integrity).
+DB-5 — subscriptions has no admin read policy — HIGH (feature broken)
+
+Affected: subscriptions (08_billing.sql:97-100, read is auth.uid()=user_id only). The admin "X of Y teachers on Pro" count and per-teacher tier badges join subscriptions and get null for everyone but the viewer → counts ~always 0, all badges "FREE." Risk: High (misleading admin data).
+DB-6 — Any school member can manage school-wide calendar events — HIGH
+
+Affected: school_calendar_events (06_rls.sql:464-482, FOR ALL to any member). One teacher can insert/delete holidays/suspensions affecting all teachers in the school. Combined with join_school_by_code (any authenticated user can join any school given an 8-char code, no rate limit — 10_departments.sql:99), this is a cross-user disruption vector. Scope event management to the creator or to admins. Risk: High.
+DB-7 — Webhook fail-open: paid → tier free — HIGH
+
+Affected: subscriptions. Both webhook handlers default an unmatched plan_id/price_id to tier='free', status='active' (paymongo-webhook:127-129, stripe-webhook:136-138), and the env plan IDs default to "". A misconfiguration silently leaves paying users on free. Fail closed (log + 5xx). Risk: High (revenue).
+DB-8 — Seed/placeholder create real accounts with hardcoded passwords — HIGH/CRITICAL if run in prod
+
+Affected: auth.users. placeholder.sql:38 inserts six confirmed users (one admin) with password ScheduDemo2026!; 09_test_account_seed.sql:48 inserts a tier2 test user with ScheduTest2026!. If either is ever applied to production, these are known-credential backdoors (one admin). Gate them behind an explicit dev-only guard and never include in the prod run. Risk: Critical if mis-run.
+DB-9 — Migration ordering hazard — MEDIUM
+
+09_test_account_seed.sql:123 writes usage_quotas.period_month, which 10_billing_v2.sql:243 drops. Applying 10 before 09 breaks the seed. The file headers disagree on order; document and enforce 00→11.
+DB-10 — is_default modeling + non-atomic multi-writes — MEDIUM
+
+schools.is_default is a school-level flag the client toggles per-user "set primary," conflating two concepts; and several flows do 2–4 sequential writes with no transaction (set-primary, delete cascade, plan creation). Move each to a single security definer RPC. Risk: Medium.
+DB-11 — No audit/history on destructive edits except plan rebalance — MEDIUM
+
+Lesson/exam/WW/PT saves are destructive overwrites; only lesson_plan_versions exists (and "restore" is lossy — doesn't re-add deleted or remove added blocks, rebalance-service.ts:786-808). No general audit log.
+Performance/scalability for 1k / 10k / 100k:
+
+1k: fine. 10k: mostly fine; watch the unscoped dashboard fetch and N+1 image signing (client-side, not DB). 100k: the per-isolate in-memory rate limiter (_shared/rate-limit.ts) and x-forwarded-for-based webhook limiting must move to a shared store; RLS helper subqueries (is_current_user_school_admin) are stable so cached per-statement — acceptable. Indexing is good. No materialized aggregates needed yet.
+Database Health Score: 55 / 100. Database Production Readiness: Alpha.
+
+DB changes required before launch: (1) guard users.role; (2) enable RLS + policy on units; (3) add CREATE TABLE courses/user_courses (or remove the references) so migrations are reproducible; (4) add UPDATE/DELETE policies on user_schools; (5) admin read policy on subscriptions; (6) scope school_calendar_events writes; (7) make webhooks fail-closed on unknown plan/price; (8) quarantine seed/placeholder from prod; (9) verify migration order; (10) move RPC-worthy multi-writes server-side.
+
+10. END-TO-END FEATURE VERIFICATION — stubbed / fake / dead
+Vacancy "fill open slots" — fully wired UI (banner + PopulateSheet) but vacancies is never populated (only setVacancies([])). Entire feature unreachable. (calendar/index.tsx:72,216-230; daily.tsx:97,248)
+Suspension display — suspend writes school_calendar_events, but the UI reads suspension state from metadata.lock_reason, which that path never sets → never renders as suspended. (agenda.ts:432-448 vs rebalance-service.ts:566-630)
+Add WW/PT requirement — insert omits 5 NOT-NULL columns and violates blocks_session_pair_check → always fails. (plan_detail.tsx:512-520 vs 05_planning.sql:72-78)
+Restore version — lossy no-op for adds/deletes despite the confirm dialog promising a full restore.
+Term edit — UI updates, but term is omitted from the update payload → reverts on reload.
+Plans list filter button — onPress: () => {} (dead). Exams stepper — fake disabled Views, not pressable.
+plan_history.tsx — 0-byte file; latent crash.
+components/pdf-extractor.tsx — orphaned, superseded screen, never imported.
+packages/supabase/src/index.ts — export {} stub; the whole codebase is therefore untyped against the DB.
+Demo/fake data shown to real new users (Home, calendar).
+Admin teachers/plans — read-only by design (todo:114).
+Two scheduling engines — creation uses the legacy buildBlocks/placeBlocks; the modular buildPlan engine that the tests cover and schedule.ts re-exports is never used to create a plan — only to rebalance, via re-derived rules. Plans are laid out by one algorithm and edited by another.
+11. SECURITY AUDIT (each: Severity / Impact / Likelihood / Recommendation)
+Role self-escalation (DB-1) — Critical / full admin takeover / High (trivial via the public anon key + RLS) / guard the column. This is the headline finding.
+units RLS disabled (DB-2) — High / cross-tenant read/write of curriculum / High / enable RLS.
+Schema not reproducible — courses missing (DB-3) — High (operational) / prod migration fails / High on cutover / add the tables.
+Username login leak risk — Medium / if anyone "fixes" username login by opening anon SELECT on users, it leaks emails by username / Medium / resolve via a security definer RPC returning an opaque token, not the email.
+Webhook fail-open + no timestamp/replay window (DB-7) — High/Medium / revenue loss; stale-but-valid replays accepted (idempotency only stops same-id) / Medium / fail-closed + reject |now−t|>300s.
+Rate limiting ineffective — Medium / per-isolate in-memory + spoofable x-forwarded-for; extract-text and delete-account have no limit / Medium / shared store; rely on signature+idempotency, not IP.
+Client-side-only admin gating — Medium / any user can render (admin) by deep link (RLS still protects data — except DB-1 nullifies that) / Medium / server-verified role gate.
+Prompt injection / unbounded AI input — Medium (abuse, not breach) / user text overrides system prompt and can balloon token cost on your key / Medium / cap input length; keep system prompt authoritative.
+Info disclosure — Low–Medium / edge functions echo upstream error details and extractorUrl to clients / Medium / return generic errors, log server-side.
+Weak password policy — Low–Medium / 8-char min only, no strength/breach check (todo:116 open) / High to occur / add zxcvbn-style check.
+No email-confirmation gate on plan creation (todo:110 open) — Low.
+Positive confirmations (verified): webhooks verify HMAC (constant-time) and are idempotent; delete-account deletes only the authenticated id (no IDOR); quota RPCs run as the user, not service role; subscriptions/usage_quotas/billing_events have client INSERT/UPDATE/DELETE revoked — no client path can self-grant a tier (the only tier-write path is the signed webhook). Aside from DB-1, the billing security model is sound.
+
+12. ROLE-BASED ACCESS TESTING
+Teacher: correct data scoping via RLS — until DB-1 lets them self-promote. The 8-char join_school_by_code (no rate limit) lets any teacher join any school whose code they obtain/guess.
+Admin / Superadmin: read access to school members/plans works; cannot see teacher subscription tiers (DB-5); admin screens are read-only; admins have no in-app sign-out.
+Student / Parent: no such roles exist (user_role enum = teacher/admin/superadmin). Not applicable.
+URL/deep-link bypass: (admin) is reachable by any authenticated user (client-gate only); data is RLS-protected (modulo DB-1/DB-2).
+13. RESPONSIVE DESIGN (inferred from layout code; verify on device)
+320–414px (mobile): primary target. Risks: calendar month bars use 9px text in 38px rows (truncation), block-editor step cards at 47% width leave an awkward center gap, the very long lesson-plan form is dense. Toolbar month label (26px) can clip on 320px.
+768–820px (tablet): no tablet-specific layouts; everything is single-column phone UI stretched — usable but not optimized.
+1366–1920px (desktop): this is an Expo/React-Native Android app; teach-web is a near-empty Next.js shell (one page.tsx). Desktop is effectively out of scope.
+Worst offenders for overflow/unusability: dark-mode screens (white text on white), Android inline DateTimePicker (renders as a dialog, breaking the two-column "Starts/Ends" layout).
+14. ACCESSIBILITY — score 28 / 100
+No accessibilityLabel/accessibilityRole on icon-only controls; no accessibilityLiveRegion on the toast; inputs have placeholders but no associated labels or focus states; ErrorBoundary uses #666 on #111 (fails WCAG AA); WebView content is outside the a11y tree; no keyboard submit. This needs a dedicated pass.
+
+15. ERROR HANDLING
+The AI/edge-function paths are the best in the app (402→paywall, structured formatEdgeFunctionError, empty-text guards). Everywhere else is weak: loaders swallow errors into empty states; settings.tsx can corrupt the profile on a failed-load→save; handleSaveDetails is try/finally with no catch; non-atomic multi-writes leave partial state with no rollback; ErrorBoundary only console.errors (no Sentry, despite initSentry() at root); "Try Again" just re-renders the failing tree (loop).
+
+16. DATA CONSISTENCY
+Admin term card: differenceInDays argument order inverted → "0 days left" and wrong progress % ((admin)/index.tsx:264-277).
+Plan status computed differently on dashboard vs plans list → same plan shows two statuses.
+Requirement counts count every block (incl. quizzes and split fragments) → stepper numbers ≠ real requirement counts; the "−" deletion comparator is non-transitive and can delete a placed block.
+Term-progress "Week N": fencepost (term-start-anchored 7-day windows, not Mon-anchored) and counts calendar days incl. weekends.
+No grade/score calculations exist to be wrong — grading "components" are AI text only.
+List counts can understate reality (rows dropped when a join is missing, e.g. subject_code).
+17. PERFORMANCE — bottlenecks
+Client-side: unscoped dashboard fetch (all slots+blocks, every focus); N+1 signed-URL generation for subject images; full subject_detail reload on focus + unvirtualized tree; every block edit triggers two full loadRuntimeData round-trips (~7 queries each) + per-row UPDATE loops; WebView remounts keyed on html.length. Server-side: per-isolate rate limiting. None are fatal at soft-launch scale; all matter at 10k+.
+
+18. CODE QUALITY — maintainability 48 / 100
+Good: clean Expo Router structure, a genuinely well-decomposed scheduling algorithm with tests, consistent SQL conventions. Bad: ~90% duplicated code across the four detail screens (already caused the ww_detail missing-filter bug); two parallel scheduling engines; empty shared-types package → everything untyped (as any), which is why the null subscription joins and broken add-requirement insert weren't caught at compile time; @ts-nocheck on every edge function; dead files (plan_history.tsx 0 bytes, pdf-extractor.tsx, likely-unused BottomSheet.tsx); four duplicate formatTime12 and two duplicate todayISO helpers; pervasive local-vs-UTC date handling.
+
+19. DEPLOYMENT READINESS
+Per the devs' own todo, most ops prerequisites are open: prod Supabase project not provisioned; scheduhq.com not purchased; PayMongo/Stripe accounts, plan/price IDs, and webhook secrets not set; edge functions not deployed; Sentry not installed (so the ErrorBoundary captures nothing); expo-localization not installed (so region detection fails → PH users routed to Stripe in USD); EAS build not configured; no privacy policy/ToS. .env is untracked (good). No backup/recovery/monitoring strategy documented. The Qwen→Gemini provider drift (function deployed uses GEMINI_API_KEY while todo:8 says rotate Qwen) means the documented secret may not match what's deployed.
+
+20–21. BUSINESS LOGIC & COMPETITOR GAP
+As a planner, ScheduTeach has a real differentiator: a DepEd-calendar-aware scheduler that auto-distributes lessons/quizzes/PTs/exams and rebalances around suspensions, plus AI activity generation tied to the curriculum. Nothing in Google Classroom / Canvas / Moodle / Schoology does the automatic schedule generation piece as a first-class feature — that's your moat.
+
+But against those LMSs it lacks everything classroom-facing: no roster, gradebook, submissions, attendance, announcements, parent portal, or analytics. That's fine if you position it strictly as a teacher's personal planning companion. If you market it as a classroom platform, the gap is enormous. Decide the positioning before launch and make the marketing match.
+
+22. FINAL EXECUTIVE REPORT
+A. Critical bugs (launch blockers)
+
+Privilege escalation: any user → superadmin via users.role self-update (DB-1).
+units table has RLS disabled → cross-tenant data (DB-2).
+courses/user_courses missing from migrations → fresh prod deploy fails (DB-3).
+Username login impossible under RLS.
+Password reset broken end-to-end (deep-link route-group mismatch).
+OAuth login broken (callback unreachable + no result handling).
+PH payments non-functional (placeholder URL; nothing deployed) — the launch market can't pay.
+Add WW/PT requirement always fails (DB constraint).
+Dark mode unusable on core create/detail screens.
+Settings can null out the user profile.
+Seed/placeholder backdoor accounts with known passwords if run in prod (DB-8).
+B. High — non-atomic & RLS-failing institution set-primary/delete (DB-4); admin tier data always 0 (DB-5); school-wide calendar-event write by any member (DB-6); webhook fail-open (DB-7); cross-tenant suspend query; rebalance re-derives terms/requirements; one hardcoded DepEd year; no server-side overlap guard; lossy restore; silent Term-edit loss; incomplete WebView JS-escaping; science-biased syllabus parser; ww_detail no category filter; sign-up orphan/partial-account; N+1 & unscoped fetches.
+
+C. Medium — session-persistence unverified; routing races; ErrorBoundary no Sentry + contrast fail; hardcoded tier tables drift; swallowed errors everywhere; no webhook replay window; spoofable/per-isolate rate limiting; extract-text no limit + info leak; inverted admin date math; dashboard/plans status mismatch; prompt injection/unbounded AI input; dead buttons & fake steppers; demo data to real users; migration ordering; plan_history 0-byte crash; inconsistent draft/published defaults; orphaned storage on failure.
+
+D. Low — missing a11y labels app-wide; WebView remount keying; env-var name mismatch; duplicate helpers; stale comments; @ts-nocheck; cache files never cleaned.
+
+E. Security issues — see §11 (role escalation #1).
+F. Database issues — see §9 (DB-1…DB-11).
+G. UX issues — broken auth flows, fake empty states, hidden affordances (long-press default, swipe-only delete), duplicate create pickers, no admin sign-out.
+H. Performance — unscoped/N+1 client fetches; double round-trips per edit; per-isolate rate limiting.
+I. Missing features — export/print plan; working PH payment; real empty states; password strength; (if LMS) students/attendance/grades/communication/analytics.
+J. Technical debt — two schedulers; empty types package → untyped app; ~90% duplicated detail screens; dead files; @ts-nocheck.
+
+K. Top 50 improvements before launch (priority order)
+Guard users.role against self-update (trigger or column REVOKE).
+Enable RLS + membership policy on units.
+Add CREATE TABLE courses/user_courses so migrations are reproducible; test a clean 00→11 apply on a scratch DB.
+Add UPDATE/DELETE RLS policies on user_schools (fixes set-primary & delete).
+Make both webhooks fail-closed on unknown plan/price IDs.
+Fix username login (server-side security definer resolver) or remove the username field.
+Fix the password-reset deep link (add a non-grouped auth/update-password route or correct the redirect path).
+Fix OAuth callback routing + handle the browser auth result.
+Wire the PH PayMongo paywall (or hard-disable upgrade UI for PH so it doesn't appear functional).
+Fix add-WW/PT-requirement insert (supply required columns + valid subcategory).
+Make dark mode work on activities, block-editor, exam/ww/pt_detail, ErrorBoundary.
+Stop save-after-failed-load from nulling the profile; add real error handling to settings.
+Quarantine placeholder.sql/test seed from prod; rotate/remove hardcoded passwords.
+Verify session persistence across cold start (explicit AsyncStorage adapter).
+Admin read policy on subscriptions (or compute Pro counts via a security definer RPC).
+Scope school_calendar_events writes to creator/admin; rate-limit join_school_by_code.
+Make institution set-primary/delete and plan creation single security definer RPCs (atomic).
+Pick ONE scheduling engine; delete or fully wire the other.
+Either implement the vacancy-fill feature or remove its dead UI.
+Make suspension actually render (unify on school_calendar_events).
+Fix cross-tenant getSlotsForDay (filter by school/section/subject).
+Fix "restore version" to truly restore (re-add deleted, remove added) or rename it "reposition."
+Include term in the plan update payload.
+Add a category filter to ww_detail.
+Replace fake demo data with honest empty states + the existing CTA.
+Wire Sentry (install package) and report from ErrorBoundary + componentDidCatch.
+Add password-strength validation at sign-up.
+Add a "confirm your email" message after sign-up and after email change.
+Add an admin sign-out path.
+Fix the inverted admin term-date math; unify plan-status logic across screens.
+Add webhook timestamp tolerance (±5 min).
+Move rate limiting to a shared store; stop trusting x-forwarded-for.
+Add rate limit to extract-text and delete-account; stop leaking extractorUrl/upstream errors.
+Cap AI input length; keep system prompt authoritative.
+Generate and ship DB types (packages/supabase) and remove @ts-nocheck.
+Fix the no-op plans filter button and fake exam stepper (or remove them).
+Delete/complete plan_history.tsx (0-byte) and orphan pdf-extractor.tsx.
+Scope the dashboard fetch by date range; batch image signing.
+Virtualize the subject-detail tree.
+Add accessibilityLabel/role to all icon-only controls + toast live region.
+Replace the inline Android date/time pickers with platform-correct ones.
+Reconcile pricing: PH MAX ₱199 (code) vs ₱149 (business) — pick one.
+Sync the hardcoded paywall/subscription tier tables to the server limits (or fetch them).
+Make useSubscription not downgrade to free limits on transient RPC failure.
+Add lesson-plan export/print (PDF).
+De-duplicate the four detail screens into one component.
+Standardize date handling (one local-vs-UTC convention; one set of helpers).
+Make creation status consistent (draft vs published) across paths.
+Clean up orphaned storage on failed inserts; sweep the cache directory.
+Publish privacy policy + ToS; finalize EAS build + provision prod Supabase.
+L. Production Readiness Score: 24 / 100
+M. Launch Recommendation: Internal Testing Only (Do Not Launch publicly)
+Do not even run a closed beta until at minimum the eight launch-blockers in (A) #1–#10 are fixed — especially the role-escalation hole, the units/courses schema defects, and the three broken login paths. Once those are resolved and payments work in PH, this is a credible closed beta candidate. The scheduler and billing foundations are good; the surrounding app needs another focused hardening cycle before thousands of teachers touch it.
+
+Two things worth flagging directly: the role-escalation bug (DB-1) is exploitable today with nothing but the public anon key — treat it as a stop-everything fix. And much of what's "missing" is already tracked in your todo as [YOU]/[CLAUDE] open items, so the team's self-assessment largely matches this audit; the items this review adds beyond your todo are the security/DB defects (DB-1, DB-2, DB-3, DB-4, DB-6) and the silently-failing features (add-requirement, suspension display, vacancy fill, restore, set-primary).
+
+Want me to (a) write the SQL migration that closes DB-1 through DB-6, (b) fix the deep-link routing so password reset/OAuth work, or (c) produce a prioritized GitHub-issue list from the Top-50? I can also save these launch-blockers to project memory so they persist across sessions — say the word.
