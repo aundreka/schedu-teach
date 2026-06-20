@@ -171,6 +171,46 @@ async function handleEvent({
     return { handled: false, eventType, error: error.message };
   }
 
+  // Write a user-readable billing event.
+  const tierLabel = tier === "tier1" ? "PRO" : tier === "tier2" ? "MAX" : "Free";
+  let description: string;
+  let amountCents: number | null = null;
+  const currency = (attrs?.currency as string | undefined) ?? "PHP";
+
+  switch (eventType) {
+    case "subscription.payment.paid": {
+      amountCents = typeof attrs?.amount === "number" ? attrs.amount : null;
+      description = `Payment received — ${tierLabel} Plan`;
+      break;
+    }
+    case "subscription.created":
+      description = `${tierLabel} Plan activated`;
+      break;
+    case "subscription.updated":
+    case "subscription.resumed":
+      description = `${tierLabel} Plan updated`;
+      break;
+    case "subscription.cancelled":
+    case "subscription.expired":
+      description = "Subscription canceled";
+      break;
+    case "subscription.past_due":
+    case "subscription.payment.failed":
+      description = "Payment failed";
+      break;
+    default:
+      description = eventType;
+  }
+
+  await admin.from("billing_events").insert({
+    user_id:      userId,
+    event_type:   eventType,
+    tier:         tier === "free" ? null : tier,
+    amount_cents: amountCents,
+    currency:     currency.toUpperCase(),
+    description,
+  });
+
   return { handled: true, eventType, tier, status };
 }
 

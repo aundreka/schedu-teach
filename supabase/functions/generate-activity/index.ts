@@ -16,6 +16,18 @@ type Body = {
   templateText?: string;
   templateFileName?: string | null;
   additionalInstructions?: string;
+  // Optional planning context — used to nudge the model when the teacher
+  // onboarded mid-term and has already covered some lessons.
+  planContext?: {
+    termLabel?: string;
+    weekOfTerm?: number;
+    progressAnchor?: {
+      lesson_no?: number;
+      written_work_no?: number;
+      performance_task_no?: number;
+      exam_no?: number;
+    };
+  };
 };
 
 Deno.serve(async (req: Request) => {
@@ -25,16 +37,14 @@ Deno.serve(async (req: Request) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-    const QWEN_API_KEY = Deno.env.get("QWEN_API_KEY");
-    const QWEN_BASE_URL =
-      Deno.env.get("QWEN_BASE_URL") || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
-    const QWEN_MODEL = Deno.env.get("QWEN_MODEL") || "qwen3.5-plus";
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash";
 
     if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !ANON_KEY) {
       return json({ error: "Missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or SUPABASE_ANON_KEY" }, 500);
     }
-    if (!QWEN_API_KEY) {
-      return json({ error: "Missing QWEN_API_KEY" }, 500);
+    if (!GEMINI_API_KEY) {
+      return json({ error: "Missing GEMINI_API_KEY" }, 500);
     }
 
     const authHeader = req.headers.get("Authorization") ?? "";
@@ -62,8 +72,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // Atomic quota check + increment. RPC reads auth.uid() so it must run as the user, not
-    // service role. Free tier = 5/month; tier1/tier2 = unlimited (RPC returns true and
-    // skips the cap). Raises P0001 'quota_exceeded' when at the limit.
+    // service role. Free=1/day, tier1=5/day, tier2=20/day (see tier_ai_daily_limit in DB).
+    // Raises P0001 'quota_exceeded' when at the daily cap.
     const supabaseUser = createClient(SUPABASE_URL, ANON_KEY, {
       auth: { persistSession: false },
       global: { headers: { Authorization: `Bearer ${jwt}` } },
@@ -83,51 +93,53 @@ Deno.serve(async (req: Request) => {
     }
 
     const prompt = buildPrompt(body);
-    const endpoint = `${QWEN_BASE_URL.replace(/\/+$/, "")}/chat/completions`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
-    const qwenResponse = await fetch(endpoint, {
+    const geminiResponse = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${QWEN_API_KEY}`,
+        "x-goog-api-key": GEMINI_API_KEY,
       },
       body: JSON.stringify({
-        model: QWEN_MODEL,
-        temperature: 0.35,
-        top_p: 0.85,
-        max_tokens: 3600,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You create classroom-ready academic documents. Return plain text only. Do not use markdown fences. Do not explain your process.",
-          },
+        system_instruction: {
+          parts: [
+            {
+              text: "You create classroom-ready academic documents. Return plain text only. Do not use markdown fences. Do not explain your process.",
+            },
+          ],
+        },
+        contents: [
           {
             role: "user",
-            content: prompt,
+            parts: [{ text: prompt }],
           },
         ],
+        generationConfig: {
+          temperature: 0.35,
+          maxOutputTokens: 4096,
+        },
       }),
     });
 
-    const payload = await qwenResponse
+    const payload = await geminiResponse
       .json()
-      .catch(async () => ({ raw: await qwenResponse.text().catch(() => "") }));
+      .catch(async () => ({ raw: await geminiResponse.text().catch(() => "") }));
 
-    if (!qwenResponse.ok) {
+    if (!geminiResponse.ok) {
       return json(
         {
-          error: "Qwen request failed",
-          details: payload?.message || payload?.error || payload?.raw || qwenResponse.statusText,
+          error: "Gemini request failed",
+          details: payload?.error?.message || payload?.raw || geminiResponse.statusText,
         },
         502,
         rateLimitHeaders(rl)
       );
     }
 
-    const text = String(payload?.choices?.[0]?.message?.content ?? "").trim();
+    const text = String(payload?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
     if (!text) {
-      return json({ error: "Qwen returned an empty response." }, 502, rateLimitHeaders(rl));
+      return json({ error: "Gemini returned an empty response." }, 502, rateLimitHeaders(rl));
     }
 
     return json({ text }, 200, rateLimitHeaders(rl));
@@ -180,6 +192,28 @@ function buildPrompt(body: Body) {
           "Keep the result in plain text only.",
         ].join("\n");
 
+  const anchor = body.planContext?.progressAnchor;
+  const planContextSection = (() => {
+    const lines: string[] = [];
+    if (body.planContext?.termLabel || typeof body.planContext?.weekOfTerm === "number") {
+      const parts: string[] = [];
+      if (body.planContext.termLabel) parts.push(body.planContext.termLabel);
+      if (typeof body.planContext.weekOfTerm === "number") parts.push(`week ${body.planContext.weekOfTerm}`);
+      lines.push(`Planning context: currently in ${parts.join(", ")}.`);
+    }
+    if (anchor && (anchor.lesson_no || anchor.written_work_no || anchor.performance_task_no || anchor.exam_no)) {
+      const items: string[] = [];
+      if (anchor.lesson_no) items.push(`${anchor.lesson_no} lesson${anchor.lesson_no === 1 ? "" : "s"}`);
+      if (anchor.written_work_no) items.push(`${anchor.written_work_no} written work`);
+      if (anchor.performance_task_no) items.push(`${anchor.performance_task_no} performance task${anchor.performance_task_no === 1 ? "" : "s"}`);
+      if (anchor.exam_no) items.push(`${anchor.exam_no} exam${anchor.exam_no === 1 ? "" : "s"}`);
+      if (items.length > 0) {
+        lines.push(`Already covered before this scope: ${items.join(", ")} — treat their concepts as review material the students have seen.`);
+      }
+    }
+    return lines.length > 0 ? lines.join("\n") : "";
+  })();
+
   return [
     `Document title: ${body.title}`,
     `Subject: ${subjectLabel || "Unspecified subject"}`,
@@ -189,6 +223,8 @@ function buildPrompt(body: Body) {
     `Requested components: ${componentText}`,
     "",
     activityInstructions,
+    "",
+    planContextSection,
     "",
     "Scope coverage:",
     scopeBlock || "No scope reference was provided.",

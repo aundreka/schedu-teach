@@ -3,11 +3,22 @@
 # dependencies
 node_modules/
 
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
+# pnpm
+pnpm-lock.yaml
+
+# Turbo
+.turbo/
+
+# Expo (inside apps/teach)
+apps/teach/.expo/
+apps/teach/dist/
+apps/teach/web-build/
+apps/teach/expo-env.d.ts
+
+# Next.js (inside apps/website and apps/teach-web)
+apps/*/.next/
+apps/*/out/
+apps/*/next-env.d.ts
 
 # Native
 .kotlin/
@@ -39,8 +50,8 @@ yarn-error.*
 app-example
 
 # generated native folders
-/ios
-/android
+apps/teach/ios/
+apps/teach/android/
 
 # Claude Code local config
 .claude/
