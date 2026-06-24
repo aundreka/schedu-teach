@@ -7,7 +7,7 @@ import { HEADLINE_FEATURE } from '@/lib/content'
 export function HeadlineFeature() {
   return (
     <section id="features" className="container-page scroll-mt-20 py-20 sm:py-24">
-      <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+      <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
         <Reveal>
           <Eyebrow>{HEADLINE_FEATURE.eyebrow}</Eyebrow>
           <h2 className="mt-3 text-balance text-3xl font-bold tracking-tight text-ink sm:text-4xl">

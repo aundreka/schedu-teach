@@ -47,7 +47,7 @@ export function Nav() {
           <ButtonLink href={SITE.loginUrl} variant="ghost" size="md">
             Log in
           </ButtonLink>
-          <ButtonLink href="#pricing" variant="primary" size="md">
+          <ButtonLink href="#early-access" variant="primary" size="md">
             Get started
           </ButtonLink>
         </div>
@@ -79,7 +79,7 @@ export function Nav() {
               <ButtonLink href={SITE.loginUrl} variant="secondary" size="lg" onClick={() => setOpen(false)}>
                 Log in
               </ButtonLink>
-              <ButtonLink href="#pricing" variant="primary" size="lg" onClick={() => setOpen(false)}>
+              <ButtonLink href="#early-access" variant="primary" size="lg" onClick={() => setOpen(false)}>
                 Get started
               </ButtonLink>
             </div>

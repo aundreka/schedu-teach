@@ -10,7 +10,7 @@ export function Hero() {
       <div className="pointer-events-none absolute inset-0 -z-10 bg-dotted opacity-60 [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]" />
       <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-[400px] w-[700px] -translate-x-1/2 rounded-full bg-brand-100/50 blur-3xl" />
 
-      <div className="container-page grid items-center gap-12 py-16 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
+      <div className="container-page grid grid-cols-1 items-center gap-12 py-16 sm:py-20 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
         <div className="animate-rise">
           <span className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-brand-50 px-3.5 py-1.5 text-xs font-semibold text-brand-700">
             <Sparkles className="h-3.5 w-3.5" />

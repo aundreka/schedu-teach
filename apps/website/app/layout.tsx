@@ -39,7 +39,6 @@ export const metadata: Metadata = {
     title: 'SchEDU: Smarter lesson planning for teachers',
     description: 'Plan your whole term in minutes, not weekends.',
   },
-  icons: { icon: '/favicon.ico' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

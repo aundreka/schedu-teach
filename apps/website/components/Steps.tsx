@@ -13,7 +13,7 @@ export function Steps() {
         />
       </Reveal>
 
-      <div className="mx-auto mt-12 grid max-w-4xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mx-auto mt-12 grid grid-cols-1 max-w-4xl gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {STEPS.map((s, i) => (
           <Reveal key={s.title} delay={i * 80} className="h-full">
             <div className="group flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-brand-200 hover:shadow-md">

@@ -45,7 +45,7 @@ export function MoreFeatures() {
           />
         </Reveal>
 
-        <div className="mt-12 grid gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
           {MORE_FEATURES.map((f, i) => {
             const Icon = ICONS[f.icon] ?? Sparkles
             return (

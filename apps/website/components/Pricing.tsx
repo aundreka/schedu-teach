@@ -11,7 +11,6 @@ import {
   priceFor,
   type CurrencyCode,
 } from '@/lib/pricing'
-import { SITE } from '@/lib/content'
 import { cn } from '@/lib/cn'
 
 const STORAGE_KEY = 'schedu.currency'
@@ -68,7 +67,7 @@ export function Pricing({ initialCurrency }: { initialCurrency: CurrencyCode }) 
           </div>
         </div>
 
-        <div className="mx-auto mt-10 grid max-w-5xl gap-6 lg:grid-cols-3">
+        <div className="mx-auto mt-10 grid grid-cols-1 max-w-5xl gap-6 lg:grid-cols-3">
           {PLANS.map((plan, i) => {
             const featured = plan.featured
             const isFree = plan.priceKey === 'free'
@@ -103,7 +102,7 @@ export function Pricing({ initialCurrency }: { initialCurrency: CurrencyCode }) 
                 </div>
 
                 <ButtonLink
-                  href={isFree ? '#top' : SITE.appUrl}
+                  href="#early-access"
                   variant={featured ? 'primary' : 'secondary'}
                   size="lg"
                   className="mt-6 w-full"
@@ -126,11 +125,11 @@ export function Pricing({ initialCurrency }: { initialCurrency: CurrencyCode }) 
         </div>
 
         <p className="mt-8 text-center text-sm text-muted">
-          {active.rail}. Manage and upgrade your plan anytime on{' '}
-          <a href={SITE.appUrl} className="font-medium text-brand-700 underline-offset-2 hover:underline">
-            the web
-          </a>
-          .
+          {active.rail}. Plans unlock at launch.{' '}
+          <a href="#early-access" className="font-medium text-brand-700 underline-offset-2 hover:underline">
+            Get early access
+          </a>{' '}
+          to lock in your plan.
         </p>
       </div>
     </section>

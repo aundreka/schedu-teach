@@ -4,7 +4,7 @@ import { FINAL_CTA, SITE } from '@/lib/content'
 
 export function FinalCTA() {
   return (
-    <section className="container-page py-20 sm:py-24">
+    <section id="early-access" className="container-page scroll-mt-20 py-20 sm:py-24">
       <Reveal className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 to-brand-700 px-6 py-14 text-center shadow-xl shadow-brand-600/20 sm:px-12 sm:py-16">
         <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-10 h-56 w-56 rounded-full bg-brand-400/30 blur-2xl" />

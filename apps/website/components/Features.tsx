@@ -46,7 +46,7 @@ export function Features() {
             const shot = SHOTS[i]
             const reversed = i % 2 === 1
             return (
-              <div key={f.title} className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+              <div key={f.title} className="grid grid-cols-1 items-center gap-10 lg:grid-cols-2 lg:gap-16">
                 <Reveal className={cn(reversed && 'lg:order-2')}>
                   <span className="grid h-12 w-12 place-items-center rounded-xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
                     <Icon className="h-6 w-6" />
