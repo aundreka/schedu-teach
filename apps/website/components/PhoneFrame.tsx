@@ -43,7 +43,7 @@ export function PhoneFrame({
 }
 
 /**
- * A cropped screenshot (e.g. the Create sheet) shown as a floating card —
+ * A cropped screenshot (e.g. the Create sheet) shown as a floating card,
  * no phone bezel. Good for partial UI captures.
  */
 export function CardShot({

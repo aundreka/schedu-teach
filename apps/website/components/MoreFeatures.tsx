@@ -41,7 +41,7 @@ export function MoreFeatures() {
           <SectionHeading
             eyebrow="And there’s more"
             title="Everything around the plan, too"
-            subtitle="SchEDU handles the whole teaching workflow — not just the schedule."
+            subtitle="SchEDU handles the whole teaching workflow, not just the schedule."
           />
         </Reveal>
 

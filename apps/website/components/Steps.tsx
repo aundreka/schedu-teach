@@ -9,7 +9,7 @@ export function Steps() {
         <SectionHeading
           eyebrow="Getting started"
           title="Up and running in minutes"
-          subtitle="From download to a complete, balanced term — in five simple steps."
+          subtitle="From download to a complete, balanced term, in five simple steps."
         />
       </Reveal>
 

@@ -1,8 +1,8 @@
 /**
- * Plans & pricing — single source of truth for the pricing section.
+ * Plans & pricing, single source of truth for the pricing section.
  *
  * Peso prices come straight from the Product Guide (PRO ₱99, MAX ₱199).
- * USD prices are PLACEHOLDERS — replace `pro`/`max` under `USD` with the
+ * USD prices are PLACEHOLDERS, replace `pro`/`max` under `USD` with the
  * final international numbers Aundreka provides.
  */
 

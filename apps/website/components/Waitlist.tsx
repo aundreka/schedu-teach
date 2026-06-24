@@ -42,7 +42,7 @@ export function Waitlist({
       setStatus('done')
     } catch {
       setStatus('error')
-      setMessage('Network error — please try again.')
+      setMessage('Network error. Please try again.')
     }
   }
 
@@ -56,7 +56,7 @@ export function Waitlist({
         )}
       >
         <CheckCircle2 className="h-5 w-5 shrink-0" />
-        You’re on the list — we’ll email you the moment SchEDU launches.
+        You’re on the list. We’ll email you the moment SchEDU launches.
       </div>
     )
   }

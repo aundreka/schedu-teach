@@ -35,7 +35,7 @@ export function Features() {
         <Reveal>
           <SectionHeading
             eyebrow="What SchEDU does"
-            title="Everything a real teaching load needs — in one app"
+            title="Everything a real teaching load needs, in one app"
             subtitle="Each feature, shown the way it actually looks in the app."
           />
         </Reveal>

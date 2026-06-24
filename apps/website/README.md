@@ -1,4 +1,4 @@
-# SchEDU website — scheduhq.com
+# SchEDU website, scheduhq.com
 
 Marketing landing page for SchEDU. Next.js 15 (App Router) + Tailwind v4, part of the
 `schedu-hq` Turborepo / pnpm workspace.
@@ -11,10 +11,10 @@ pnpm dev:website     # → http://localhost:3000
 
 ## Deploying to Vercel (auto-deploy on push)
 
-This app deploys on **Vercel** via the Git integration — every push to `main` ships to
+This app deploys on **Vercel** via the Git integration, every push to `main` ships to
 production, every PR gets a preview URL. The app relies on Vercel features
 (`x-vercel-ip-country` geolocation, dynamic SSR, the `/api/waitlist` route), so it must
-run on a Node/serverless host — not a static export.
+run on a Node/serverless host, not a static export.
 
 **One-time setup (Vercel dashboard):**
 
@@ -23,8 +23,8 @@ run on a Node/serverless host — not a static export.
    leave Build/Install/Output at their defaults (Vercel runs the pnpm workspace install
    from the repo root).
 3. Add **Environment Variables** (Production + Preview):
-   - `NEXT_PUBLIC_SUPABASE_URL` — your Supabase project URL
-   - `SUPABASE_SERVICE_ROLE_KEY` — server-only key, used by `/api/waitlist` to persist signups
+   - `NEXT_PUBLIC_SUPABASE_URL`, your Supabase project URL
+   - `SUPABASE_SERVICE_ROLE_KEY`, server-only key, used by `/api/waitlist` to persist signups
 4. **Deploy.** After this, every `git push` to `main` redeploys automatically.
 
 **Custom domain:** Project → **Settings → Domains** → add `scheduhq.com`, then point your

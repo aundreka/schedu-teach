@@ -22,7 +22,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  *   );
  *
  * If env is not configured the route still returns success so the UI works
- * in development — it just logs a warning instead of persisting.
+ * in development, it just logs a warning instead of persisting.
  */
 export async function POST(req: Request) {
   let body: { email?: string; role?: string }
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!url || !key) {
-    console.warn('[waitlist] Supabase env not configured — signup not persisted:', email)
+    console.warn('[waitlist] Supabase env not configured, signup not persisted:', email)
     return NextResponse.json({ ok: true, persisted: false })
   }
 

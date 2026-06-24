@@ -3,7 +3,7 @@
 @theme {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
 
-  /* Brand — SchEDU green (matches the app tint #22C55E) */
+  /* Brand, SchEDU green (matches the app tint #22C55E) */
   --color-brand-50: #f0fdf4;
   --color-brand-100: #dcfce7;
   --color-brand-200: #bbf7d0;
@@ -15,7 +15,7 @@
   --color-brand-800: #166534;
   --color-brand-900: #14532d;
 
-  /* Neutrals — warm, Notion-like */
+  /* Neutrals, warm, Notion-like */
   --color-ink: #0f172a;
   --color-ink-soft: #334155;
   --color-muted: #64748b;
@@ -133,14 +133,54 @@ body {
   animation: float-delayed 6s ease-in-out infinite;
 }
 
+/* ---- Dropdown open (mobile menu) ----------------------------------- */
+@keyframes dropdown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-dropdown {
+  animation: dropdown 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top;
+}
+
+/* ---- Collapsible (FAQ accordion) ----------------------------------- */
+/* Animate height via grid-rows 0fr -> 1fr; inner wrapper clips overflow. */
+.collapsible {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition:
+    grid-template-rows 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.32s ease;
+  opacity: 0;
+}
+.collapsible.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.collapsible > * {
+  overflow: hidden;
+  min-height: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal {
     opacity: 1;
     transform: none;
     transition: none;
   }
+  .collapsible {
+    transition: none;
+  }
   .animate-float,
-  .animate-float-delayed {
+  .animate-float-delayed,
+  .animate-rise,
+  .animate-dropdown {
     animation: none;
   }
 }

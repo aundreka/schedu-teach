@@ -13,7 +13,7 @@ export function currencyForCountry(country: string | null | undefined): Currency
 /**
  * Resolve the visitor's currency on the server from edge geolocation headers.
  * Vercel populates `x-vercel-ip-country`; other CDNs use `cf-ipcountry`.
- * On localhost neither exists, so we get the PH default — fine for dev.
+ * On localhost neither exists, so we get the PH default, fine for dev.
  */
 export async function detectCurrency(): Promise<CurrencyCode> {
   const h = await headers()

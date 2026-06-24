@@ -63,7 +63,7 @@ export function Nav() {
       </nav>
 
       {open ? (
-        <div className="border-t border-line bg-white md:hidden">
+        <div className="animate-dropdown border-t border-line bg-white md:hidden">
           <div className="container-page flex flex-col gap-1 py-4">
             {NAV_LINKS.map((l) => (
               <Link

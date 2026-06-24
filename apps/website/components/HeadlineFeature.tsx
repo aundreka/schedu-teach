@@ -53,9 +53,9 @@ export function HeadlineFeature() {
                 Your balanced term
               </p>
               <div className="mt-2 space-y-2">
-                <TermWeek label="Wk 1–3" items={[['Lesson', 'lesson'], ['Lesson', 'lesson'], ['Quiz', 'quiz']]} />
-                <TermWeek label="Wk 4–6" items={[['Lesson', 'lesson'], ['Task', 'task'], ['Review', 'review']]} />
-                <TermWeek label="Wk 7–9" items={[['Lesson', 'lesson'], ['Quiz', 'quiz'], ['Exam', 'exam']]} />
+                <TermWeek label="Wk 1-3" items={[['Lesson', 'lesson'], ['Lesson', 'lesson'], ['Quiz', 'quiz']]} />
+                <TermWeek label="Wk 4-6" items={[['Lesson', 'lesson'], ['Task', 'task'], ['Review', 'review']]} />
+                <TermWeek label="Wk 7-9" items={[['Lesson', 'lesson'], ['Quiz', 'quiz'], ['Exam', 'exam']]} />
               </div>
             </div>
           </div>
