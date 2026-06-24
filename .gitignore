@@ -3,8 +3,7 @@
 # dependencies
 node_modules/
 
-# pnpm
-pnpm-lock.yaml
+# pnpm — lockfile is committed so CI/Vercel builds are reproducible
 
 # Turbo
 .turbo/
