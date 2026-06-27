@@ -112,7 +112,7 @@ function TierCard({
   const ROWS = [
     { label: "Lesson plans", values: { free: "2 lifetime", tier1: "10",      tier2: "20"  } },
     { label: "Subjects",     values: { free: "2 total",    tier1: "10",      tier2: "20"  } },
-    { label: "AI / day",     values: { free: "1",          tier1: "5",       tier2: "20"  } },
+    { label: "Auto activity/exam · day", values: { free: "1",          tier1: "5",       tier2: "20"  } },
   ];
 
   return (
@@ -262,7 +262,7 @@ export default function SubscriptionScreen() {
         <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border, gap: 14 }]}>
           <UsageBar label="Lesson Plans" used={sub.lessonPlansUsed} limit={sub.lessonPlansLimit} />
           <UsageBar label="Subjects"     used={sub.subjectsUsed}    limit={sub.subjectsLimit}    />
-          <UsageBar label="AI Today"     used={sub.aiUsedToday}     limit={sub.aiDailyLimit}     />
+          <UsageBar label="Activity/exam today" used={sub.aiUsedToday}     limit={sub.aiDailyLimit}     />
         </View>
 
         {/* Plans section */}

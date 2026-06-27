@@ -54,3 +54,11 @@ apps/teach/android/
 
 # Claude Code local config
 .claude/
+
+# Non-app files (business / marketing / research working docs — kept on disk, out of git)
+/product/
+/marketing/
+/project.tex
+/review
+/todo
+/ScheduTeach-QA-Audit-Report.*

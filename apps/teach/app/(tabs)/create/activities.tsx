@@ -1173,7 +1173,7 @@ export default function ActivitiesScreen() {
 
             <View style={styles.aiQuotaRow}>
               <Text style={[styles.aiQuotaText, { color: sub.aiQuotaExceeded ? "#EF4444" : c.mutedText }]}>
-                {sub.aiUsedToday} / {sub.aiDailyLimit} AI uses today
+                {sub.aiUsedToday} / {sub.aiDailyLimit} activity/exam uses today
               </Text>
             </View>
 

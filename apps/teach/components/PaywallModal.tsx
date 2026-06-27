@@ -23,13 +23,13 @@ type Props = {
 const QUOTA_LABELS: Record<QuotaType, string> = {
   lesson_plan: "lesson plan",
   subject:     "subject",
-  ai:          "AI generation",
+  ai:          "automated activity/exam",
 };
 
 const TIER_ROWS = [
   { label: "Lesson plans", free: "2 lifetime", pro: "10",      max: "20"      },
   { label: "Subjects",     free: "2 total",    pro: "10",      max: "20"      },
-  { label: "AI / day",     free: "1",          pro: "5",       max: "20"      },
+  { label: "Auto activity/exam · day", free: "1",          pro: "5",       max: "20"      },
 ];
 
 export default function PaywallModal({ visible, onClose, quotaType, regionCode }: Props) {
