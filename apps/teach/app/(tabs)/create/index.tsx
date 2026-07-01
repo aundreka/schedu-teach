@@ -46,7 +46,7 @@ const OPTIONS: CreateOption[] = [
   {
     key: "activities",
     label: "Activities",
-    sublabel: "AI-generated",
+    sublabel: "Auto-generated",
     icon: "clipboard-outline",
     route: "/(tabs)/create/activities",
   },
