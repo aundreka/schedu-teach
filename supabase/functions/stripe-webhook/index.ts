@@ -49,6 +49,15 @@ Deno.serve(async (req: Request) => {
     const sigOk = await verifyStripeSignature(rawBody, signatureHeader, WEBHOOK_SECRET);
     if (!sigOk) return json({ error: "Invalid signature" }, 401);
 
+    // Replay window: reject events whose signed timestamp is more than 5 minutes
+    // from now. Idempotency blocks exact duplicates; this blocks stale replays.
+    const sigTs = Number(
+      signatureHeader.split(",").find((s) => s.trim().startsWith("t="))?.split("=")[1]?.trim() ?? "",
+    );
+    if (!Number.isFinite(sigTs) || Math.abs(Date.now() / 1000 - sigTs) > 300) {
+      return json({ error: "Stale signature" }, 401);
+    }
+
     let event: any;
     try {
       event = JSON.parse(rawBody);
@@ -134,8 +143,14 @@ async function handleSubscriptionEvent({
   const periodEnd   = secToIso(subscription?.current_period_end);
 
   let tier: Tier = "free";
-  if (priceId && priceId === tier1PriceId) tier = "tier1";
-  else if (priceId && priceId === tier2PriceId) tier = "tier2";
+  let tierKnown = false;
+  if (priceId && priceId === tier1PriceId) {
+    tier = "tier1";
+    tierKnown = true;
+  } else if (priceId && priceId === tier2PriceId) {
+    tier = "tier2";
+    tierKnown = true;
+  }
 
   let status: SubStatus;
   if (eventType === "customer.subscription.deleted") {
@@ -147,6 +162,13 @@ async function handleSubscriptionEvent({
            : stripeStatus === "canceled" || stripeStatus === "unpaid" ? "canceled"
            : "active";
     if (status === "canceled") tier = "free";
+
+    // Fail CLOSED: never grant an active/past_due subscription whose price we
+    // can't resolve to a known tier — that would silently downgrade a paying
+    // customer to free. Skip the mutation and surface it for triage.
+    if (status !== "canceled" && !tierKnown) {
+      return { handled: false, reason: `unknown price_id: ${priceId || "none"}` };
+    }
   }
 
   const { error } = await admin

@@ -462,12 +462,14 @@ function AnimatedUploadBtn({
   inactiveBg,
   onPress,
   children,
+  accessibilityLabel,
 }: {
   active: boolean;
   activeBg: string;
   inactiveBg: string;
   onPress: () => void;
   children: React.ReactNode;
+  accessibilityLabel?: string;
 }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -475,6 +477,8 @@ function AnimatedUploadBtn({
     <Animated.View style={[styles.uploadActionButton, { backgroundColor: active ? activeBg : inactiveBg }, animStyle]}>
       <Pressable
         style={styles.uploadActionInner}
+        accessibilityRole={accessibilityLabel ? "button" : undefined}
+        accessibilityLabel={accessibilityLabel}
         onPressIn={() => { scale.value = withTiming(0.88, { duration: 70 }); }}
         onPressOut={() => { scale.value = withSpring(1, { damping: 9, stiffness: 200 }); }}
         onPress={() => { Haptics.selectionAsync(); onPress(); }}
@@ -902,7 +906,7 @@ export default function CreateLessonScreen() {
       >
         <Animated.View entering={FadeInDown.duration(260).springify()} style={styles.headingRow}>
           <View style={styles.headingLeft}>
-            <Pressable onPress={handleBack} hitSlop={10}>
+            <Pressable onPress={handleBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
               <Ionicons name="caret-back" size={15} color={c.text} />
             </Pressable>
             <Text style={[styles.pageTitle, { color: c.text }]}>Create Lesson</Text>
@@ -910,6 +914,8 @@ export default function CreateLessonScreen() {
           <Pressable
             onPress={handleSave}
             disabled={!canSave}
+            accessibilityRole="button"
+            accessibilityLabel="Save lesson"
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : canSave ? 1 : 0.35 })}
           >
             {saving ? <ActivityIndicator size="small" color={c.text} /> : <Ionicons name="checkmark" size={17} color={c.text} />}
@@ -1023,6 +1029,7 @@ export default function CreateLessonScreen() {
               activeBg={activeIconButtonBg}
               inactiveBg={iconButtonBg}
               onPress={handlePickImage}
+              accessibilityLabel="Attach image"
             >
               <Ionicons name="image-outline" size={24} color={uploadMode === "image" ? activeIconColor : c.text} />
             </AnimatedUploadBtn>
@@ -1032,6 +1039,7 @@ export default function CreateLessonScreen() {
               activeBg={activeIconButtonBg}
               inactiveBg={iconButtonBg}
               onPress={handlePickFile}
+              accessibilityLabel="Attach file"
             >
               <Ionicons name="document-outline" size={24} color={uploadMode === "file" ? activeIconColor : c.text} />
             </AnimatedUploadBtn>

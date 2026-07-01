@@ -172,7 +172,7 @@ export default function LessonDetailScreen() {
         <View style={[styles.header, { backgroundColor: shellBg, borderBottomColor: c.border }]}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              <Pressable onPress={goBack} style={styles.iconTap}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={goBack} style={styles.iconTap}>
                 <Ionicons name="caret-back" size={14} color={c.text} />
               </Pressable>
               <Text numberOfLines={1} style={[styles.headerTitle, { color: c.text }]}>
@@ -181,7 +181,7 @@ export default function LessonDetailScreen() {
             </View>
 
             <View style={styles.menuWrap}>
-              <Pressable style={styles.iconTap} onPress={() => setShowMenu((current) => !current)} disabled={deleting}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Lesson options" style={styles.iconTap} onPress={() => setShowMenu((current) => !current)} disabled={deleting}>
                 {deleting ? <ActivityIndicator size="small" color={c.text} /> : <Ionicons name="ellipsis-horizontal" size={18} color={c.text} />}
               </Pressable>
               {showMenu ? (

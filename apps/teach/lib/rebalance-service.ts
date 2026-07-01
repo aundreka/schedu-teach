@@ -373,17 +373,30 @@ export async function snapshotVersion(
 
   const nextVersionNo = (lastVersion?.version_no ?? 0) + 1;
 
+  // Full block rows so a restore can faithfully re-create deleted blocks (which
+  // need NOT-NULL columns like algorithm_block_key/required), not just reposition
+  // survivors. Older snapshots may lack the newer fields; restoreVersion falls
+  // back sensibly for those.
   const blocksSnapshot = blocks.map((b) => ({
     block_id: b.block_id,
+    algorithm_block_key: b.algorithm_block_key,
     block_key: b.block_key,
     slot_key: b.slot_key,
     slot_id: b.slot_id,
+    root_block_id: b.root_block_id,
+    lesson_id: b.lesson_id,
     session_category: b.session_category,
     session_subcategory: b.session_subcategory,
+    meeting_type: b.meeting_type,
     title: b.title,
+    description: b.description,
     order_no: b.order_no,
     start_time: b.start_time,
     end_time: b.end_time,
+    required: b.required,
+    splittable: b.splittable,
+    preferred_session_type: b.preferred_session_type,
+    dependency_keys: b.dependency_keys,
     is_locked: b.is_locked,
     metadata: b.metadata,
   }));
@@ -783,28 +796,80 @@ export async function restoreVersion(planId: string, versionId: string): Promise
 
   const blocksSnapshot: any[] = versionRow.blocks_snapshot ?? [];
 
+  // A faithful restore must reconcile the full block set, not just reposition
+  // survivors: delete blocks added since the snapshot, re-create blocks deleted
+  // since the snapshot, and reposition the rest.
+  const snapById = new Map<string, any>();
   for (const snap of blocksSnapshot) {
-    if (!snap.block_id) continue;
-    // Resolve slot_id from slot_key if needed
-    let resolvedSlotId = snap.slot_id ?? null;
-    if (!resolvedSlotId && snap.slot_key) {
-      const slot = data.slots.find((s) => s.slot_key === snap.slot_key);
-      resolvedSlotId = slot?.slot_id ?? null;
-    }
+    if (snap.block_id) snapById.set(String(snap.block_id), snap);
+  }
+  const currentIds = new Set(data.blocks.map((b) => String(b.block_id)));
 
+  const resolveSlotId = (snap: any): string | null => {
+    if (snap.slot_id) return String(snap.slot_id);
+    if (snap.slot_key) {
+      const slot = data.slots.find((s) => s.slot_key === snap.slot_key);
+      return slot?.slot_id ?? null;
+    }
+    return null;
+  };
+
+  // 1) Delete blocks that exist now but were not in the snapshot.
+  const toDelete = [...currentIds].filter((id) => !snapById.has(id));
+  if (toDelete.length > 0) {
     const { error } = await supabase
       .from('blocks')
-      .update({
+      .delete()
+      .eq('lesson_plan_id', planId)
+      .in('block_id', toDelete);
+    if (error) throw error;
+  }
+
+  // 2) Reposition survivors; re-create blocks that were deleted since the snapshot.
+  for (const snap of blocksSnapshot) {
+    if (!snap.block_id) continue;
+    const resolvedSlotId = resolveSlotId(snap);
+
+    if (currentIds.has(String(snap.block_id))) {
+      const { error } = await supabase
+        .from('blocks')
+        .update({
+          slot_id: resolvedSlotId,
+          start_time: snap.start_time ?? undefined,
+          end_time: snap.end_time ?? undefined,
+          order_no: snap.order_no ?? 1,
+          is_locked: snap.is_locked ?? false,
+        })
+        .eq('block_id', snap.block_id)
+        .eq('lesson_plan_id', planId);
+      if (error) throw error;
+    } else {
+      // Re-create. Older snapshots may lack newer columns — fall back sensibly.
+      const { error } = await supabase.from('blocks').insert({
+        block_id: snap.block_id,
+        lesson_plan_id: planId,
         slot_id: resolvedSlotId,
-        start_time: snap.start_time ?? undefined,
-        end_time: snap.end_time ?? undefined,
+        root_block_id: snap.root_block_id ?? null,
+        lesson_id: snap.lesson_id ?? null,
+        algorithm_block_key: snap.algorithm_block_key ?? snap.block_key,
+        block_key: snap.block_key,
+        title: snap.title ?? 'Untitled',
+        description: snap.description ?? null,
+        session_category: snap.session_category,
+        session_subcategory: snap.session_subcategory,
+        meeting_type: snap.meeting_type ?? null,
+        start_time: snap.start_time,
+        end_time: snap.end_time,
+        required: snap.required ?? true,
+        splittable: snap.splittable ?? false,
+        preferred_session_type: snap.preferred_session_type ?? 'any',
+        dependency_keys: snap.dependency_keys ?? [],
         order_no: snap.order_no ?? 1,
         is_locked: snap.is_locked ?? false,
-      })
-      .eq('block_id', snap.block_id)
-      .eq('lesson_plan_id', planId);
-
-    if (error) throw error;
+        metadata: snap.metadata ?? {},
+      });
+      if (error) throw error;
+    }
   }
 }
 
@@ -822,6 +887,27 @@ export type SlotSuspensionInfo = {
 };
 
 export async function getSlotsForDay(planId: string, dateISO: string): Promise<SlotSuspensionInfo[]> {
+  // Scope suspension events to THIS plan's school/section/subject. Without this,
+  // a suspension from any other plan/section/school on the same date would mark
+  // these slots as suspended (cross-tenant leakage). Suspensions are written with
+  // school_id/section_id/subject_id (see suspendDay), so we match on all three.
+  const { data: planRow, error: planErr } = await supabase
+    .from('lesson_plans')
+    .select('school_id, section_id, subject_id')
+    .eq('lesson_plan_id', planId)
+    .maybeSingle();
+  if (planErr) throw planErr;
+
+  let evtQuery = supabase
+    .from('school_calendar_events')
+    .select('series_key')
+    .eq('event_type', 'suspension')
+    .lte('start_date', dateISO)
+    .gte('end_date', dateISO);
+  if (planRow?.school_id) evtQuery = evtQuery.eq('school_id', planRow.school_id);
+  if (planRow?.section_id) evtQuery = evtQuery.eq('section_id', planRow.section_id);
+  if (planRow?.subject_id) evtQuery = evtQuery.eq('subject_id', planRow.subject_id);
+
   const [slotRes, evtRes] = await Promise.all([
     supabase
       .from('slots')
@@ -829,12 +915,7 @@ export async function getSlotsForDay(planId: string, dateISO: string): Promise<S
       .eq('lesson_plan_id', planId)
       .eq('slot_date', dateISO)
       .order('slot_number'),
-    supabase
-      .from('school_calendar_events')
-      .select('series_key')
-      .eq('event_type', 'suspension')
-      .lte('start_date', dateISO)
-      .gte('end_date', dateISO),
+    evtQuery,
   ]);
 
   if (slotRes.error) throw slotRes.error;

@@ -35,23 +35,6 @@ export default function AuthIndex() {
 
   const isEmail = (v: string) => v.includes("@");
 
-  const getEmailFromIdentifier = async (id: string): Promise<string | null> => {
-    const trimmed = id.trim();
-    if (!trimmed) return null;
-
-    if (isEmail(trimmed)) return trimmed;
-
-    // Lookup email by username in public.users (case-insensitive).
-    const { data, error } = await supabase
-      .from("users")
-      .select("email")
-      .ilike("username", trimmed)
-      .limit(1);
-
-    if (error) throw error;
-    return data?.[0]?.email ?? null;
-  };
-
   const handlePasswordSignIn = async () => {
     setErrorMsg(null);
 
@@ -64,20 +47,34 @@ export default function AuthIndex() {
     try {
       setLoadingEmailPass(true);
 
-      const email = await getEmailFromIdentifier(id);
-      if (!email) {
-        setErrorMsg("Account not found.");
-        return;
-      }
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        setErrorMsg(error.message);
-        return;
+      if (isEmail(id)) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: id,
+          password,
+        });
+        if (error) {
+          setErrorMsg(error.message);
+          return;
+        }
+      } else {
+        // Username login: public.users is RLS-protected so the client cannot
+        // resolve username -> email. The username-login edge function does the
+        // lookup + sign-in server-side and returns a session to set locally.
+        const { data, error } = await supabase.functions.invoke("username-login", {
+          body: { username: id, password },
+        });
+        if (error || !data?.access_token || !data?.refresh_token) {
+          setErrorMsg((data as any)?.error ?? "Invalid username or password.");
+          return;
+        }
+        const { error: sessionErr } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
+        if (sessionErr) {
+          setErrorMsg(sessionErr.message);
+          return;
+        }
       }
 
       // ✅ signed in — send to your main area
@@ -250,6 +247,8 @@ function IconAuthButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={`Sign in with ${String(icon).replace(/^logo-/, "")}`}
       style={({ pressed }) => [
         styles.iconBtn,
         { borderColor: c.border, backgroundColor: c.card },

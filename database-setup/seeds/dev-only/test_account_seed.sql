@@ -1,4 +1,18 @@
+-- =====================================================================
+-- DEV-ONLY SEED — NEVER RUN IN PRODUCTION.
+-- Creates a test teacher account with a known password.
+-- Guard: this file aborts unless the operator explicitly opts in for the
+-- session with:   set app.allow_dev_seed = 'yes';
+-- See seeds/dev-only/README.md.
+-- =====================================================================
 begin;
+
+do $$
+begin
+  if current_setting('app.allow_dev_seed', true) is distinct from 'yes' then
+    raise exception 'Refusing to run dev-only seed. Run "set app.allow_dev_seed = ''yes'';" first (never in production).';
+  end if;
+end $$;
 
 create extension if not exists pgcrypto;
 
@@ -119,12 +133,15 @@ begin
       updated_at = now();
   end if;
 
+  -- usage_quotas was keyed on period_month before 10_billing_v2.sql renamed it
+  -- to period_day. This dev seed runs after the full schema (00 -> 12), so it
+  -- targets period_day.
   if to_regclass('public.usage_quotas') is not null then
-    insert into public.usage_quotas (user_id, period_month, ai_generations_used)
-    select userid, date_trunc('month', current_date)::date, 0
+    insert into public.usage_quotas (user_id, period_day, ai_generations_used)
+    select userid, current_date, 0
     from public.users
     where publicid = 'usr_schedu_test_teacher'
-    on conflict (user_id, period_month) do update
+    on conflict (user_id, period_day) do update
     set
       ai_generations_used = excluded.ai_generations_used,
       updated_at = now();

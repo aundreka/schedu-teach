@@ -2037,12 +2037,12 @@ export default function LessonplanScreen() {
       >
         <Animated.View entering={FadeInDown.duration(260).springify()} style={styles.headingRow}>
           <View style={styles.headingLeft}>
-            <Pressable onPress={handleBack} hitSlop={10}>
+            <Pressable onPress={handleBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
               <Ionicons name="caret-back" size={15} color={c.text} />
             </Pressable>
             <Text style={[styles.pageTitle, { color: c.text }]}>{replacePlanId ? "Recreate Lessonplan" : "Create Lessonplan"}</Text>
           </View>
-          <Pressable onPress={handleCreatePlan} disabled={saving} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+          <Pressable onPress={handleCreatePlan} disabled={saving} accessibilityRole="button" accessibilityLabel={replacePlanId ? "Recreate lesson plan" : "Create lesson plan"} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
             {saving ? <ActivityIndicator color={c.text} /> : <Ionicons name="checkmark" size={15} color={c.text} />}
           </Pressable>
         </Animated.View>
@@ -2102,7 +2102,7 @@ export default function LessonplanScreen() {
           <View style={[styles.subjectPreviewBox, { backgroundColor: filledFieldBg }]}> 
             <View style={styles.subjectPreviewHeader}>
               <Text style={styles.subjectPreviewTitle}>Subject Content - Table of Contents</Text>
-              <Pressable style={styles.pickContentBtn} onPress={() => {
+              <Pressable style={styles.pickContentBtn} accessibilityRole="button" accessibilityLabel="Edit subject content selection" onPress={() => {
                 animateIn();
                 setChapterModalOpen(true);
               }}>
@@ -2232,6 +2232,8 @@ export default function LessonplanScreen() {
                         <View style={styles.instanceHeaderRight}>
                           <View style={styles.instanceRoomSwitch}>
                             <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel="Set room to lecture"
                               style={({ pressed }) => [
                                 styles.roomIconChip,
                                 instance.room === "lecture" ? styles.roomIconChipActive : undefined,
@@ -2244,6 +2246,8 @@ export default function LessonplanScreen() {
                               {instance.room === "lecture" ? <Text style={styles.roomChipTextActive}>Lecture</Text> : null}
                             </Pressable>
                             <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel="Set room to laboratory"
                               style={({ pressed }) => [
                                 styles.roomIconChip,
                                 instance.room === "laboratory" ? styles.roomIconChipActive : undefined,
@@ -2257,11 +2261,11 @@ export default function LessonplanScreen() {
                             </Pressable>
                           </View>
                           <View style={styles.instanceActionRow}>
-                            <Pressable style={styles.removeBtn} onPress={() => duplicateInstance(day.key, instance.id)}>
+                            <Pressable style={styles.removeBtn} accessibilityRole="button" accessibilityLabel="Duplicate slot" onPress={() => duplicateInstance(day.key, instance.id)}>
                               <Ionicons name="copy-outline" size={14} color="#8A8A8A" />
                             </Pressable>
                             {row.instances.length > 1 ? (
-                              <Pressable style={styles.removeBtn} onPress={() => removeInstance(day.key, instance.id)}>
+                              <Pressable style={styles.removeBtn} accessibilityRole="button" accessibilityLabel="Remove slot" onPress={() => removeInstance(day.key, instance.id)}>
                                 <Ionicons name="close" size={16} color="#8A8A8A" />
                               </Pressable>
                             ) : null}
@@ -2336,7 +2340,7 @@ export default function LessonplanScreen() {
                     </Text>
                   </Pressable>
                   {examSchedules.length > 1 ? (
-                    <Pressable style={styles.iconAction} onPress={() => removeExamScheduleRow(row.id)}>
+                    <Pressable style={styles.iconAction} accessibilityRole="button" accessibilityLabel="Remove exam date" onPress={() => removeExamScheduleRow(row.id)}>
                       <Ionicons name="close" size={16} color="#8A8A8A" />
                     </Pressable>
                   ) : (
@@ -2368,7 +2372,7 @@ export default function LessonplanScreen() {
                 style={[styles.reasonInput, { color: row.reason.trim() ? filledText : emptyText }]}
               />
             </View>
-            <Pressable style={styles.iconAction} onPress={() => removeSpecialDateRow(row.id)}>
+            <Pressable style={styles.iconAction} accessibilityRole="button" accessibilityLabel="Remove special date" onPress={() => removeSpecialDateRow(row.id)}>
               <Ionicons name="close" size={16} color="#8A8A8A" />
             </Pressable>
             {index === specialDates.length - 1 ? (

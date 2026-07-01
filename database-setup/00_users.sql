@@ -87,6 +87,40 @@ on public.users for update
 using (auth.uid() = userID)
 with check (auth.uid() = userID);
 
+-- =========================================================================
+-- Privilege-escalation guard for users.role
+-- The update policy above is column-agnostic, so without this guard any
+-- authenticated user could run update({ role: 'superadmin' }) on their own row
+-- and satisfy is_current_user_admin(). Two layers:
+--   1) a BEFORE UPDATE trigger that rejects role changes from client sessions
+--      (the Supabase `authenticated`/`anon` roles). Role changes must go through
+--      a SECURITY DEFINER admin RPC, which runs as a privileged owner role and
+--      is therefore allowed through.
+--   2) column-level grants: clients may update only profile columns, never role.
+-- =========================================================================
+create or replace function public.enforce_user_role_guard()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.role is distinct from old.role then
+    if current_user in ('authenticated', 'anon') then
+      raise exception 'Changing users.role is not permitted from a client session'
+        using errcode = '42501';
+    end if;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists trg_users_role_guard on public.users;
+create trigger trg_users_role_guard
+before update on public.users
+for each row execute function public.enforce_user_role_guard();
+
+-- Defense in depth: clients can update profile fields but not role.
+revoke update on public.users from authenticated, anon;
+grant update (first_name, last_name, username, email) on public.users to authenticated;
+
 insert into storage.buckets (id, name, public)
 values ('uploads', 'uploads', false)
 on conflict (id) do nothing;

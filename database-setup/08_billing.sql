@@ -61,7 +61,18 @@ create table if not exists public.usage_quotas (
 );
 
 create index if not exists usage_quotas_user_id_idx on public.usage_quotas(user_id);
-create index if not exists usage_quotas_period_idx on public.usage_quotas(period_month);
+-- 10_billing_v2.sql renames period_month -> period_day. On a re-apply against an
+-- already-migrated database the column is gone, so guard this index on its existence
+-- (10 creates the period_day index either way).
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'usage_quotas' and column_name = 'period_month'
+  ) then
+    create index if not exists usage_quotas_period_idx on public.usage_quotas(period_month);
+  end if;
+end $$;
 
 create or replace trigger trg_usage_quotas_updated_at
 before update on public.usage_quotas
@@ -98,6 +109,21 @@ drop policy if exists "users can read own subscription" on public.subscriptions;
 create policy "users can read own subscription"
 on public.subscriptions for select
 using (auth.uid() = user_id);
+
+-- Without this, the admin dashboard's "teachers on Pro" counts and tier badges
+-- always read null (cross-teacher join blocked by RLS). Let a school admin read
+-- the subscriptions of teachers in a school they administer.
+drop policy if exists "school admins can read member subscriptions" on public.subscriptions;
+create policy "school admins can read member subscriptions"
+on public.subscriptions for select
+using (
+  exists (
+    select 1
+    from public.user_schools us
+    where us.user_id = subscriptions.user_id
+      and public.is_current_user_school_admin(us.school_id)
+  )
+);
 
 drop policy if exists "users can read own usage quotas" on public.usage_quotas;
 create policy "users can read own usage quotas"
@@ -247,6 +273,10 @@ grant execute on function public.create_lesson_plan(uuid, uuid, uuid, text, date
 -- AI quota RPCs
 -- =========================
 
+-- 10_billing_v2.sql redefines this with a different OUT row type (period_day instead of
+-- period_month). create-or-replace cannot change a function's OUT params, so on a re-apply
+-- against an already-migrated DB the plain replace fails — drop first to stay idempotent.
+drop function if exists public.get_ai_quota_status();
 create or replace function public.get_ai_quota_status()
 returns table (
   tier public.subscription_tier,

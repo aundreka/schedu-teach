@@ -149,8 +149,12 @@ export default function LessonEditorScreen() {
   const sendCommand = (command: EditorCommand) => {
     const webView = editorRef.current;
     if (!webView) return;
-    const payload = JSON.stringify(command).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-    webView.injectJavaScript(`window.__lessonEditor && window.__lessonEditor.dispatch(JSON.parse('${payload}')); true;`);
+    // Double-stringify: the inner call yields the JSON payload; the outer call
+    // turns it into a fully-escaped JS string literal (quotes, backslashes,
+    // control chars). Safer than hand-escaping a single-quoted literal, which
+    // missed control characters and Unicode line separators.
+    const payload = JSON.stringify(JSON.stringify(command));
+    webView.injectJavaScript(`window.__lessonEditor && window.__lessonEditor.dispatch(JSON.parse(${payload})); true;`);
   };
 
   const handleMessage = (event: WebViewMessageEvent) => {
@@ -244,7 +248,7 @@ export default function LessonEditorScreen() {
         <View style={[styles.header, { backgroundColor: shellBg, borderBottomColor: c.border }]}>
           <View style={styles.headerRow}>
             <View style={styles.headerLeft}>
-              <Pressable onPress={goBack} style={styles.iconTap}>
+              <Pressable accessibilityRole="button" accessibilityLabel="Go back" onPress={goBack} style={styles.iconTap}>
                 <Ionicons name="caret-back" size={14} color={c.text} />
               </Pressable>
               <Text numberOfLines={1} style={[styles.headerTitle, { color: c.text }]}>
@@ -252,7 +256,7 @@ export default function LessonEditorScreen() {
               </Text>
             </View>
 
-            <Pressable onPress={saveEdit} disabled={saving} style={styles.iconTap}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Save" onPress={saveEdit} disabled={saving} style={styles.iconTap}>
               {saving ? <ActivityIndicator size="small" color={c.text} /> : <Ionicons name="checkmark" size={22} color={c.text} />}
             </Pressable>
           </View>
@@ -273,34 +277,42 @@ export default function LessonEditorScreen() {
             <Pressable style={resolveToolButtonStyle(toolbarState.strike)} onPress={() => sendCommand({ type: "strike" })}>
               <Text style={[styles.toolText, styles.strikeTool, { color: resolveToolTextColor(toolbarState.strike) }]}>S</Text>
             </Pressable>
-            <Pressable style={resolveToolButtonStyle(toolbarState.bullet)} onPress={() => sendCommand({ type: "bullet" })}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Bullet list" style={resolveToolButtonStyle(toolbarState.bullet)} onPress={() => sendCommand({ type: "bullet" })}>
               <Ionicons name="list" size={18} color={resolveToolTextColor(toolbarState.bullet)} />
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Align left"
               style={resolveToolButtonStyle(toolbarState.align === "left")}
               onPress={() => sendCommand({ type: "align", value: "left" })}
             >
               <Ionicons name="reorder-three-outline" size={18} color={resolveToolTextColor(toolbarState.align === "left")} />
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Align center"
               style={resolveToolButtonStyle(toolbarState.align === "center")}
               onPress={() => sendCommand({ type: "align", value: "center" })}
             >
               <Ionicons name="remove-outline" size={18} color={resolveToolTextColor(toolbarState.align === "center")} />
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Align right"
               style={resolveToolButtonStyle(toolbarState.align === "right")}
               onPress={() => sendCommand({ type: "align", value: "right" })}
             >
               <Ionicons name="menu-outline" size={18} color={resolveToolTextColor(toolbarState.align === "right")} />
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Insert link"
               style={resolveToolButtonStyle(showLinkEditor || toolbarState.link)}
               onPress={() => setShowLinkEditor((current) => !current)}
             >
               <Ionicons name="link-outline" size={18} color={resolveToolTextColor(showLinkEditor || toolbarState.link)} />
             </Pressable>
-            <Pressable style={resolveToolButtonStyle(toolbarState.code)} onPress={() => sendCommand({ type: "code" })}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Code block" style={resolveToolButtonStyle(toolbarState.code)} onPress={() => sendCommand({ type: "code" })}>
               <Ionicons name="code-slash-outline" size={18} color={resolveToolTextColor(toolbarState.code)} />
             </Pressable>
           </View>

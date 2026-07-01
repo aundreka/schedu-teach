@@ -448,7 +448,12 @@ export default function Profile() {
       >
         <View style={styles.screenTopRow}>
           <Text style={[styles.screenTitle, { color: c.text }]}>Profile</Text>
-          <Pressable style={styles.iconBtn} onPress={() => router.push("/profile/settings")}>
+          <Pressable
+            style={styles.iconBtn}
+            onPress={() => router.push("/profile/settings")}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
             <Ionicons name="settings-outline" size={22} color={c.text} />
           </Pressable>
         </View>
@@ -485,13 +490,28 @@ export default function Profile() {
         <View style={styles.topRow}>
           <Text style={[styles.title, { color: c.text }]}>Institutions</Text>
           <View style={styles.iconRow}>
-            <Pressable style={styles.iconBtn} onPress={() => setSearchOpen((prev) => !prev)}>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={() => setSearchOpen((prev) => !prev)}
+              accessibilityRole="button"
+              accessibilityLabel="Search institutions"
+            >
               <Ionicons name="search" size={20} color={c.text} />
             </Pressable>
-            <Pressable style={styles.iconBtn} onPress={() => setShowInstitutionModal(true)}>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={() => setShowInstitutionModal(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Add institution"
+            >
               <Ionicons name="add" size={24} color={c.text} />
             </Pressable>
-            <Pressable style={styles.iconBtn} onPress={() => setShowFilterModal(true)}>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={() => setShowFilterModal(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Filter institutions"
+            >
               <Ionicons name="options-outline" size={20} color={c.text} />
             </Pressable>
           </View>
@@ -508,7 +528,11 @@ export default function Profile() {
               style={[styles.searchInput, { color: c.text }]}
             />
             {searchQuery ? (
-              <Pressable onPress={() => setSearchQuery("")}>
+              <Pressable
+                onPress={() => setSearchQuery("")}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+              >
                 <Ionicons name="close-circle" size={16} color={c.mutedText} />
               </Pressable>
             ) : null}
@@ -663,6 +687,8 @@ export default function Profile() {
                 <Pressable
                   key={color}
                   onPress={() => setAvatarColor(color)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select avatar color ${color}`}
                   style={[
                     styles.colorDot,
                     { backgroundColor: color, borderColor: avatarColor === color ? c.text : c.border },

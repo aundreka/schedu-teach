@@ -1,146 +1,185 @@
 
----
+# ScheduTeach — Launch TODO
 
-## START TODAY (time-sensitive)
+Legend: [YOU] = only you can do it (accounts/payments/store) · [CLAUDE] = I can do it ·
+[BOTH] = needs a hand-off · [x] done · [/] in progress · [ ] not started
 
-- [ ] [YOU] Create Google Play Console developer account ($25 one-time, ~48hr identity verification)
-- [ ] [YOU] Buy scheduhq.com on Namecheap or Porkbun (~₱850-1100/yr)
-- [ ] [YOU] Rotate Qwen/DashScope API key in console, then in Supabase: `supabase secrets set QWEN_API_KEY=<new-key>`
-- [ ] [YOU] Install Supabase CLI: `npm install -g supabase`
-- [ ] [YOU] Install expo-localization: `expo install expo-localization`
-
----
-
-## Phase 0 — Cleanup
-
-- [x] Untrack .env from git, add .env.example (commit f339e60)
-- [x] Bundle ID set to ph.scheduhq.com (commit 7243db4)
-- [ ] [YOU] Provision production Supabase project (separate from current dev project dqjfnmomvkxetzcescrf)
-- [ ] [YOU] Run database-setup/*.sql files in order (00 → 10) against the new prod project via Supabase SQL editor
-- [ ] [YOU] Copy new prod URL + publishable key into a local .env.production file (untracked)
+Last updated 2026-07-01 after re-auditing the codebase against the QA report
+(ScheduTeach-QA-Audit-Report.md, dated 2026-06-20). **Important:** the report is
+stale — a hardening pass has already fixed almost every launch blocker in it. The
+verified current status is captured below. Only unchecked items remain.
 
 ---
 
-## Phase 0.5 — Mid-term onboarding & algorithm (launch slipped to Jul 1)
+## ⭐ WHAT ONLY YOU CAN DO (do these — they unblock me)
 
-### Algorithm + schema
-- [x] [CLAUDE] database-setup/09_onboarding.sql: add lesson_plans.effective_start_date, lesson_plans.progress_anchor (jsonb), users.onboarded_at
-- [x] [CLAUDE] Add effective_start_date + progress_anchor to LessonPlanRow in algorithm/00_types.ts
-- [x] [CLAUDE] Patch algorithm/01_slots.ts:124 — clamp enumerateDates to max(start_date, effective_start_date)
-- [x] [CLAUDE] Patch algorithm/02_blocks.ts — skip blocks where order_no <= progress_anchor[category]
-- [x] [CLAUDE] lib/term-progress.ts: getCurrentTerm(), getWeekOfTerm() helpers
-- [x] [CLAUDE] lib/deped-calendar.ts: SY 2026-2027 anchors (Jun 8 / Sep 1 / Dec 1 / Mar 31)
-- [ ] [BOTH] Verify: fresh-start plan unchanged; mid-term plan (effective_start=today+30d, lesson_no=3) skips lessons 1-3 and schedules from today
-- [ ] [YOU] Apply database-setup/09_onboarding.sql against dev project (idempotent)
+### ✅ DONE THIS SESSION (via the access token you gave me)
+- [x] [CLAUDE] Applied all 13 schema files (00→12) to the DEV project (dqjfnmomvkxetzcescrf).
+- [x] [CLAUDE] Deployed all 8 edge functions to dev; liveness-checked (login 400, delete 401, etc.).
+- [x] [CLAUDE] Created the PRODUCTION project **schedu-prod** (ref `rlaqermqpykxazfyfnpq`,
+      ap-southeast-1). DB password saved to `.supabase-prod-db-password` (gitignored — SAVE IT to a
+      password manager, then you can delete the file).
+- [x] [CLAUDE] Applied all 13 schema files to PROD (clean fresh 00→12) + deployed all 8 functions.
+- [x] [CLAUDE] Verified prod live: 26 tables, RLS on every user-facing table, role-guard trigger,
+      functions responding.
+- [x] [CLAUDE] Wrote `.env.production` (gitignored) with the prod URL + publishable key for prod builds.
+- [x] [CLAUDE] Fixed 6 REAL migration bugs found by applying to real DBs (dev re-apply + fresh prod):
+      (1) `current_user` reserved-word alias in 06 — syntax error on ANY apply;
+      (2) plan_subject_content defined in 04 but references lesson_plans (05) — fresh apply failed;
+      (3) activities RLS in 06 but table created in 07 — fresh apply failed;
+      (4) subjects.course_id / (5) lesson_plans.term missing on legacy tables (added idempotent alters);
+      (6) usage_quotas period_month index + get_ai_quota_status signature clash on re-apply.
+      → A clean 00→12 cutover now provably works (this was the QA report's "cutover will fail" risk).
+- ⚠️ [YOU] SECURITY: the `supabase-token` file (your PAT) is in the repo root. I gitignored it,
+      but **revoke it** at https://supabase.com/dashboard/account/tokens when we're done, or move it
+      out of the repo. Don't commit it. Same for `.supabase-prod-db-password`.
 
-### Onboarding wizard
-- [x] [CLAUDE] Scaffold app/onboarding/_layout.tsx + onboarding screen (single-screen MVP — institution/subjects pre-seed deferred; mid-term branch is the priority)
-- [x] [CLAUDE] "Have you started teaching?" mid-term branch (sets effective_start_date + progress_anchor)
-- [x] [CLAUDE] Onboarding gate in app/_layout.tsx (redirect if !users.onboarded_at)
-- [ ] [CLAUDE] Optional: institution / subjects / sections pre-seed steps (deferred; teachers can do this from create-plan form for now)
-- [ ] [BOTH] Smoke test: fresh signup → wizard → first plan generated correctly (both fresh + mid-term paths)
+### Secrets still needed (the ONE that blocks a core feature is first)
+- [ ] [YOU] **GEMINI_API_KEY** — AI activity generation returns 500 without it (that's why the
+      liveness check failed). Give me a Gemini API key and I run
+      `supabase secrets set GEMINI_API_KEY=...`. (Already set on the project: SUPABASE_* keys,
+      EXTRACTOR_URL. QWEN is not used by any function — the code uses Gemini.)
 
-### Mid-term awareness UX
-- [x] [CLAUDE] Replace hardcoded ${nowYear}-06-05 default at app/(tabs)/create/lessonplan.tsx:670 with defaultPlanStart() = max(SY-term-start, today)
-- [x] [CLAUDE] "Week X of Term Y" pill on home (app/(tabs)/index.tsx) and plans/plan_detail.tsx
-- [x] [CLAUDE] "Today" line indicator on calendar/index.tsx and calendar/daily.tsx (both already had it; verified)
-- [x] [CLAUDE] Replace demo polynomial empty state on home with "Create your first plan" CTA
-- [x] [CLAUDE] Update supabase/functions/generate-activity/index.ts to honor effective_start_date + progress_anchor (planContext field added; callers pass termLabel/weekOfTerm/progressAnchor to bias the prompt)
+### Third-party accounts & secrets (I literally can't create these for you)
+- [x] [CLAUDE] PRODUCTION Supabase project provisioned + schema + functions (see DONE section above).
+      Remaining prod steps are yours (dashboard-only, need external setup) — do them on
+      project `rlaqermqpykxazfyfnpq`:
+      - [ ] Authentication → URL Config: set Site URL and add Redirect URLs for the app deep links
+            (`ph.schedu.app://auth/callback` and `ph.schedu.app://auth/update-password`) so OAuth +
+            password reset resolve in prod.
+      - [ ] Authentication → Providers: turn ON "Confirm email"; add Google/Apple/FB OAuth
+            credentials if you want social login (each needs a client id/secret from that provider).
+      - [ ] Secrets on prod: I set GEMINI_API_KEY + PayMongo/Stripe secrets here too once you give me
+            the values (same as dev).
+      Note: `uploads` bucket + all RLS are created by the migrations — no manual setup.
+- [ ] [YOU] PayMongo merchant account + business verification. After approval, give me the values
+      and I run `supabase secrets set` for these exact vars (read by create-paymongo-checkout +
+      paymongo-webhook):
+        PAYMONGO_SECRET_KEY, PAYMONGO_WEBHOOK_SECRET,
+        PAYMONGO_TIER1_PLAN_ID, PAYMONGO_TIER2_PLAN_ID,
+        PAYMONGO_SUCCESS_URL, PAYMONGO_CANCEL_URL   (last two = your domain landing pages)
+      Then register the webhook URL in the PayMongo dashboard (I'll give you the URL) and paste the
+      signing secret back.
+- [ ] [YOU] Stripe account (non-PH card users). Create PRO + MAX recurring products → give me the
+      values for these exact vars (read by create-checkout-session + stripe-webhook):
+        STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+        STRIPE_TIER1_PRICE_ID, STRIPE_TIER2_PRICE_ID
+      Then add the webhook endpoint in Stripe (events: customer.subscription.*,
+      invoice.payment_succeeded, invoice.payment_failed) and paste the signing secret back.
+- [ ] [YOU] Buy **scheduhq.com** (final brand). Web paywall + PayMongo/Stripe success/cancel pages
+      live here. (App bundle id stays `ph.schedu.app` — that's just the store identifier and does
+      not need to match the domain.)
+- [ ] [YOU] Google Play Console developer account ($25 one-time, ~48h ID verification).
+- [ ] [YOU] (Only if you ship iOS) Apple Developer Program account ($99/yr).
+- [ ] [YOU] Sentry free-tier project → give me the DSN → I wire it into app.json + .env.
 
----
-
-## Phase 1 — Subscription infrastructure
-
-### Database & enforcement
-- [x] [CLAUDE] database-setup/08_billing.sql (subscriptions, usage_quotas, paymongo_webhook_events tables; create_lesson_plan, increment_ai_quota RPCs; handle_new_auth_user trigger)
-- [x] [CLAUDE] database-setup/06_rls.sql — revoke direct INSERT on lesson_plans
-- [x] [CLAUDE] database-setup/10_billing_v2.sql — updated tier limits (free 2/2/1, tier1 10/10/5, tier2 20/20/20), daily AI quota, subject quota, billing_events table, get_billing_history RPC, create_user_subject RPC, Stripe columns on subscriptions, stripe_webhook_events table
-- [ ] [YOU] Apply 08_billing.sql then 09_onboarding.sql then 10_billing_v2.sql against dev project IN ORDER
-- [ ] [YOU] Apply all SQL files (00→10) against prod project when provisioned
-- [ ] [BOTH] Verify quota: create 3 lesson plans on free test user — 3rd should show paywall in app
-- [ ] [BOTH] Verify AI quota: generate activity twice on free user same day — 2nd should show paywall
-
-### Edge functions
-- [x] [CLAUDE] supabase/functions/generate-activity/index.ts — quota check + increment (returns 402 on cap)
-- [x] [CLAUDE] supabase/functions/paymongo-webhook/index.ts — HMAC verify, idempotent log, subscription state updates, billing_events writes
-- [x] [CLAUDE] supabase/functions/create-checkout-session/index.ts — Stripe Checkout Session for non-PH users
-- [x] [CLAUDE] supabase/functions/_shared/rate-limit.ts — in-memory token bucket
-- [ ] [YOU] supabase login → supabase link --project-ref dqjfnmomvkxetzcescrf
-- [ ] [YOU] Set PayMongo secrets: `supabase secrets set PAYMONGO_WEBHOOK_SECRET=... PAYMONGO_TIER1_PLAN_ID=... PAYMONGO_TIER2_PLAN_ID=...`
-- [ ] [YOU] Set Stripe secrets: `supabase secrets set STRIPE_SECRET_KEY=... STRIPE_TIER1_PRICE_ID=... STRIPE_TIER2_PRICE_ID=... STRIPE_WEBHOOK_SECRET=...`
-- [ ] [YOU] Deploy: `supabase functions deploy generate-activity paymongo-webhook create-checkout-session stripe-webhook delete-account`
-- [ ] [YOU] Set PayMongo webhook URL in PayMongo dashboard → copy signing secret → set PAYMONGO_WEBHOOK_SECRET
-- [ ] [YOU] Register stripe-webhook URL in Stripe dashboard → Webhooks → add endpoint, select events: customer.subscription.*, invoice.payment_succeeded, invoice.payment_failed → copy signing secret → set STRIPE_WEBHOOK_SECRET
-- [x] [CLAUDE] Stripe webhook handler (supabase/functions/stripe-webhook/index.ts) — handles subscription.* and invoice.* events, updates tier in DB
-
-### App-side paywall UX
-- [x] [CLAUDE] lib/pricing.ts — locale-based pricing table (PH/US/GB/AU/EU/etc.), startCheckout()
-- [x] [CLAUDE] hooks/useSubscription.ts + context/subscription.tsx — single RPC, shared across app
-- [x] [CLAUDE] components/PaywallModal.tsx — bottom-sheet with tier comparison + upgrade CTAs
-- [x] [CLAUDE] app/profile/subscription.tsx — My Plan screen (usage bars, tier cards, billing history)
-- [x] [CLAUDE] components/header.tsx — FREE/PRO/MAX tier badge, taps to My Plan
-- [x] [CLAUDE] app/profile/settings.tsx — "My Plan" nav row
-- [x] [CLAUDE] app/_layout.tsx — SubscriptionProvider + AppState refetch on foreground
-- [x] [CLAUDE] app/(tabs)/create/lessonplan.tsx — uses create_lesson_plan RPC; quota_exceeded → PaywallModal
-- [x] [CLAUDE] app/(tabs)/create/activities.tsx — 402 response → PaywallModal
-- [x] [CLAUDE] app/(tabs)/create/subject.tsx — uses create_user_subject RPC; quota_exceeded → PaywallModal
-- [x] [CLAUDE] Show remaining AI uses today as small counter on activities screen (e.g. "3/5 today")
-- [ ] [YOU] Create Stripe account → create PRO + MAX recurring subscription products → copy Price IDs into secrets above
-
-### PayMongo web paywall (scheduhq.com)
-- [ ] [YOU] Sign up for PayMongo merchant account, complete business verification
-- [x] [CLAUDE] Scaffold Next.js paywall site in web/ (upgrade, success, cancel, manage pages + PayMongo API route)
-- [ ] [YOU] cd web && npm install && copy .env.local.example → .env.local, fill PAYMONGO_SECRET_KEY
-- [ ] [YOU] Deploy to Vercel: `cd web && npx vercel --prod`, then point scheduhq.com DNS to Vercel
-- [ ] [BOTH] End-to-end test: subscribe via PayMongo test mode → webhook → tier flips in DB → app badge updates
+### After I deploy — quick joint smoke tests
+- [ ] [BOTH] Free user hits lesson-plan cap (3rd plan) → paywall shows.
+- [ ] [BOTH] Free user generates activity twice same day → 2nd shows paywall (402).
+- [ ] [BOTH] PayMongo test-mode subscribe → webhook → tier flips in DB → app badge updates.
 
 ---
 
-## Phase 2 — Production hardening (parallel with Phase 1)
+## ✅ ALREADY FIXED (verified in the working tree today — audit evidence in each note)
 
-- [x] [CLAUDE] Draft eas.json with production (AAB) + preview (APK) Android profiles
-- [ ] [YOU] Run `eas init` and `eas build:configure` (creates Expo project on EAS)
-- [ ] [YOU] First EAS preview build to verify signing works (`eas build -p android --profile preview`)
-- [x] [CLAUDE] Add Sentry infrastructure (lib/sentry.ts — lazy no-op until package installed)
-- [ ] [YOU] expo install @sentry/react-native → add plugin to app.json → set EXPO_PUBLIC_SENTRY_DSN in .env
-- [ ] [YOU] Create free-tier Sentry project, paste DSN into .env
-- [x] [CLAUDE] Add global React error boundary at root layout (components/ErrorBoundary.tsx, wraps AppNav)
-- [x] [CLAUDE] Add account deletion flow (profile/settings button + delete-account edge function)
-- [ ] [CLAUDE] Decide on admin dashboard: hide empty sub-routes OR build minimal stubs
-- [ ] [CLAUDE] Add email_confirmed_at gate on create_lesson_plan RPC
-- [x] [CLAUDE] Fix lint issues (38 problems: 9 errors, 29 warnings — all addressed)
-- [ ] [BOTH] Privacy policy + Terms of Service (draft text → publish at scheduhq.com/privacy and /terms)
-- [ ] [CLAUDE] Notification preferences screen (profile/notifications.tsx) — push/email toggles
-- [ ] [CLAUDE] Wire admin CRUD: (admin)/teachers/index.tsx, (admin)/plans/index.tsx currently read-only
-- [ ] [CLAUDE] Audit and either complete or hide: app/(tabs)/plans/plan_history.tsx (likely stub)
-- [ ] [CLAUDE] Password strength validation on sign-up (currently just 8+ chars at app/(auth)/sign-up.tsx)
-- [ ] [CLAUDE] Export lesson plan (PDF/print) — no button currently exists in plan_detail.tsx
+### Critical DB / security (QA §B, §F, §G) — all resolved
+- [x] [CLAUDE] Role self-escalation guarded: BEFORE UPDATE trigger + column REVOKE
+      (00_users.sql:101-122).
+- [x] [CLAUDE] `units` RLS enabled + subject-membership policies (06_rls.sql:15,258-291).
+- [x] [CLAUDE] `courses`/`user_courses` tables created before `subjects` (04_academics.sql:8-26).
+- [x] [CLAUDE] `user_schools` UPDATE + DELETE policies → set-primary / delete work (06_rls.sql:111-120).
+- [x] [CLAUDE] `subscriptions` admin read policy (08_billing.sql:105-115).
+- [x] [CLAUDE] `school_calendar_events` writes scoped to creator/admin (06_rls.sql:519-552).
+- [x] [CLAUDE] Seed/placeholder accounts quarantined to seeds/dev-only/ + opt-in guard;
+      apply.sh excludes them (database-setup/README.md, apply.sh, seeds/dev-only/).
+- [x] [CLAUDE] Migration order made safe (period_month→period_day drop is guarded, 10_billing_v2.sql).
+- [x] [CLAUDE] CI regression checks for the RLS holes (database-setup/ci/security_checks.sql).
+
+### Edge functions (QA §F) — resolved
+- [x] [CLAUDE] Both webhooks FAIL CLOSED on unknown plan/price (paymongo-webhook:178-180,
+      stripe-webhook:169-171).
+- [x] [CLAUDE] Webhook replay window ±300s (paymongo-webhook:57-65, stripe-webhook:52-59).
+- [x] [CLAUDE] HMAC verify, constant-time compare, idempotency tables (both webhooks).
+- [x] [CLAUDE] `generate-activity` caps AI input length + keeps system prompt authoritative +
+      quota check/increment returns 402 (generate-activity.ts).
+- [x] [CLAUDE] `extract-text` rate-limited + no longer leaks extractor URL/upstream errors.
+- [x] [CLAUDE] `username-login` edge function resolves username→email via service role WITHOUT
+      leaking emails; anti-enumeration generic errors.
+- [x] [CLAUDE] `delete-account` now rate-limited (3/min per user) + stops leaking error text (fixed today).
+- [x] [CLAUDE] Stopped echoing upstream/DB error text to clients in create-checkout-session +
+      generate-activity (fixed today).
+
+### App launch blockers (QA §H) — resolved
+- [x] [CLAUDE] Username login now calls the username-login function (app/(auth)/index.tsx:63-77).
+- [x] [CLAUDE] Password reset deep-link resolves (app/(auth)/update-password.tsx + _layout.tsx:15).
+- [x] [CLAUDE] OAuth callback handled: exchangeCodeForSession (app/(auth)/callback.tsx).
+- [x] [CLAUDE] Add WW/PT requirement insert includes all NOT-NULL cols + valid session pair
+      (plan_detail.tsx:518-532).
+- [x] [CLAUDE] Term edit persisted in lesson_plans.update (plan_detail.tsx:750).
+- [x] [CLAUDE] Settings no longer nulls the profile on failed load (settings.tsx:86-90,140-143).
+- [x] [CLAUDE] Plans filter no-op removed; requirement steppers are real Pressables.
+- [x] [CLAUDE] ww_detail filters to session_category='written_work' (ww_detail.tsx:210).
+- [x] [CLAUDE] Pricing opens a REAL checkout via create-paymongo-checkout / create-checkout-session
+      (lib/pricing.ts:63-95) — no more scheduhq.com placeholder.
+- [x] [CLAUDE] Sign-up password strength (8+, letter+number, common-password blocklist).
+- [x] [CLAUDE] plan_history.tsx (0-byte crash risk) deleted.
+- [x] [CLAUDE] Dark mode fixed on exam/ww/pt_detail, activities, and block-editor
+      (block-editor residual text colors fixed today: block-editor.tsx).
 
 ---
 
-## Phase 3 — Soft launch prep
+## 🔧 REMAINING CODE ITEMS (non-blocking for a 20-50 tester soft launch)
 
-- [ ] [YOU] Compile email list of 20-50 secondary teacher beta testers
-- [ ] [YOU] Take 4-8 screenshots on a real Android device (calendar, create plan, activity gen, paywall)
-- [ ] [YOU] Create 1024x500 feature graphic for Play Store
-- [ ] [YOU] Fill out Play Console: app name, short desc, full desc, content rating, target audience, data safety form
-- [ ] [BOTH] Bug reporting channel: Google Form OR Supabase-backed feedback table
-- [ ] [CLAUDE] Add "Send feedback" link in profile screen pointing to the form
-- [ ] [CLAUDE] Optional: seed-sample-data RPC for fresh tester accounts
-- [ ] [BOTH] End-to-end smoke test (run the full verification checklist from the plan)
+### Advisory hardening (do before a public/scaled launch, not before closed beta)
+- [ ] [CLAUDE] Move the edge-function rate limiter to a shared store (Redis/Upstash or a
+      Postgres RPC). Today it's in-memory per-isolate (_shared/rate-limit.ts) — the code itself
+      says this is "good enough for the soft launch." Needed at ~100k users.
+- [ ] [CLAUDE] Add abuse throttling to `join_school_by_code` (11_departments.sql) — 8-hex join
+      codes are brute-forceable; add a join_attempts table + per-user rate check. Design choice,
+      flagging rather than silently patching.
+- [ ] [CLAUDE] Webhook responses still include `details:` error text — low risk (recipient is the
+      signature-verified payment provider, not end users); tidy for consistency later.
+
+### Product / polish (QA §D, §M — not launch blockers)
+- [ ] [CLAUDE] Wire Sentry reporting from ErrorBoundary once you provide the DSN.
+- [ ] [CLAUDE] email_confirmed_at gate on create_lesson_plan RPC.
+- [ ] [CLAUDE] Lesson-plan export/print (PDF) button in plan_detail.
+- [ ] [CLAUDE] Notification preferences screen (profile/notifications.tsx).
+- [ ] [CLAUDE] Admin CRUD (teachers/plans screens currently read-only) OR hide the write UI.
+- [ ] [CLAUDE] Fix inverted admin term-date math ((admin)/index.tsx).
+- [ ] [CLAUDE] Accessibility labels on icon-only controls + toast live region.
+- [ ] [CLAUDE] De-dupe the four library detail screens; standardize date handling.
+- [ ] [BOTH] Privacy Policy + Terms of Service (draft → publish at your domain /privacy, /terms).
+- [ ] [CLAUDE] "Send feedback" link in profile + a feedback table or Google Form.
 
 ---
 
-## Phase 4 — Launch
+## 📦 DEPLOY RUNBOOK (what I run once you give me the access token)
 
-- [ ] [YOU] `eas build -p android --profile production` → upload AAB to Play Console closed testing
-- [ ] [YOU] Add tester emails to closed testing track, send opt-in links, test on one device
-- [ ] [YOU] Email the cohort with the install link
-- [ ] [BOTH] Monitor Sentry + Supabase logs for the first 48hrs
-- [ ] [YOU] Be available for hot-patches via EAS Update (no Play Store re-review needed for JS changes)
+```
+# 1. Apply schema to dev (idempotent, 00→12). Needs a DB connection string with password,
+#    OR I use `supabase db push` after linking. I'll confirm the exact path with the token.
+cd database-setup && ./apply.sh "postgresql://postgres:<db-pass>@<host>:5432/postgres"
 
+# 2. Deploy every edge function
+supabase functions deploy generate-activity paymongo-webhook stripe-webhook \
+  create-checkout-session create-paymongo-checkout extract-text username-login delete-account
 
-You need accounts before payments work:
+# 3. Set secrets (I fill these once you hand me the values)
+supabase secrets set GEMINI_API_KEY=... QWEN_API_KEY=... \
+  PAYMONGO_WEBHOOK_SECRET=... PAYMONGO_TIER1_PLAN_ID=... PAYMONGO_TIER2_PLAN_ID=... \
+  STRIPE_SECRET_KEY=... STRIPE_TIER1_PRICE_ID=... STRIPE_TIER2_PRICE_ID=... STRIPE_WEBHOOK_SECRET=...
 
-Sign up for PayMongo → get webhook secret + plan IDs → supabase secrets set ...
-Sign up for Stripe → create PRO/MAX subscription products → get Price IDs → supabase secrets set STRIPE_SECRET_KEY=... STRIPE_TIER1_PRICE_ID=... STRIPE_TIER2_PRICE_ID=...
+# 4. In the PayMongo + Stripe dashboards: register the webhook URLs (I give you the URLs),
+#    copy the signing secrets back to me for step 3.
+```
+
+---
+
+## 🚀 STORE / BUILD (Phase 3-4 — mostly you, EAS accounts)
+- [ ] [YOU] `eas init` + `eas build:configure` (creates the Expo/EAS project).
+- [ ] [YOU] First preview APK build to verify signing (`eas build -p android --profile preview`).
+- [ ] [YOU] Production AAB → Play Console closed testing → tester emails → opt-in links.
+- [ ] [YOU] 4-8 device screenshots + 1024x500 feature graphic + store listing + data-safety form.
+- [ ] [YOU] Compile 20-50 secondary-teacher beta testers; email them the install link.
+- [ ] [BOTH] Monitor Sentry + Supabase logs for the first 48h; hot-patch via EAS Update if needed.

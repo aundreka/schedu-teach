@@ -483,6 +483,8 @@ export default function InstitutionScreen() {
             <Pressable
               onPress={openInstitutionEditModal}
               disabled={savingInstitution}
+              accessibilityRole="button"
+              accessibilityLabel="Edit institution"
               style={({ pressed }) => [
                 styles.topIconBtn,
                 { borderColor: c.border, backgroundColor: c.card, opacity: pressed ? 0.9 : 1 },
@@ -493,6 +495,8 @@ export default function InstitutionScreen() {
             <Pressable
               onPress={handleDeleteInstitution}
               disabled={savingInstitution}
+              accessibilityRole="button"
+              accessibilityLabel="Delete institution"
               style={({ pressed }) => [
                 styles.topIconBtn,
                 { borderColor: c.border, backgroundColor: c.card, opacity: pressed ? 0.9 : 1 },
@@ -560,6 +564,8 @@ export default function InstitutionScreen() {
                   <Pressable
                     onPress={() => handleDeleteSection(section)}
                     disabled={Boolean(deletingSectionId)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete section"
                     style={({ pressed }) => [
                       styles.swipeActionBtn,
                       {
@@ -592,6 +598,8 @@ export default function InstitutionScreen() {
                   </View>
                   <Pressable
                     onPress={() => openSectionEditor(section)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit section"
                     style={({ pressed }) => [
                       styles.topIconBtn,
                       { borderColor: c.border, backgroundColor: c.card, opacity: pressed ? 0.9 : 1 },
@@ -632,6 +640,8 @@ export default function InstitutionScreen() {
                       <Pressable
                         onPress={() => handleSaveSectionEdit(section.section_id)}
                         disabled={savingSection}
+                        accessibilityRole="button"
+                        accessibilityLabel="Save section"
                         style={({ pressed }) => [
                           styles.miniActionBtn,
                           { borderColor: c.border, opacity: savingSection ? 0.6 : pressed ? 0.9 : 1 },
@@ -641,6 +651,8 @@ export default function InstitutionScreen() {
                       </Pressable>
                       <Pressable
                         onPress={() => setEditingSectionId(null)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Cancel editing section"
                         style={({ pressed }) => [
                           styles.miniActionBtn,
                           { borderColor: c.border, opacity: pressed ? 0.9 : 1 },
@@ -764,6 +776,8 @@ export default function InstitutionScreen() {
                 <Pressable
                   key={color}
                   onPress={() => setInstitutionAvatarColor(color)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Select avatar color ${color}`}
                   style={[
                     styles.colorDot,
                     { backgroundColor: color, borderColor: institutionAvatarColor === color ? c.text : c.border },

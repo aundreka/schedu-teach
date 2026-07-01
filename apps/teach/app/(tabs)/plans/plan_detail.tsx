@@ -508,16 +508,29 @@ export default function PlanDetailScreen() {
 
       // Add or remove blocks of that category
       if (delta > 0) {
-        // Insert placeholder — rebalanceDay will place it
-        await supabase.from("blocks").insert({
+        // Insert an unplaced placeholder — rebalanceDay (below) assigns its slot
+        // and real times. The blocks table requires algorithm_block_key,
+        // block_key, start_time, end_time and a session_subcategory that matches
+        // session_category (blocks_session_pair_check in 05_planning.sql), so we
+        // generate a unique key and seed a valid subcategory + sentinel times.
+        const blockKey = makeId();
+        const subcategory = field === "written_work" ? "assignment" : "activity";
+        const { error: insertError } = await supabase.from("blocks").insert({
           lesson_plan_id: planId,
           slot_id: null,
+          algorithm_block_key: blockKey,
+          block_key: blockKey,
           session_category: field,
+          session_subcategory: subcategory,
           title: field === "written_work" ? "Written Work" : "Performance Task",
           description: null,
+          start_time: "08:00:00",
+          end_time: "09:00:00",
+          required: true,
           order_no: 999,
           metadata: {},
         });
+        if (insertError) throw insertError;
       } else {
         // Remove the last block of that category (unplaced first, else last)
         const toDelete = data.blocks
@@ -734,6 +747,7 @@ export default function PlanDetailScreen() {
         .from("lesson_plans")
         .update({
           title,
+          term,
           academic_year: academicYear || null,
           start_date: startDate,
           end_date: endDate,
@@ -917,6 +931,8 @@ export default function PlanDetailScreen() {
                 onPress={() => router.back()}
                 hitSlop={10}
                 style={[styles.backBtn, { borderColor: c.border, backgroundColor: cardBg }]}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
               >
                 <Ionicons name="chevron-back" size={18} color={c.text} />
               </Pressable>
@@ -1285,6 +1301,8 @@ export default function PlanDetailScreen() {
                                             isEditing && pressed ? styles.pressScale : undefined,
                                           ]}
                                           onPress={() => setEntryField(entry.plan_entry_id, "room", roomOption)}
+                                          accessibilityRole="button"
+                                          accessibilityLabel={roomOption === "lecture" ? "Lecture room" : "Laboratory room"}
                                         >
                                           <Ionicons
                                             name={roomOption === "lecture" ? "school-outline" : "flask-outline"}
@@ -1303,6 +1321,8 @@ export default function PlanDetailScreen() {
                                       <Pressable
                                         style={[styles.removeBtn, { borderColor: c.border }]}
                                         onPress={() => duplicateDraftSchedule(entry.plan_entry_id)}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Duplicate slot"
                                       >
                                         <Ionicons name="copy-outline" size={13} color={mutedText} />
                                       </Pressable>
@@ -1310,6 +1330,8 @@ export default function PlanDetailScreen() {
                                         <Pressable
                                           style={[styles.removeBtn, { borderColor: c.border }]}
                                           onPress={() => removeDraftSchedule(entry.plan_entry_id)}
+                                          accessibilityRole="button"
+                                          accessibilityLabel="Remove slot"
                                         >
                                           <Ionicons name="close" size={15} color={mutedText} />
                                         </Pressable>
@@ -1387,6 +1409,8 @@ export default function PlanDetailScreen() {
                               style={[styles.stepperBtn, { borderColor: c.border, backgroundColor: cardBg, opacity: reqBusy || count <= 0 ? 0.4 : 1 }]}
                               onPress={() => adjustRequirement(field, -1)}
                               disabled={reqBusy || count <= 0}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Decrease ${label}`}
                             >
                               <Ionicons name="remove" size={14} color={c.text} />
                             </Pressable>
@@ -1397,6 +1421,8 @@ export default function PlanDetailScreen() {
                               style={[styles.stepperBtn, { borderColor: c.border, backgroundColor: cardBg, opacity: reqBusy ? 0.4 : 1 }]}
                               onPress={() => adjustRequirement(field, 1)}
                               disabled={reqBusy}
+                              accessibilityRole="button"
+                              accessibilityLabel={`Increase ${label}`}
                             >
                               <Ionicons name="add" size={14} color={c.text} />
                             </Pressable>

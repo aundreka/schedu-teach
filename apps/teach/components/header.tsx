@@ -44,7 +44,12 @@ export default function AppHeader() {
           <Pressable onPress={() => router.push("/profile/subscription")} style={styles.badgeBtn}>
             <TierBadge tier={sub.tier} />
           </Pressable>
-          <Pressable onPress={() => router.push("/profile")} style={styles.iconBtn}>
+          <Pressable
+            onPress={() => router.push("/profile")}
+            style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Profile"
+          >
             <Ionicons name="person-outline" size={22} color={c.mutedText} />
           </Pressable>
         </View>

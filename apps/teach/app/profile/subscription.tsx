@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Localization from "expo-localization";
 import { useAppTheme } from "../../context/theme";
 import { useSubscriptionContext } from "../../context/subscription";
-import { getLocalePricing, startCheckout, PAYWALL_PLACEHOLDER } from "../../lib/pricing";
+import { getLocalePricing, startCheckout, getBillingManageUrl } from "../../lib/pricing";
 import { supabase } from "../../lib/supabase";
 import type { SubscriptionTier } from "../../hooks/useSubscription";
 
@@ -226,7 +226,12 @@ export default function SubscriptionScreen() {
       >
         {/* Top row */}
         <View style={styles.topRow}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable
+            onPress={() => router.back()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
             <Ionicons name="chevron-back" size={22} color={c.text} />
           </Pressable>
           <Text style={[styles.screenTitle, { color: c.text }]}>My Plan</Text>
@@ -339,7 +344,7 @@ export default function SubscriptionScreen() {
         {/* Cancel link (paid users only) */}
         {sub.tier !== "free" && (
           <Pressable
-            onPress={() => Linking.openURL(`${PAYWALL_PLACEHOLDER}/cancel`)}
+            onPress={() => Linking.openURL(getBillingManageUrl())}
             style={styles.cancelRow}
           >
             <Text style={[styles.cancelText, { color: c.mutedText }]}>

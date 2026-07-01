@@ -1,4 +1,18 @@
+-- =====================================================================
+-- DEV-ONLY SEED — NEVER RUN IN PRODUCTION.
+-- Creates demo accounts (including one admin) with a known password.
+-- Guard: this file aborts unless the operator explicitly opts in for the
+-- session with:   set app.allow_dev_seed = 'yes';
+-- See seeds/dev-only/README.md.
+-- =====================================================================
 begin;
+
+do $$
+begin
+  if current_setting('app.allow_dev_seed', true) is distinct from 'yes' then
+    raise exception 'Refusing to run dev-only seed. Run "set app.allow_dev_seed = ''yes'';" first (never in production).';
+  end if;
+end $$;
 
 create extension if not exists pgcrypto;
 

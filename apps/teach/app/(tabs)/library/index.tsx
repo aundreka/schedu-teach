@@ -227,19 +227,32 @@ export default function LibraryScreen() {
         .filter((item: LibrarySubject | null): item is LibrarySubject => Boolean(item))
         .sort((a, b) => a.code.localeCompare(b.code));
 
-      const mapped = await Promise.all(
-        mappedBase.map(async (item) => {
-          if (!item.subject_image) return item;
-          if (isHttpUrl(item.subject_image)) {
-            return { ...item, subject_image_signed_url: item.subject_image };
-          }
-          const { data: signed, error: signError } = await supabase.storage
-            .from("uploads")
-            .createSignedUrl(item.subject_image, 60 * 60);
-          if (signError || !signed?.signedUrl) return item;
-          return { ...item, subject_image_signed_url: signed.signedUrl };
-        })
+      // Batch-sign all storage images in ONE request instead of N round-trips.
+      const pathsToSign = Array.from(
+        new Set(
+          mappedBase
+            .map((item) => item.subject_image)
+            .filter((img): img is string => Boolean(img) && !isHttpUrl(img)),
+        ),
       );
+      const signedByPath = new Map<string, string>();
+      if (pathsToSign.length > 0) {
+        const { data: signedList } = await supabase.storage
+          .from("uploads")
+          .createSignedUrls(pathsToSign, 60 * 60);
+        for (const entry of signedList ?? []) {
+          if (entry?.path && entry?.signedUrl) signedByPath.set(entry.path, entry.signedUrl);
+        }
+      }
+
+      const mapped = mappedBase.map((item) => {
+        if (!item.subject_image) return item;
+        if (isHttpUrl(item.subject_image)) {
+          return { ...item, subject_image_signed_url: item.subject_image };
+        }
+        const signedUrl = signedByPath.get(item.subject_image);
+        return signedUrl ? { ...item, subject_image_signed_url: signedUrl } : item;
+      });
 
       const today = toLocalDateString();
       const { data: plans, error: plansError } = await supabase

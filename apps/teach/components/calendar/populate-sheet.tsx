@@ -142,7 +142,7 @@ export default function PopulateSheet({ visible, planId, vacancies, onClose, onD
               Your schedule has empty slots. Fill them or skip.
             </Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={10}>
+          <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={22} color="#9CA3AF" />
           </Pressable>
         </View>

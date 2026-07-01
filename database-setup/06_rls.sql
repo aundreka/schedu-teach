@@ -12,6 +12,7 @@ alter table public.courses enable row level security;
 alter table public.user_courses enable row level security;
 alter table public.subjects enable row level security;
 alter table public.user_subjects enable row level security;
+alter table public.units enable row level security;
 alter table public.chapters enable row level security;
 alter table public.lessons enable row level security;
 alter table public.lesson_plans enable row level security;
@@ -58,10 +59,10 @@ using (
     from public.user_schools current_membership
     join public.user_schools target_membership
       on target_membership.school_id = current_membership.school_id
-    join public.users current_user
-      on current_user.userid = current_membership.user_id
+    join public.users admin_user
+      on admin_user.userid = current_membership.user_id
     where current_membership.user_id = auth.uid()
-      and current_user.role in ('admin', 'superadmin')
+      and admin_user.role in ('admin', 'superadmin')
       and target_membership.user_id = users.userid
   )
 );
@@ -103,6 +104,20 @@ drop policy if exists "users can insert own school memberships" on public.user_s
 create policy "users can insert own school memberships"
 on public.user_schools for insert
 with check (auth.uid() = user_id);
+
+-- Without UPDATE/DELETE policies, "set primary" and "leave/delete institution"
+-- affect zero rows while the UI reports success. Allow a user to manage their
+-- own membership rows, and a school admin to manage members of their school.
+drop policy if exists "users can update own school memberships" on public.user_schools;
+create policy "users can update own school memberships"
+on public.user_schools for update
+using (auth.uid() = user_id or public.is_current_user_school_admin(school_id))
+with check (auth.uid() = user_id or public.is_current_user_school_admin(school_id));
+
+drop policy if exists "users can delete own school memberships" on public.user_schools;
+create policy "users can delete own school memberships"
+on public.user_schools for delete
+using (auth.uid() = user_id or public.is_current_user_school_admin(school_id));
 
 -- sections
 drop policy if exists "users can read sections in own schools" on public.sections;
@@ -238,6 +253,42 @@ create policy "users can manage own subject memberships"
 on public.user_subjects for all
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+-- units (mirrors chapters: scoped through the owning subject's school membership)
+drop policy if exists "users can read units through accessible subjects" on public.units;
+create policy "users can read units through accessible subjects"
+on public.units for select
+using (
+  exists (
+    select 1
+    from public.subjects s
+    join public.user_schools us on us.school_id = s.school_id
+    where s.subject_id = units.subject_id
+      and us.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "users can manage units through accessible subjects" on public.units;
+create policy "users can manage units through accessible subjects"
+on public.units for all
+using (
+  exists (
+    select 1
+    from public.subjects s
+    join public.user_schools us on us.school_id = s.school_id
+    where s.subject_id = units.subject_id
+      and us.user_id = auth.uid()
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.subjects s
+    join public.user_schools us on us.school_id = s.school_id
+    where s.subject_id = units.subject_id
+      and us.user_id = auth.uid()
+  )
+);
 
 -- chapters
 drop policy if exists "users can read chapters through accessible subjects" on public.chapters;
@@ -461,24 +512,43 @@ using (
   )
 );
 
+-- A single FOR ALL policy let any school member edit/delete school-wide events,
+-- a cross-user disruption vector (one teacher could delete another's holidays /
+-- suspensions). Split writes: members may create events they own; only the
+-- creator or a school admin may modify or delete an event.
 drop policy if exists "users can manage calendar events in own schools" on public.school_calendar_events;
-create policy "users can manage calendar events in own schools"
-on public.school_calendar_events for all
-using (
-  exists (
+
+drop policy if exists "members can create calendar events in own schools" on public.school_calendar_events;
+create policy "members can create calendar events in own schools"
+on public.school_calendar_events for insert
+with check (
+  created_by = auth.uid()
+  and exists (
     select 1
     from public.user_schools us
     where us.school_id = school_calendar_events.school_id
       and us.user_id = auth.uid()
   )
+);
+
+drop policy if exists "creator or admin can update calendar events" on public.school_calendar_events;
+create policy "creator or admin can update calendar events"
+on public.school_calendar_events for update
+using (
+  created_by = auth.uid()
+  or public.is_current_user_school_admin(school_id)
 )
 with check (
-  exists (
-    select 1
-    from public.user_schools us
-    where us.school_id = school_calendar_events.school_id
-      and us.user_id = auth.uid()
-  )
+  created_by = auth.uid()
+  or public.is_current_user_school_admin(school_id)
+);
+
+drop policy if exists "creator or admin can delete calendar events" on public.school_calendar_events;
+create policy "creator or admin can delete calendar events"
+on public.school_calendar_events for delete
+using (
+  created_by = auth.uid()
+  or public.is_current_user_school_admin(school_id)
 );
 
 -- delays
@@ -496,55 +566,5 @@ on public.delays for all
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
--- =========================
--- ACTIVITIES RLS
--- =========================
-
-alter table public.activities enable row level security;
-
-drop policy if exists "users can read own activities" on public.activities;
-create policy "users can read own activities"
-on public.activities for select
-using (
-  auth.uid() = user_id
-);
-
-drop policy if exists "users can insert own activities in accessible subjects" on public.activities;
-create policy "users can insert own activities in accessible subjects"
-on public.activities for insert
-with check (
-  auth.uid() = user_id
-  and exists (
-    select 1
-    from public.subjects s
-    join public.user_schools us on us.school_id = s.school_id
-    where s.subject_id = activities.subject_id
-      and s.school_id = activities.school_id
-      and us.user_id = auth.uid()
-  )
-);
-
-drop policy if exists "users can update own activities" on public.activities;
-create policy "users can update own activities"
-on public.activities for update
-using (
-  auth.uid() = user_id
-)
-with check (
-  auth.uid() = user_id
-  and exists (
-    select 1
-    from public.subjects s
-    join public.user_schools us on us.school_id = s.school_id
-    where s.subject_id = activities.subject_id
-      and s.school_id = activities.school_id
-      and us.user_id = auth.uid()
-  )
-);
-
-drop policy if exists "users can delete own activities" on public.activities;
-create policy "users can delete own activities"
-on public.activities for delete
-using (
-  auth.uid() = user_id
-);
+-- ACTIVITIES RLS lives in 07_activities.sql (the activities table is created there,
+-- after this file runs). Keeping it here broke a clean 00->12 apply.

@@ -33,6 +33,7 @@ export default function Settings() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [initialEmail, setInitialEmail] = useState("");
   const [savedDetails, setSavedDetails] = useState({
@@ -50,6 +51,7 @@ export default function Settings() {
 
   const loadUserDetails = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const {
         data: { user },
@@ -82,11 +84,10 @@ export default function Settings() {
       setUsername(nextDetails.username);
       setEmail(nextDetails.email);
     } catch {
-      setSavedDetails({ firstName: "", lastName: "", username: "", email: "" });
-      setFirstName("");
-      setLastName("");
-      setUsername("");
-      setEmail("");
+      // Do NOT blank the form on a failed load: a subsequent save would upsert
+      // all-null values over the user's real profile. Flag the error instead and
+      // block editing/saving until a successful reload.
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -136,6 +137,10 @@ export default function Settings() {
 
   const handleSaveDetails = async () => {
     if (!userId) return;
+    if (loadError) {
+      Alert.alert("Can't save yet", "Your profile failed to load. Pull to refresh and try again.");
+      return;
+    }
     setSaving(true);
     try {
       const nextEmail = email.trim();
@@ -166,6 +171,8 @@ export default function Settings() {
       };
       setSavedDetails(nextSaved);
       setIsEditing(false);
+    } catch (err: unknown) {
+      Alert.alert("Couldn't save", (err as Error)?.message ?? "Please try again.");
     } finally {
       setSaving(false);
     }
@@ -202,6 +209,18 @@ export default function Settings() {
           {loading ? (
             <View style={styles.loadingWrap}>
               <ActivityIndicator color={c.tint} />
+            </View>
+          ) : loadError ? (
+            <View style={styles.detailsWrap}>
+              <Text style={[styles.detailLabel, { color: c.mutedText, marginBottom: 12 }]}>
+                We couldn&apos;t load your profile. Pull down to refresh and try again.
+              </Text>
+              <Pressable
+                onPress={() => void loadUserDetails()}
+                style={[styles.secondaryBtn, { borderColor: c.border, backgroundColor: c.background }]}
+              >
+                <Text style={[styles.secondaryBtnText, { color: c.text }]}>Retry</Text>
+              </Pressable>
             </View>
           ) : !isEditing ? (
             <View style={styles.detailsWrap}>

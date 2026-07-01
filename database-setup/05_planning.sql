@@ -11,6 +11,7 @@ create table if not exists public.lesson_plans (
   section_id uuid not null references public.sections(section_id) on delete cascade,
   title text not null,
   academic_year text,
+  term text,
   start_date date not null,
   end_date date not null,
   status public.record_status not null default 'draft',
@@ -20,6 +21,11 @@ create table if not exists public.lesson_plans (
   updated_at timestamptz not null default now(),
   constraint lesson_plans_date_check check (end_date >= start_date)
 );
+
+-- Backfill for databases created before `term` existed. `create table if not exists`
+-- above is a no-op on a pre-existing lesson_plans table, so ensure the column is present.
+-- The app (plan_detail.tsx) reads/edits `term` ("quarter" | "trimester" | "semester").
+alter table public.lesson_plans add column if not exists term text;
 
 create table if not exists public.slots (
   slot_id uuid primary key default gen_random_uuid(),
@@ -132,6 +138,23 @@ create index if not exists blocks_subcategory_idx on public.blocks(session_subca
 create index if not exists blocks_block_key_idx on public.blocks(lesson_plan_id, block_key);
 create index if not exists blocks_order_idx on public.blocks(slot_id, order_no);
 create index if not exists blocks_locked_idx on public.blocks(is_locked);
+
+create table if not exists public.plan_subject_content (
+  plan_subject_content_id uuid primary key default gen_random_uuid(),
+  lesson_plan_id uuid not null references public.lesson_plans(lesson_plan_id) on delete cascade,
+  subject_id uuid not null references public.subjects(subject_id) on delete cascade,
+  unit_id uuid references public.units(unit_id) on delete set null,
+  chapter_id uuid references public.chapters(chapter_id) on delete set null,
+  lesson_id uuid references public.lessons(lesson_id) on delete set null,
+  content_level text not null check (content_level in ('unit', 'chapter', 'lesson')),
+  sequence_no integer not null default 1,
+  selected_title text,
+  selected_content text,
+  learning_objectives text,
+  estimated_minutes integer,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
 create index if not exists plan_subject_content_lesson_plan_idx on public.plan_subject_content(lesson_plan_id);
 create index if not exists plan_subject_content_subject_idx on public.plan_subject_content(subject_id);

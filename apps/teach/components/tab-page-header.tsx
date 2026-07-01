@@ -25,6 +25,8 @@ export default function TabPageHeader({ title, textColor, actions }: TabPageHead
             key={action.key ?? `${action.icon}-${index}`}
             style={styles.iconBtn}
             onPress={action.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={action.key ?? String(action.icon).replace(/-outline$/, "").replace(/-/g, " ")}
           >
             <Ionicons name={action.icon} size={action.size ?? 22} color={textColor} />
           </Pressable>

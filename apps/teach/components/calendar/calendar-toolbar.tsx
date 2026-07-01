@@ -61,7 +61,13 @@ export default function CalendarToolbar({
         borderColor={borderColor}
       />
 
-      <Pressable onPress={onOverflow} style={styles.overflow} hitSlop={10}>
+      <Pressable
+        onPress={onOverflow}
+        style={styles.overflow}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="More options"
+      >
         <Ionicons name="ellipsis-horizontal" size={22} color={mutedColor} />
       </Pressable>
     </View>

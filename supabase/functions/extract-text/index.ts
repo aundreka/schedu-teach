@@ -3,6 +3,7 @@
 /// <reference lib="deno.ns" />
 /// <reference lib="dom" />
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { rateLimitCheck, rateLimitHeaders } from "../_shared/rate-limit.ts";
 
 type Body = { storagePath: string };
 
@@ -39,6 +40,13 @@ Deno.serve(async (req: Request) => {
     if (userErr || !userData?.user) return json({ error: "Unauthorized" }, 401);
     const userId = userData.user.id;
 
+    // Rate limit per user — extraction proxies an upstream service and was
+    // previously unthrottled.
+    const rl = rateLimitCheck(`extract-text:${userId}`, 15, 60_000);
+    if (!rl.allowed) {
+      return json({ error: "rate_limited" }, 429, rateLimitHeaders(rl));
+    }
+
     // ownership guard: users/<uid>/
     const expectedPrefix = `users/${userId}/`;
     if (!body.storagePath.startsWith(expectedPrefix)) {
@@ -52,7 +60,8 @@ Deno.serve(async (req: Request) => {
       .createSignedUrl(body.storagePath, 60 * 10);
 
     if (signErr || !signed?.signedUrl) {
-      return json({ error: "Could not create signed URL", details: signErr?.message }, 500);
+      console.error("extract-text signed URL error", signErr?.message);
+      return json({ error: "Could not create signed URL" }, 500, rateLimitHeaders(rl));
     }
 
     let extractorRes: Response;
@@ -66,14 +75,9 @@ Deno.serve(async (req: Request) => {
         }),
       });
     } catch (e) {
-      return json(
-        {
-          error: "Extractor request failed",
-          details: (e as Error)?.message ?? String(e),
-          extractorUrl: extractorEndpoint,
-        },
-        502
-      );
+      // Log the endpoint + cause server-side; never leak them to the client.
+      console.error("extract-text request failed", extractorEndpoint, (e as Error)?.message);
+      return json({ error: "Extractor request failed" }, 502, rateLimitHeaders(rl));
     }
 
     if (!extractorRes.ok) {
@@ -82,15 +86,8 @@ Deno.serve(async (req: Request) => {
         .catch(async () => ({ raw: await extractorRes.text().catch(() => "") }));
       const details =
         errPayload?.details || errPayload?.error || errPayload?.message || errPayload?.raw;
-      return json(
-        {
-          error: "Extractor failed",
-          status: extractorRes.status,
-          details: String(details || extractorRes.statusText || "").slice(0, 800),
-          extractorUrl: extractorEndpoint,
-        },
-        502
-      );
+      console.error("extract-text upstream error", extractorRes.status, extractorEndpoint, String(details || "").slice(0, 800));
+      return json({ error: "Extractor failed", status: extractorRes.status }, 502, rateLimitHeaders(rl));
     }
 
     const result = await extractorRes.json().catch(() => ({}));
@@ -98,7 +95,8 @@ Deno.serve(async (req: Request) => {
 
     return json({ text }, 200);
   } catch (e) {
-    return json({ error: "Server error", details: (e as Error)?.message ?? String(e) }, 500);
+    console.error("extract-text server error", (e as Error)?.message ?? String(e));
+    return json({ error: "Server error" }, 500);
   }
 });
 

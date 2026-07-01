@@ -23,7 +23,7 @@ A teacher-facing curriculum workspace that bundles Supabase-powered auth, instit
 2. Supply Supabase credentials in `.env` (or your own env loading strategy):
    - `EXPO_PUBLIC_SUPABASE_URL`
    - `EXPO_PUBLIC_SUPABASE_KEY` (anon/public key)
-3. Optional: inspect or run the SQL scripts in `database-setup/00_users.sql` through `database-setup/07_meeting_type_patch.sql` to provision every table, enum, policy, and helper function the UI expects.
+3. Provision the database by applying `database-setup/00_users.sql` through `database-setup/12_versions.sql` in order (see `database-setup/README.md` for the canonical order and `database-setup/apply.sh`). Dev-only demo/test seeds live in `database-setup/seeds/dev-only/` and must never run in production.
 
 ## Running the app
 

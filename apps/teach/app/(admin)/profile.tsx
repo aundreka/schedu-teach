@@ -61,7 +61,13 @@ function DeptRowItem({ dept, index, isLast, borderColor, textColor, mutedColor, 
           <Text style={[styles.deptHead, { color: mutedColor }]}>Head: {dept.headName}</Text>
         )}
       </View>
-      <Pressable style={styles.deptDelete} onPress={() => onDelete(dept)} hitSlop={8}>
+      <Pressable
+        style={styles.deptDelete}
+        onPress={() => onDelete(dept)}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Delete department"
+      >
         <Ionicons name="trash-outline" size={18} color="#D7487B" />
       </Pressable>
     </Animated.View>

@@ -54,6 +54,16 @@ Deno.serve(async (req: Request) => {
       return json({ error: "invalid signature" }, 401, rateLimitHeaders(rl));
     }
 
+    // Replay window: the signature stays valid forever, so reject events whose
+    // signed timestamp is more than 5 minutes from now (idempotency already
+    // blocks exact duplicates; this blocks stale-but-valid replays).
+    const sigTs = Number(
+      signatureHeader.split(",").find((s) => s.trim().startsWith("t="))?.split("=")[1]?.trim() ?? "",
+    );
+    if (!Number.isFinite(sigTs) || Math.abs(Date.now() / 1000 - sigTs) > 300) {
+      return json({ error: "stale signature" }, 401, rateLimitHeaders(rl));
+    }
+
     let event: any;
     try {
       event = JSON.parse(rawBody);
@@ -125,16 +135,24 @@ async function handleEvent({
   const cancelAtPeriodEnd = !!attrs?.cancel_at_period_end;
 
   let tier: Tier = "free";
-  if (planId && planId === tier1PlanId) tier = "tier1";
-  else if (planId && planId === tier2PlanId) tier = "tier2";
+  let tierKnown = false;
+  if (planId && planId === tier1PlanId) {
+    tier = "tier1";
+    tierKnown = true;
+  } else if (planId && planId === tier2PlanId) {
+    tier = "tier2";
+    tierKnown = true;
+  }
 
   let status: SubStatus;
+  let activating = false;
   switch (eventType) {
     case "subscription.created":
     case "subscription.updated":
     case "subscription.resumed":
     case "subscription.payment.paid":
       status = "active";
+      activating = true;
       break;
     case "subscription.cancelled":
     case "subscription.expired":
@@ -152,6 +170,13 @@ async function handleEvent({
 
   if (!userId) {
     return { handled: false, eventType, reason: "missing metadata.user_id" };
+  }
+
+  // Fail CLOSED: never grant an active subscription whose plan we can't resolve
+  // to a known tier. Writing tier='free' + status='active' here would silently
+  // downgrade a paying customer. Skip the mutation and surface it for triage.
+  if (activating && !tierKnown) {
+    return { handled: false, eventType, reason: `unknown plan_id: ${planId ?? "none"}` };
   }
 
   const { error } = await admin

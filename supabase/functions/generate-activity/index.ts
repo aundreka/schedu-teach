@@ -71,6 +71,24 @@ Deno.serve(async (req: Request) => {
       return json({ error: "title, category, and activityType are required" }, 400, rateLimitHeaders(rl));
     }
 
+    // Cap user-controlled free text before it reaches the model. Unbounded input
+    // is both a cost risk and a prompt-injection surface; the system prompt stays
+    // authoritative and these caps keep any single request bounded.
+    const clamp = (v: unknown, max: number): string | undefined =>
+      typeof v === "string" ? v.slice(0, max) : (v as undefined);
+    body.title = clamp(body.title, 200)!;
+    body.additionalInstructions = clamp(body.additionalInstructions, 2000);
+    body.templateText = clamp(body.templateText, 5000);
+    if (body.requirements?.briefDescription) {
+      body.requirements.briefDescription = clamp(body.requirements.briefDescription, 1000);
+    }
+    if (Array.isArray(body.scopeLessons)) {
+      body.scopeLessons = body.scopeLessons.slice(0, 50).map((l) => ({
+        ...l,
+        content: clamp(l?.content, 2000),
+      }));
+    }
+
     // Atomic quota check + increment. RPC reads auth.uid() so it must run as the user, not
     // service role. Free=1/day, tier1=5/day, tier2=20/day (see tier_ai_daily_limit in DB).
     // Raises P0001 'quota_exceeded' when at the daily cap.
@@ -89,7 +107,8 @@ Deno.serve(async (req: Request) => {
           rateLimitHeaders(rl)
         );
       }
-      return json({ error: "quota check failed", details: message }, 500, rateLimitHeaders(rl));
+      console.error("generate-activity: quota check failed", message);
+      return json({ error: "quota check failed" }, 500, rateLimitHeaders(rl));
     }
 
     const prompt = buildPrompt(body);
@@ -127,14 +146,12 @@ Deno.serve(async (req: Request) => {
       .catch(async () => ({ raw: await geminiResponse.text().catch(() => "") }));
 
     if (!geminiResponse.ok) {
-      return json(
-        {
-          error: "Gemini request failed",
-          details: payload?.error?.message || payload?.raw || geminiResponse.statusText,
-        },
-        502,
-        rateLimitHeaders(rl)
+      // Log the upstream (Gemini) error server-side; return a generic message to the client.
+      console.error(
+        "generate-activity: Gemini request failed",
+        payload?.error?.message || payload?.raw || geminiResponse.statusText
       );
+      return json({ error: "Activity generation failed, please try again" }, 502, rateLimitHeaders(rl));
     }
 
     const text = String(payload?.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim();
@@ -144,7 +161,8 @@ Deno.serve(async (req: Request) => {
 
     return json({ text }, 200, rateLimitHeaders(rl));
   } catch (error) {
-    return json({ error: "Server error", details: (error as Error)?.message ?? String(error) }, 500);
+    console.error("generate-activity: server error", (error as Error)?.message ?? String(error));
+    return json({ error: "Server error" }, 500);
   }
 });
 

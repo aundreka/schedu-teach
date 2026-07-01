@@ -17,6 +17,14 @@ import { useAppTheme } from "../../context/theme";
 // ✅ change this path if your supabase client lives elsewhere
 import { supabase } from "../../lib/supabase";
 
+// Small blocklist of the most common weak passwords. Not a substitute for a
+// breach check, but blocks the obvious ones at sign-up.
+const COMMON_PASSWORDS = new Set([
+  "password", "password1", "password123", "12345678", "123456789", "1234567890",
+  "qwerty123", "qwertyuiop", "111111111", "abc12345", "letmein123", "iloveyou1",
+  "admin123", "welcome1", "welcome123", "passw0rd", "p@ssword1",
+]);
+
 export default function Signup() {
   const { colors: c, ready } = useAppTheme();
 
@@ -43,6 +51,10 @@ export default function Signup() {
     if (!/^[a-z0-9._-]+$/.test(un)) return "Username can only use letters, numbers, ., _, and -";
     if (!em.includes("@")) return "Please enter a valid email.";
     if (password.length < 8) return "Password must be at least 8 characters.";
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password))
+      return "Password must include at least one letter and one number.";
+    if (COMMON_PASSWORDS.has(password.toLowerCase()))
+      return "That password is too common. Please choose a stronger one.";
     return null;
   };
 
@@ -91,7 +103,9 @@ export default function Signup() {
       .eq("userid", userId);
 
     if (upErr) {
-      if (upErr.message?.toLowerCase().includes("duplicate")) {
+      // 23505 = unique_violation (username/email already taken). Match on the
+      // Postgres error code, not a fragile substring of the message text.
+      if ((upErr as { code?: string }).code === "23505") {
         setErrorMsg("Username or email is already in use.");
       } else {
         setErrorMsg(upErr.message || "Profile setup failed.");

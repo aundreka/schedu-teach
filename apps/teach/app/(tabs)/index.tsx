@@ -151,7 +151,14 @@ async function loadSoonestData(userId: string, fromISO: string): Promise<Upcomin
 
   const planIds = plans.map((p) => p.lessonPlanId);
   const [{ data: slotRows }, { data: blockRows }] = await Promise.all([
-    supabase.from("slots").select("slot_id, lesson_plan_id, slot_date").in("lesson_plan_id", planIds),
+    // Only future slots matter for "upcoming"; past slots are dropped by the
+    // date < fromISO check below anyway, so scope the fetch instead of loading
+    // every slot across every plan on each focus.
+    supabase
+      .from("slots")
+      .select("slot_id, lesson_plan_id, slot_date")
+      .in("lesson_plan_id", planIds)
+      .gte("slot_date", fromISO),
     supabase
       .from("blocks")
       .select(

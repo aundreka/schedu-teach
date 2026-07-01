@@ -252,11 +252,6 @@ export default function PlansScreen() {
               icon: "add",
               onPress: () => router.push("/create/lessonplan"),
             },
-            {
-              key: "filter",
-              icon: "options-outline",
-              onPress: () => {},
-            },
           ]}
         />
 

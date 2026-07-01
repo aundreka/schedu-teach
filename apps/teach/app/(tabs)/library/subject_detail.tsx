@@ -1147,6 +1147,8 @@ export default function SubjectDetailScreen() {
           </Text>
           <View style={styles.menuWrap}>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Subject options"
               style={styles.menuBtn}
               onPress={() => {
                 setOpenUnitMenuId(null);
@@ -1395,6 +1397,8 @@ export default function SubjectDetailScreen() {
                     </Text>
                     <View style={styles.rowMenuWrap}>
                       <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Unit options"
                         style={styles.menuBtn}
                         onPress={() => {
                           setShowSubjectMenu(false);
@@ -1448,6 +1452,8 @@ export default function SubjectDetailScreen() {
                           </Pressable>
                         </View>
                         <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Add lesson"
                           style={styles.menuBtn}
                           onPress={() =>
                             goToCreateLesson({
@@ -1464,6 +1470,8 @@ export default function SubjectDetailScreen() {
                         </Pressable>
                         <View style={styles.rowMenuWrap}>
                           <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Chapter options"
                             style={styles.menuBtn}
                             onPress={() => {
                               setShowSubjectMenu(false);
@@ -1536,6 +1544,8 @@ export default function SubjectDetailScreen() {
                                   </Text>
                                   <View style={styles.rowMenuWrap}>
                                     <Pressable
+                                      accessibilityRole="button"
+                                      accessibilityLabel="Lesson options"
                                       style={styles.menuBtn}
                                       onPress={() => {
                                         setShowSubjectMenu(false);
@@ -1593,6 +1603,8 @@ export default function SubjectDetailScreen() {
 
         <View style={[styles.divider, { borderColor: c.border }]}> 
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add lesson"
             style={[styles.dividerDot, { backgroundColor: c.border }]}
             onPress={() =>
               goToCreateLesson({
@@ -1609,7 +1621,12 @@ export default function SubjectDetailScreen() {
           <View style={[styles.planCol, { backgroundColor: cardBg, borderColor: c.border }]}> 
             <View style={styles.planHeader}>
               <Text style={[styles.planTitle, { color: c.text }]}>Written Work</Text>
-              <Pressable style={styles.planAddButton} onPress={goToCreateActivity}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add written work"
+                style={styles.planAddButton}
+                onPress={goToCreateActivity}
+              >
                 <Ionicons name="add" size={18} color={c.text} />
               </Pressable>
             </View>
@@ -1636,7 +1653,12 @@ export default function SubjectDetailScreen() {
           <View style={[styles.planCol, { backgroundColor: cardBg, borderColor: c.border }]}> 
             <View style={styles.planHeader}>
               <Text style={[styles.planTitle, { color: c.text }]}>Performance Task</Text>
-              <Pressable style={styles.planAddButton} onPress={goToCreateActivity}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add performance task"
+                style={styles.planAddButton}
+                onPress={goToCreateActivity}
+              >
                 <Ionicons name="add" size={18} color={c.text} />
               </Pressable>
             </View>

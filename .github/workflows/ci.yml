@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: Lint & scheduler tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.6.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint
+      - name: Scheduler property tests
+        run: pnpm --filter schedu-teach test:properties
+      - name: Scheduler scenario tests
+        run: pnpm --filter schedu-teach test:scenarios
+
+  migrations:
+    name: Clean migration apply (00 -> 12)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: scratch
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/scratch
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Bootstrap Supabase-managed objects
+        run: psql "$DATABASE_URL" --set ON_ERROR_STOP=1 -f database-setup/ci/bootstrap.sql
+      - name: Apply migrations in order
+        run: ./database-setup/apply.sh "$DATABASE_URL"
+      - name: Security regression checks
+        run: psql "$DATABASE_URL" --set ON_ERROR_STOP=1 -f database-setup/ci/security_checks.sql

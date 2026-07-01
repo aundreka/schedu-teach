@@ -29,6 +29,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { SessionCategory, SessionSubcategory } from "../../algorithm/00_types";
 import { Radius, Spacing, Typography } from "../../constants/fonts";
+import { useAppTheme } from "../../context/theme";
 import {
   formatDuration,
   formatLongDate,
@@ -107,6 +108,10 @@ const SUBCATEGORY_ICON: Record<string, IconName> = {
 
 const STEP_TITLES = ["What kind of block?", "Which sort?", "What does it cover?", "When is it?"] as const;
 
+// Foreground that sits on top of saturated accent/category colors — stays a
+// fixed light value for contrast in both light and dark themes.
+const ON_ACCENT = "#FFFFFF";
+
 function minutesToDate(min: number): Date {
   const d = new Date();
   d.setHours(Math.floor(min / 60), min % 60, 0, 0);
@@ -154,6 +159,7 @@ export default function BlockEditor({
   onDelete,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { colors: c } = useAppTheme();
   const isEdit = mode === "edit";
 
   type Phase = "review" | "step";
@@ -406,7 +412,7 @@ export default function BlockEditor({
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose} transparent={false}>
-      <View style={[styles.screen, { paddingTop: insets.top + 8, paddingBottom: insets.bottom }]}>
+      <View style={[styles.screen, { backgroundColor: c.background, paddingTop: insets.top + 8, paddingBottom: insets.bottom }]}>
         {/* header */}
         <View style={styles.header}>
           <Pressable onPress={showHeaderClose ? onClose : goBack} hitSlop={10} style={styles.headerBtn}>
@@ -436,7 +442,7 @@ export default function BlockEditor({
           <Text style={styles.headerTitle}>{isEdit ? "Edit" : "New"}</Text>
         </View>
 
-        <Text style={[styles.question, { color: "#111827" }]}>
+        <Text style={[styles.question, { color: c.text }]}>
           {inReview ? "Edit block" : STEP_TITLES[step]}
         </Text>
 
@@ -444,9 +450,9 @@ export default function BlockEditor({
           {inReview ? (
             <View style={{ gap: Spacing.lg }}>
               {/* live preview of how the block looks */}
-              <View style={[styles.previewCard, { borderLeftColor: activePlan?.color ?? accent }]}>
+              <View style={[styles.previewCard, { backgroundColor: c.card, borderLeftColor: activePlan?.color ?? accent }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.previewSubject}>{activePlan?.subjectTitle ?? "Your class"}</Text>
+                  <Text style={[styles.previewSubject, { color: c.text }]}>{activePlan?.subjectTitle ?? "Your class"}</Text>
                   <Text style={styles.previewSub}>{activePlan?.subtitle ?? ""}</Text>
                   <Text style={[styles.previewBody, { color: accent }]} numberOfLines={1}>
                     {SUBCATEGORY_LABEL[subcategory] ?? subcategory}
@@ -504,13 +510,13 @@ export default function BlockEditor({
                   >
                     <View style={styles.bigCardBlob} />
                     <View style={styles.bigCardIcon}>
-                      <Ionicons name={CATEGORY_ICONS[cat]} size={26} color="#FFFFFF" />
+                      <Ionicons name={CATEGORY_ICONS[cat]} size={26} color={ON_ACCENT} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.bigCardTitle}>{CATEGORY_LABEL[cat]}</Text>
                       <Text style={styles.bigCardBlurb}>{CATEGORY_BLURB[cat]}</Text>
                     </View>
-                    {selected ? <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" /> : null}
+                    {selected ? <Ionicons name="checkmark-circle" size={24} color={ON_ACCENT} /> : null}
                   </Pressable>
                 );
               })}
@@ -534,9 +540,9 @@ export default function BlockEditor({
                     <Ionicons
                       name={SUBCATEGORY_ICON[sub] ?? "ellipse"}
                       size={28}
-                      color={selected ? "#FFFFFF" : accent}
+                      color={selected ? ON_ACCENT : accent}
                     />
-                    <Text style={[styles.smallCardLabel, { color: selected ? "#FFFFFF" : "#1F2937" }]}>
+                    <Text style={[styles.smallCardLabel, { color: selected ? ON_ACCENT : c.text }]}>
                       {SUBCATEGORY_LABEL[sub] ?? sub}
                     </Text>
                   </Pressable>
@@ -570,7 +576,7 @@ export default function BlockEditor({
                       }}
                     >
                       <View style={[styles.planDot, { backgroundColor: plan.color }]} />
-                      <Text style={styles.planTitle}>{plan.subjectTitle}</Text>
+                      <Text style={[styles.planTitle, { color: c.text }]}>{plan.subjectTitle}</Text>
                       <Text style={styles.planSub}>· {plan.subtitle}</Text>
                       {chosen && !isEdit ? (
                         <Ionicons name="checkmark-circle" size={16} color={plan.color} style={{ marginLeft: 4 }} />
@@ -583,7 +589,7 @@ export default function BlockEditor({
                         {outline.map((unit, ui) => (
                           <View key={unit.unitId ?? `u-${ui}`} style={{ gap: Spacing.sm }}>
                             {unit.unitTitle ? (
-                              <Text style={styles.unitHeader}>{unit.unitTitle}</Text>
+                              <Text style={[styles.unitHeader, { color: c.text }]}>{unit.unitTitle}</Text>
                             ) : null}
                             {unit.chapters.map((chapter, ci) => (
                               <View
@@ -605,14 +611,14 @@ export default function BlockEditor({
                                           styles.lessonChip,
                                           on
                                             ? { backgroundColor: plan.color, borderColor: plan.color }
-                                            : { backgroundColor: "#FFFFFF", borderColor: "#E5E7EB" },
+                                            : { backgroundColor: c.card, borderColor: c.border },
                                         ]}
                                       >
-                                        <Text style={[styles.lessonChipNo, { color: on ? "#FFFFFF" : plan.color }]}>
+                                        <Text style={[styles.lessonChipNo, { color: on ? ON_ACCENT : plan.color }]}>
                                           L{lesson.sequenceNo}
                                         </Text>
                                         <Text
-                                          style={[styles.lessonChipText, { color: on ? "#FFFFFF" : "#374151" }]}
+                                          style={[styles.lessonChipText, { color: on ? ON_ACCENT : c.text }]}
                                           numberOfLines={1}
                                         >
                                           {lesson.title}
@@ -683,9 +689,9 @@ export default function BlockEditor({
               ) : null}
 
               {!isEdit ? (
-                <View style={[styles.previewCard, { borderLeftColor: activePlan?.color ?? accent }]}>
+                <View style={[styles.previewCard, { backgroundColor: c.card, borderLeftColor: activePlan?.color ?? accent }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.previewSubject}>{activePlan?.subjectTitle ?? "Your class"}</Text>
+                    <Text style={[styles.previewSubject, { color: c.text }]}>{activePlan?.subjectTitle ?? "Your class"}</Text>
                     <Text style={styles.previewSub}>{activePlan?.subtitle ?? ""}</Text>
                   </View>
                   <View style={[styles.previewChip, { borderColor: accent }]}>
@@ -718,7 +724,7 @@ export default function BlockEditor({
               disabled={!canSubmit || busy}
               style={[styles.primaryBtn, { backgroundColor: accent, opacity: !canSubmit || busy ? 0.4 : 1 }]}
             >
-              {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryBtnText}>Save changes</Text>}
+              {busy ? <ActivityIndicator color={ON_ACCENT} /> : <Text style={styles.primaryBtnText}>Save changes</Text>}
             </Pressable>
           ) : isEdit ? (
             // edit-mode sub-step: confirm just this field and bounce back
@@ -742,7 +748,7 @@ export default function BlockEditor({
               disabled={!canSubmit || busy}
               style={[styles.primaryBtn, { backgroundColor: accent, opacity: !canSubmit || busy ? 0.4 : 1 }]}
             >
-              {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryBtnText}>Create block</Text>}
+              {busy ? <ActivityIndicator color={ON_ACCENT} /> : <Text style={styles.primaryBtnText}>Create block</Text>}
             </Pressable>
           )}
         </View>
@@ -754,7 +760,6 @@ export default function BlockEditor({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
     paddingHorizontal: Spacing.xl,
   },
   header: {
@@ -814,7 +819,7 @@ const styles = StyleSheet.create({
   },
   bigCardSelected: {
     borderWidth: 3,
-    borderColor: "#FFFFFF",
+    borderColor: ON_ACCENT,
   },
   bigCardBlob: {
     position: "absolute",
@@ -834,7 +839,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bigCardTitle: {
-    color: "#FFFFFF",
+    color: ON_ACCENT,
     fontSize: 19,
     fontWeight: "800",
   },
@@ -973,7 +978,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.md,
-    backgroundColor: "#FFFFFF",
     borderRadius: Radius.lg,
     borderLeftWidth: 6,
     paddingVertical: Spacing.lg,
@@ -1082,7 +1086,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   primaryBtnText: {
-    color: "#FFFFFF",
+    color: ON_ACCENT,
     fontSize: 16,
     fontWeight: "700",
   },

@@ -88,7 +88,10 @@ export default function CalendarScreen() {
       } catch {
         realPlans = [];
       }
-      setPlans([...realPlans, DEMO_PLAN_SUMMARY]);
+      // Only fall back to the demo for users with no real plans (a first-run
+      // sample). Never inject it alongside real plans — that surfaced fabricated
+      // data to active users.
+      setPlans(realPlans.length > 0 ? realPlans : [DEMO_PLAN_SUMMARY]);
 
       const target = planId ?? realPlans[0]?.lessonPlanId ?? DEMO_PLAN_ID;
       if (target === DEMO_PLAN_ID) {

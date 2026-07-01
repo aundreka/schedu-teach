@@ -5,13 +5,12 @@
 
 // create-checkout-session — generates a Stripe Checkout Session URL for non-PH users.
 //
-// Philippine users use the PayMongo paywall at scheduhq.com instead; this function is
+// Philippine users go through create-paymongo-checkout instead; this function is
 // only called when the client's locale is non-PH (see lib/pricing.ts in the app).
 //
-// ⚠ IMPORTANT: The Stripe *webhook* handler is not yet implemented. After a user
-// completes Stripe checkout, the DB subscription tier will NOT be updated automatically
-// until supabase/functions/stripe-webhook/index.ts is built and deployed. In the
-// meantime, manually update the subscriptions table via the Supabase dashboard.
+// The Stripe webhook handler (supabase/functions/stripe-webhook/index.ts) keeps the
+// DB subscription tier in sync after checkout completes — the user_id embedded in
+// subscription_data[metadata] below is how it maps the event back to the user.
 //
 // Required secrets (set via `supabase secrets set`):
 //   STRIPE_SECRET_KEY        — sk_live_... or sk_test_...
@@ -92,13 +91,15 @@ Deno.serve(async (req: Request) => {
 
     const stripeData = await stripeRes.json().catch(() => ({}));
     if (!stripeRes.ok) {
-      const msg = stripeData?.error?.message ?? stripeRes.statusText;
-      return json({ error: "Stripe error", details: msg }, 502, rateLimitHeaders(rl));
+      // Log Stripe's message server-side; never echo upstream error text to the client.
+      console.error("create-checkout-session: Stripe error", stripeData?.error?.message ?? stripeRes.statusText);
+      return json({ error: "Could not start checkout" }, 502, rateLimitHeaders(rl));
     }
 
     return json({ url: stripeData.url }, 200, rateLimitHeaders(rl));
   } catch (err) {
-    return json({ error: "Server error", details: (err as Error)?.message ?? String(err) }, 500);
+    console.error("create-checkout-session: server error", (err as Error)?.message ?? String(err));
+    return json({ error: "Server error" }, 500);
   }
 });
 

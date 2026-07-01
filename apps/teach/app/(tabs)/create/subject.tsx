@@ -1195,6 +1195,7 @@ function AnimatedToolBtn({
   inactiveBorder,
   onPress,
   children,
+  accessibilityLabel,
 }: {
   active: boolean;
   cardBg: string;
@@ -1202,6 +1203,7 @@ function AnimatedToolBtn({
   inactiveBorder: string;
   onPress: () => void;
   children: React.ReactNode;
+  accessibilityLabel?: string;
 }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -1215,6 +1217,8 @@ function AnimatedToolBtn({
     >
       <Pressable
         style={styles.toolBtnInner}
+        accessibilityRole={accessibilityLabel ? "button" : undefined}
+        accessibilityLabel={accessibilityLabel}
         onPressIn={() => { scale.value = withTiming(0.88, { duration: 70 }); }}
         onPressOut={() => { scale.value = withSpring(1, { damping: 9, stiffness: 200 }); }}
         onPress={() => { Haptics.selectionAsync(); onPress(); }}
@@ -1611,6 +1615,8 @@ export default function SubjectScreen() {
             <Pressable
               onPress={handleSave}
               disabled={saving}
+              accessibilityRole="button"
+              accessibilityLabel="Save subject"
               style={({ pressed }) => [styles.checkBtn, { opacity: saving ? 0.6 : pressed ? 0.8 : 1 }]}
             >
               <Ionicons name={saving ? "time-outline" : "checkmark"} size={28} color={c.text} />
@@ -1621,6 +1627,8 @@ export default function SubjectScreen() {
 
           <Pressable
             onPress={pickCoverImage}
+            accessibilityRole="button"
+            accessibilityLabel="Choose cover image"
             style={[
               styles.coverCard,
               {
@@ -1812,6 +1820,7 @@ export default function SubjectScreen() {
                 activeBorder={c.text}
                 inactiveBorder={c.border}
                 onPress={pickSyllabusImage}
+                accessibilityLabel="Upload syllabus image"
               >
                 <Ionicons name="image-outline" size={20} color={c.text} />
               </AnimatedToolBtn>
@@ -1822,6 +1831,7 @@ export default function SubjectScreen() {
                 activeBorder={c.text}
                 inactiveBorder={c.border}
                 onPress={pickSyllabusFile}
+                accessibilityLabel="Upload syllabus file"
               >
                 <Ionicons name="document-outline" size={20} color={c.text} />
               </AnimatedToolBtn>

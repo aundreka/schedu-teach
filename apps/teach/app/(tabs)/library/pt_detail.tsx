@@ -129,6 +129,8 @@ function DownloadButton({
   );
 }
 
+const ON_TINT = "#111111";
+
 export default function PerformanceTaskDetailScreen() {
   const { colors: c, scheme } = useAppTheme();
   const params = useLocalSearchParams<{
@@ -155,7 +157,7 @@ export default function PerformanceTaskDetailScreen() {
   // ── Animated border for TextInput focus ──
   const borderAnim = useSharedValue(0);
   const borderStyle = useAnimatedStyle(() => ({
-    borderColor: borderAnim.value === 1 ? "#111111" : scheme === "dark" ? "#444444" : "#E2E2E2",
+    borderColor: borderAnim.value === 1 ? c.text : scheme === "dark" ? "#444444" : "#E2E2E2",
   }));
 
   useEffect(() => {
@@ -383,14 +385,14 @@ export default function PerformanceTaskDetailScreen() {
                 {isDirty ? (
                   <Animated.View entering={SlideInRight.duration(220).springify()} exiting={SlideOutRight.duration(160)}>
                     <Pressable
-                      style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+                      style={[styles.saveBtn, { backgroundColor: c.tint }, saving && styles.saveBtnDisabled]}
                       onPress={handleSaveText}
                       disabled={saving}
                     >
                       {saving ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <ActivityIndicator size="small" color={ON_TINT} />
                       ) : (
-                        <Text style={styles.saveBtnText}>Save</Text>
+                        <Text style={[styles.saveBtnText, { color: ON_TINT }]}>Save</Text>
                       )}
                     </Pressable>
                   </Animated.View>
@@ -563,7 +565,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 7,
     borderRadius: 8,
-    backgroundColor: "#111111",
     minWidth: 60,
     alignItems: "center",
   },
@@ -573,7 +574,6 @@ const styles = StyleSheet.create({
   saveBtnText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#FFFFFF",
   },
   downloadRow: {
     flexDirection: "row",

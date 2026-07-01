@@ -77,8 +77,15 @@ export function useSubscription(): SubscriptionState {
         error: null,
       });
     } catch (e: unknown) {
+      // A transient RPC failure must not present free-tier limits as truth and
+      // lock a paid user out of the UI. Keep last-known state but never show a
+      // quota as exceeded on uncertain data — the server RPCs (create_lesson_plan,
+      // increment_ai_quota) remain the authoritative enforcement.
       setState((s) => ({
         ...s,
+        lessonPlanQuotaExceeded: false,
+        subjectQuotaExceeded: false,
+        aiQuotaExceeded: false,
         isLoading: false,
         error: e instanceof Error ? e.message : "Failed to load subscription",
       }));

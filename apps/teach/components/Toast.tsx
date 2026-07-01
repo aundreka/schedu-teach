@@ -4,7 +4,7 @@
 // then fades out. Replaces Alert.alert for non-critical success/warning messages.
 
 import { useEffect } from "react";
-import { StyleSheet, Text } from "react-native";
+import { AccessibilityInfo, StyleSheet, Text } from "react-native";
 import Animated, {
   FadeInUp,
   FadeOutDown,
@@ -40,9 +40,12 @@ export default function Toast({
 
   useEffect(() => {
     if (!visible) return;
+    // Announce to screen readers (works on iOS where accessibilityLiveRegion
+    // isn't honored; Android also gets the live region on the view below).
+    if (message) AccessibilityInfo.announceForAccessibility(message);
     const timer = setTimeout(onHide, duration);
     return () => clearTimeout(timer);
-  }, [visible, duration, onHide]);
+  }, [visible, duration, onHide, message]);
 
   if (!visible) return null;
 
@@ -52,6 +55,8 @@ export default function Toast({
       exiting={FadeOutDown.duration(180)}
       style={[styles.container, { backgroundColor: palette.bg }]}
       pointerEvents="none"
+      accessibilityRole="alert"
+      accessibilityLiveRegion="polite"
     >
       <Ionicons name={palette.icon} size={18} color={palette.text} />
       <Text style={[styles.text, { color: palette.text }]} numberOfLines={2}>

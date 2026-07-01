@@ -2,6 +2,29 @@
 -- ACADEMIC STRUCTURE
 -- =========================
 
+-- Courses are the optional top-level academic grouping a subject can belong to.
+-- subjects.course_id, the indexes/triggers below, and the RLS policies in
+-- 06_rls.sql all reference these tables, so they must exist before subjects.
+create table if not exists public.courses (
+  course_id uuid primary key default gen_random_uuid(),
+  public_id text not null unique default ('crs_' || replace(gen_random_uuid()::text, '-', '')),
+  school_id uuid not null references public.schools(school_id) on delete cascade,
+  code text not null,
+  title text not null,
+  description text,
+  status public.record_status not null default 'draft',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (school_id, code)
+);
+
+create table if not exists public.user_courses (
+  user_id uuid not null references public.users(userid) on delete cascade,
+  course_id uuid not null references public.courses(course_id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, course_id)
+);
+
 create table if not exists public.subjects (
   subject_id uuid primary key default gen_random_uuid(),
   public_id text not null unique default ('sub_' || replace(gen_random_uuid()::text, '-', '')),
@@ -29,6 +52,12 @@ create table if not exists public.user_subjects (
   created_at timestamptz not null default now(),
   primary key (user_id, subject_id)
 );
+
+-- Backfill for databases created before `courses` existed: the `create table if not
+-- exists public.subjects` above is a no-op on a legacy subjects table, so the
+-- course_id column (and the index on it below) would be missing. Add it idempotently.
+alter table public.subjects
+  add column if not exists course_id uuid references public.courses(course_id) on delete set null;
 
 create index if not exists sections_school_id_idx on public.sections(school_id);
 create index if not exists sections_status_idx on public.sections(status);
@@ -98,22 +127,9 @@ create table if not exists public.lessons (
   unique (chapter_id, sequence_no)
 );
 
-create table if not exists public.plan_subject_content (
-  plan_subject_content_id uuid primary key default gen_random_uuid(),
-  lesson_plan_id uuid not null references public.lesson_plans(lesson_plan_id) on delete cascade,
-  subject_id uuid not null references public.subjects(subject_id) on delete cascade,
-  unit_id uuid references public.units(unit_id) on delete set null,
-  chapter_id uuid references public.chapters(chapter_id) on delete set null,
-  lesson_id uuid references public.lessons(lesson_id) on delete set null,
-  content_level text not null check (content_level in ('unit', 'chapter', 'lesson')),
-  sequence_no integer not null default 1,
-  selected_title text,
-  selected_content text,
-  learning_objectives text,
-  estimated_minutes integer,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
+-- NOTE: plan_subject_content is created in 05_planning.sql instead, because it
+-- references public.lesson_plans (defined in 05). Its indexes and updated_at trigger
+-- already live in 05, so the whole table belongs there to keep a clean 00->12 apply.
 
 create index if not exists units_subject_id_idx on public.units(subject_id);
 create index if not exists units_status_idx on public.units(status);

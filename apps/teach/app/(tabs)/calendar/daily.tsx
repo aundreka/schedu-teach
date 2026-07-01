@@ -379,6 +379,8 @@ export default function DailyCalendarScreen() {
             onPress={openSuspend}
             style={[styles.headerIconBtn, { backgroundColor: c.card, borderColor: c.border }]}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Suspend day"
           >
             <Ionicons name="moon" size={16} color="#F59E0B" />
           </Pressable>
@@ -386,16 +388,18 @@ export default function DailyCalendarScreen() {
             onPress={openCreate}
             style={[styles.createBtn, { backgroundColor: c.tint }]}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Create block"
           >
             <Ionicons name="add" size={22} color="#FFFFFF" />
           </Pressable>
         </View>
 
         <View style={styles.weekWrap}>
-          <Pressable onPress={() => selectDay(addDaysISO(dateISO, -1))} style={[styles.weekArrow, { left: -2 }]} hitSlop={10}>
+          <Pressable onPress={() => selectDay(addDaysISO(dateISO, -1))} style={[styles.weekArrow, { left: -2 }]} hitSlop={10} accessibilityRole="button" accessibilityLabel="Previous day">
             <Ionicons name="chevron-back" size={18} color={c.mutedText} />
           </Pressable>
-          <Pressable onPress={() => selectDay(addDaysISO(dateISO, 1))} style={[styles.weekArrow, { right: -2 }]} hitSlop={10}>
+          <Pressable onPress={() => selectDay(addDaysISO(dateISO, 1))} style={[styles.weekArrow, { right: -2 }]} hitSlop={10} accessibilityRole="button" accessibilityLabel="Next day">
             <Ionicons name="chevron-forward" size={18} color={c.mutedText} />
           </Pressable>
           <View style={styles.weekStrip}>
@@ -534,6 +538,8 @@ export default function DailyCalendarScreen() {
                         onPress={() => navigateToDetail(entry)}
                         style={styles.detailBtn}
                         hitSlop={6}
+                        accessibilityRole="button"
+                        accessibilityLabel="Open details"
                       >
                         <Ionicons name="arrow-up" size={14} color={c.mutedText} style={styles.detailIcon} />
                       </Pressable>

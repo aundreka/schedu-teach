@@ -40,25 +40,33 @@ export function getLocalePricing(regionCode?: string | null): LocalePricing {
   return LOCALE_MAP.US;
 }
 
-export const PAYWALL_PLACEHOLDER = "https://scheduhq.com";
+/**
+ * URL for managing/canceling a subscription. Configured via
+ * EXPO_PUBLIC_BILLING_MANAGE_URL; falls back to a support mailto so the link is
+ * never a dead placeholder domain.
+ */
+export function getBillingManageUrl(): string {
+  return (
+    process.env.EXPO_PUBLIC_BILLING_MANAGE_URL ??
+    "mailto:support@schedu.ph?subject=Manage%20or%20cancel%20subscription"
+  );
+}
 
 /**
  * Initiates the checkout flow for the given tier.
- * PH → opens PayMongo paywall placeholder in browser.
- * Non-PH → calls create-checkout-session edge fn, then opens Stripe Checkout URL.
+ * PH → create-paymongo-checkout edge fn, then opens the PayMongo checkout URL.
+ * Non-PH → create-checkout-session edge fn, then opens the Stripe Checkout URL.
+ *
+ * Both gateways resolve a hosted checkout URL server-side (the secret keys never
+ * touch the client) and the user completes payment in the browser.
  */
 export async function startCheckout(
   tier: "tier1" | "tier2",
   regionCode?: string | null
 ): Promise<void> {
   const pricing = getLocalePricing(regionCode);
+  const fn = pricing.gateway === "paymongo" ? "create-paymongo-checkout" : "create-checkout-session";
 
-  if (pricing.gateway === "paymongo") {
-    await Linking.openURL(`${PAYWALL_PLACEHOLDER}/upgrade?tier=${tier}`);
-    return;
-  }
-
-  // Stripe flow
   try {
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData?.session?.access_token;
@@ -67,7 +75,7 @@ export async function startCheckout(
       return;
     }
 
-    const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+    const { data, error } = await supabase.functions.invoke(fn, {
       headers: { Authorization: `Bearer ${token}` },
       body: { tier },
     });

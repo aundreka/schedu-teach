@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { captureException } from "../lib/sentry";
 
 interface Props {
   children: React.ReactNode;
@@ -22,6 +23,7 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("[ErrorBoundary]", error, info.componentStack);
+    captureException(error);
   }
 
   render() {
@@ -59,7 +61,7 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 14,
-    color: "#666",
+    color: "#9CA3AF",
     textAlign: "center",
     marginBottom: 28,
   },

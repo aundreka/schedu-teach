@@ -1,11 +1,56 @@
-import { Tabs } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
+import { Tabs, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTheme } from "../../context/theme";
+import { supabase } from "../../lib/supabase";
 
 export default function AdminLayout() {
   const { colors: c } = useAppTheme();
   const insets = useSafeAreaInsets();
+
+  // Server-verified admin gate. The (admin) routes must not render for a
+  // non-admin who deep-links here. role lives on public.users and is guarded
+  // against self-escalation (database-setup/00_users.sql), so this DB read is
+  // an authoritative check, not a client-forgeable one.
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        if (active) setAuthorized(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from("users")
+        .select("role")
+        .eq("userid", session.user.id)
+        .maybeSingle();
+      if (!active) return;
+      const role = data?.role as string | null | undefined;
+      setAuthorized(!error && (role === "admin" || role === "superadmin"));
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (authorized === false) router.replace("/(tabs)" as any);
+  }, [authorized]);
+
+  if (authorized !== true) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: c.background }}>
+        <ActivityIndicator color={c.tint} />
+      </View>
+    );
+  }
 
   return (
     <Tabs

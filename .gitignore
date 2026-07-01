@@ -55,3 +55,7 @@ apps/teach/android/
 
 # Claude Code local config
 .claude/
+supabase-token
+.supabase-prod-db-password
+.env*
+!.env.example

@@ -132,7 +132,7 @@ export default function BlockActionSheet({
               {CATEGORY_HELP[category] ?? "This block will be removed from your schedule."}
             </Text>
           </View>
-          <Pressable onPress={onClose} hitSlop={10}>
+          <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
             <Ionicons name="close" size={22} color="#9CA3AF" />
           </Pressable>
         </View>
