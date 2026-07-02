@@ -26,6 +26,7 @@ import { formatEdgeFunctionError } from "../../../lib/edge-function-errors";
 import { supabase } from "../../../lib/supabase";
 import * as Haptics from "expo-haptics";
 import Animated, {
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,

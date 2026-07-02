@@ -9,11 +9,14 @@ import {
     Pressable,
     StyleSheet,
     Text,
-    TextInput,
     View,
 } from "react-native";
+import Animated from "react-native-reanimated";
 
+import { Input } from "../../components/ui";
+import { Typography } from "../../constants/fonts";
 import { useAppTheme } from "../../context/theme";
+import { enterUp } from "../../lib/motion";
 // ✅ change this path if your supabase client lives elsewhere
 import { supabase } from "../../lib/supabase";
 
@@ -142,8 +145,14 @@ export default function Signup() {
       <View style={styles.content}>
         {/* Header */}
         <View style={styles.topRow}>
-          <Pressable onPress={() => router.back()} disabled={busy} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={20} color={c.text} />
+          <Pressable
+            onPress={() => router.back()}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={styles.backBtn}
+          >
+            <Ionicons name="chevron-back" size={20} color={c.text} accessibilityElementsHidden={true} />
             <Text style={{ color: c.text, fontWeight: "600" }}>Back</Text>
           </Pressable>
         </View>
@@ -156,63 +165,63 @@ export default function Signup() {
         </View>
 
         {/* Form Card */}
-        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
+        <Animated.View
+          entering={enterUp()}
+          style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}
+        >
           <View style={styles.nameRow}>
-            <TextInput
+            <Input
               value={firstName}
               onChangeText={setFirstName}
               placeholder="First name"
-              placeholderTextColor={c.mutedText}
               autoCapitalize="words"
-              style={[styles.input, styles.half, { borderColor: c.border, color: c.text }]}
+              containerStyle={[styles.inputWrap, styles.half]}
               editable={!busy}
             />
 
-            <TextInput
+            <Input
               value={lastName}
               onChangeText={setLastName}
               placeholder="Last name"
-              placeholderTextColor={c.mutedText}
               autoCapitalize="words"
-              style={[styles.input, styles.half, { borderColor: c.border, color: c.text }]}
+              containerStyle={[styles.inputWrap, styles.half]}
               editable={!busy}
             />
           </View>
 
-          <TextInput
+          <Input
             value={username}
             onChangeText={setUsername}
             placeholder="Username"
-            placeholderTextColor={c.mutedText}
             autoCapitalize="none"
-            style={[styles.input, { borderColor: c.border, color: c.text }]}
+            containerStyle={styles.inputWrap}
             editable={!busy}
           />
 
-          <TextInput
+          <Input
             value={email}
             onChangeText={setEmail}
             placeholder="Email"
-            placeholderTextColor={c.mutedText}
             autoCapitalize="none"
             keyboardType="email-address"
-            style={[styles.input, { borderColor: c.border, color: c.text }]}
+            containerStyle={styles.inputWrap}
             editable={!busy}
           />
 
-          <TextInput
+          <Input
             value={password}
             onChangeText={setPassword}
             placeholder="Password (min 8 chars)"
-            placeholderTextColor={c.mutedText}
             secureTextEntry
-            style={[styles.input, { borderColor: c.border, color: c.text }]}
+            containerStyle={styles.inputWrap}
             editable={!busy}
           />
 
           <Pressable
             onPress={handleSignup}
             disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Sign Up"
             style={({ pressed }) => [
               styles.primaryBtn,
               { backgroundColor: c.tint },
@@ -220,16 +229,29 @@ export default function Signup() {
               busy && { opacity: 0.7 },
             ]}
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Sign Up</Text>}
+            {busy ? (
+              <ActivityIndicator color={c.onTint} />
+            ) : (
+              <Text style={[styles.primaryBtnText, { color: c.onTint }]}>Sign Up</Text>
+            )}
           </Pressable>
 
-          {errorMsg ? <Text style={[styles.error, { color: "#ef4444" }]}>{errorMsg}</Text> : null}
-        </View>
+          {errorMsg ? (
+            <Text accessibilityLiveRegion="polite" style={[styles.error, { color: c.danger }]}>
+              {errorMsg}
+            </Text>
+          ) : null}
+        </Animated.View>
 
         {/* Footer */}
         <View style={styles.footerRow}>
           <Text style={{ color: c.mutedText }}>Already have an account? </Text>
-          <Pressable onPress={() => router.replace("/(auth)")} disabled={busy}>
+          <Pressable
+            onPress={() => router.replace("/(auth)")}
+            disabled={busy}
+            accessibilityRole="link"
+            accessibilityLabel="Sign in"
+          >
             <Text style={[styles.link, { color: c.tint }]}>Sign in</Text>
           </Pressable>
         </View>
@@ -263,8 +285,8 @@ const styles = StyleSheet.create({
   },
 
   titleBlock: { marginTop: 10, marginBottom: 14 },
-  title: { fontSize: 26, fontWeight: "800" },
-  subtitle: { marginTop: 6, fontSize: 13, lineHeight: 18 },
+  title: { ...Typography.h1 },
+  subtitle: { ...Typography.bodySm, marginTop: 6 },
 
   card: {
     borderWidth: 1,
@@ -278,13 +300,8 @@ const styles = StyleSheet.create({
   },
   half: { flex: 1 },
 
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+  inputWrap: {
     marginBottom: 10,
-    fontSize: 14,
   },
 
   primaryBtn: {
@@ -294,9 +311,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 4,
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  primaryBtnText: { ...Typography.body, fontWeight: "700" },
 
-  error: { marginTop: 10, fontSize: 13 },
+  error: { ...Typography.bodySm, marginTop: 10 },
 
   footerRow: {
     marginTop: 16,

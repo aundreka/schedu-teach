@@ -7,6 +7,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import type { SessionCategory } from "../../algorithm/00_types";
+import { useAppTheme } from "../../context/theme";
 import { toneFor } from "./theme";
 
 type Props = {
@@ -32,7 +33,8 @@ export default function CalendarBlockBar({
   isSuspended,
   lockReason,
 }: Props) {
-  const tone = toneFor(category);
+  const { scheme } = useAppTheme();
+  const tone = toneFor(category, scheme);
   const displayTitle = isSuspended && lockReason ? lockReason : title;
   return (
     <View
@@ -43,8 +45,8 @@ export default function CalendarBlockBar({
       pointerEvents="none"
     >
       <View style={styles.prefixRow}>
-        {isSuspended ? <Ionicons name="lock-closed" size={9} color={tone.text} /> : null}
-        <Text style={[styles.prefix, { color: tone.text }]} numberOfLines={1}>
+        {isSuspended ? <Ionicons name="lock-closed" size={9} color={tone.fg} /> : null}
+        <Text style={[styles.prefix, { color: tone.fg }]} numberOfLines={1}>
           {prefix}
         </Text>
       </View>
@@ -52,7 +54,7 @@ export default function CalendarBlockBar({
         style={[
           styles.title,
           {
-            color: tone.subText,
+            color: tone.fg,
             textDecorationLine: isSuspended && !lockReason ? "line-through" : "none",
           },
         ]}

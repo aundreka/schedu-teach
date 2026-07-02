@@ -19,6 +19,7 @@ import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import BottomSheet from "../BottomSheet";
 import Toast from "../Toast";
+import { useAppTheme } from "../../context/theme";
 import { emitLessonPlanRefresh } from "../../lib/lesson-plan-refresh";
 import { supabase } from "../../lib/supabase";
 import { loadRuntimeData, persistRebalance, snapshotVersion } from "../../lib/rebalance-service";
@@ -49,6 +50,7 @@ export default function BlockActionSheet({
   onClose,
   onDeleted,
 }: Props) {
+  const { colors: c } = useAppTheme();
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<{ visible: boolean; message: string; variant: "success" | "error" }>({
     visible: false,
@@ -123,69 +125,82 @@ export default function BlockActionSheet({
     <>
       <BottomSheet visible={visible} onClose={onClose} snapFraction={0.5}>
         <View style={styles.header}>
-          <View style={[styles.warningBadge, isExam && styles.examBadge]}>
-            <Ionicons name="warning" size={16} color={isExam ? "#B91C1C" : "#D97706"} />
+          <View style={[styles.warningBadge, { backgroundColor: isExam ? c.dangerSoft : c.warningSoft }]}>
+            <Ionicons name="warning" size={16} color={isExam ? c.danger : c.warning} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>{"Delete \""}{displayName}{"\"?"}</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: c.text }]}>{"Delete \""}{displayName}{"\"?"}</Text>
+            <Text style={[styles.subtitle, { color: c.mutedText }]}>
               {CATEGORY_HELP[category] ?? "This block will be removed from your schedule."}
             </Text>
           </View>
           <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
-            <Ionicons name="close" size={22} color="#9CA3AF" />
+            <Ionicons name="close" size={22} color={c.faintText} />
           </Pressable>
         </View>
 
         <View style={styles.optionsBlock}>
           {/* Option 1: Lessen requirements */}
-          <Pressable onPress={handleLessenRequirements} style={styles.option}>
-            <View style={[styles.optionIcon, { backgroundColor: "#EFF6FF" }]}>
-              <Ionicons name="settings-outline" size={18} color="#1D4ED8" />
+          <Pressable
+            onPress={handleLessenRequirements}
+            style={[styles.option, { backgroundColor: c.surfaceAlt }]}
+            accessibilityRole="button"
+            accessibilityLabel="Adjust requirements. Edit requirement counts in plan settings; the schedule regenerates to match."
+          >
+            <View style={[styles.optionIcon, { backgroundColor: c.infoSoft }]}>
+              <Ionicons name="settings-outline" size={18} color={c.info} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.optionTitle}>Adjust requirements</Text>
-              <Text style={styles.optionDesc}>
+              <Text style={[styles.optionTitle, { color: c.text }]}>Adjust requirements</Text>
+              <Text style={[styles.optionDesc, { color: c.mutedText }]}>
                 Edit requirement counts in plan settings. The schedule regenerates to match.
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={16} color={c.faintText} />
           </Pressable>
 
           {/* Option 2: Delete & regenerate (not for exam) */}
           {!isExam ? (
             <Pressable
               onPress={handleDeleteAndRegenerate}
-              style={styles.option}
+              style={[styles.option, { backgroundColor: c.surfaceAlt }]}
               disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Delete and regenerate. Removes this block and rebalances the schedule to fill the gap elsewhere."
+              accessibilityState={{ disabled: busy }}
             >
-              <View style={[styles.optionIcon, { backgroundColor: "#FFF7ED" }]}>
+              <View style={[styles.optionIcon, { backgroundColor: c.warningSoft }]}>
                 {busy ? (
-                  <ActivityIndicator size="small" color="#EA580C" />
+                  <ActivityIndicator size="small" color={c.warning} />
                 ) : (
-                  <Ionicons name="refresh" size={18} color="#EA580C" />
+                  <Ionicons name="refresh" size={18} color={c.warning} />
                 )}
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.optionTitle}>Delete & regenerate</Text>
-                <Text style={styles.optionDesc}>
+                <Text style={[styles.optionTitle, { color: c.text }]}>Delete & regenerate</Text>
+                <Text style={[styles.optionDesc, { color: c.mutedText }]}>
                   Removes this block and rebalances the schedule to fill the gap elsewhere.
                 </Text>
               </View>
-              {!busy ? <Ionicons name="chevron-forward" size={16} color="#D1D5DB" /> : null}
+              {!busy ? <Ionicons name="chevron-forward" size={16} color={c.faintText} /> : null}
             </Pressable>
           ) : null}
 
           {/* Option 3: Keep it */}
-          <Pressable onPress={onClose} style={styles.option}>
-            <View style={[styles.optionIcon, { backgroundColor: "#F0FDF4" }]}>
-              <Ionicons name="checkmark-circle-outline" size={18} color="#15803D" />
+          <Pressable
+            onPress={onClose}
+            style={[styles.option, { backgroundColor: c.surfaceAlt }]}
+            accessibilityRole="button"
+            accessibilityLabel="Keep it. No changes; the block stays in the schedule."
+          >
+            <View style={[styles.optionIcon, { backgroundColor: c.tintSoft }]}>
+              <Ionicons name="checkmark-circle-outline" size={18} color={c.tintDeep} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.optionTitle}>Keep it</Text>
-              <Text style={styles.optionDesc}>No changes. The block stays in the schedule.</Text>
+              <Text style={[styles.optionTitle, { color: c.text }]}>Keep it</Text>
+              <Text style={[styles.optionDesc, { color: c.mutedText }]}>No changes. The block stays in the schedule.</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="#D1D5DB" />
+            <Ionicons name="chevron-forward" size={16} color={c.faintText} />
           </Pressable>
         </View>
       </BottomSheet>
@@ -212,22 +227,16 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#FEF3C7",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 2,
   },
-  examBadge: {
-    backgroundColor: "#FEE2E2",
-  },
   title: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#111827",
   },
   subtitle: {
     fontSize: 13,
-    color: "#6B7280",
     marginTop: 3,
     lineHeight: 18,
   },
@@ -241,7 +250,6 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 14,
     borderRadius: 14,
-    backgroundColor: "#F9FAFB",
     marginBottom: 6,
   },
   optionIcon: {
@@ -254,11 +262,9 @@ const styles = StyleSheet.create({
   optionTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#111827",
   },
   optionDesc: {
     fontSize: 12,
-    color: "#6B7280",
     marginTop: 2,
     lineHeight: 16,
   },

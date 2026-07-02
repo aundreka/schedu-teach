@@ -51,7 +51,12 @@ export default function PaywallModal({ visible, onClose, quotaType, regionCode }
       visible={visible}
       onRequestClose={onClose}
     >
-      <Pressable style={styles.overlay} onPress={onClose} />
+      <Pressable
+        style={[styles.overlay, { backgroundColor: c.backdrop }]}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="Close"
+      />
 
       <View style={[styles.sheet, { backgroundColor: c.card, borderColor: c.border }]}>
         {/* Handle */}
@@ -59,7 +64,11 @@ export default function PaywallModal({ visible, onClose, quotaType, regionCode }
 
         {/* Header */}
         <View style={styles.header}>
-          <View style={[styles.lockCircle, { backgroundColor: c.background }]}>
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[styles.lockCircle, { backgroundColor: c.background }]}
+          >
             <Ionicons name="lock-closed" size={22} color={c.tint} />
           </View>
           <Text style={[styles.title, { color: c.text }]}>
@@ -77,7 +86,7 @@ export default function PaywallModal({ visible, onClose, quotaType, regionCode }
             <Text style={[styles.tableFeature, { color: c.mutedText }]}>Feature</Text>
             <Text style={[styles.tableCell, { color: c.mutedText }]}>Free</Text>
             <Text style={[styles.tableCell, styles.proCol, { color: c.tint }]}>PRO</Text>
-            <Text style={[styles.tableCell, styles.maxCol, { color: "#B45309" }]}>MAX</Text>
+            <Text style={[styles.tableCell, styles.maxCol, { color: c.tierProFg }]}>MAX</Text>
           </View>
 
           {TIER_ROWS.map((row) => (
@@ -98,6 +107,9 @@ export default function PaywallModal({ visible, onClose, quotaType, regionCode }
           <Pressable
             onPress={() => handleUpgrade("tier1")}
             disabled={loading !== null}
+            accessibilityRole="button"
+            accessibilityLabel={`Upgrade to PRO, ${pricing.tier1Price} per month`}
+            accessibilityState={{ disabled: loading !== null, busy: loading === "tier1" }}
             style={[styles.proBtn, { borderColor: c.tint, opacity: loading ? 0.7 : 1 }]}
           >
             {loading === "tier1" ? (
@@ -113,20 +125,28 @@ export default function PaywallModal({ visible, onClose, quotaType, regionCode }
           <Pressable
             onPress={() => handleUpgrade("tier2")}
             disabled={loading !== null}
-            style={[styles.maxBtn, { backgroundColor: "#B45309", opacity: loading ? 0.7 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel={`Upgrade to MAX, ${pricing.tier2Price} per month`}
+            accessibilityState={{ disabled: loading !== null, busy: loading === "tier2" }}
+            style={[styles.maxBtn, { backgroundColor: c.tierProBg, opacity: loading ? 0.7 : 1 }]}
           >
             {loading === "tier2" ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={c.tierProFg} />
             ) : (
               <>
-                <Text style={[styles.btnLabel, { color: "#fff" }]}>Upgrade to MAX</Text>
-                <Text style={[styles.btnPrice, { color: "#fff" }]}>{pricing.tier2Price}/mo</Text>
+                <Text style={[styles.btnLabel, { color: c.tierProFg }]}>Upgrade to MAX</Text>
+                <Text style={[styles.btnPrice, { color: c.tierProFg }]}>{pricing.tier2Price}/mo</Text>
               </>
             )}
           </Pressable>
         </View>
 
-        <Pressable onPress={onClose} style={styles.dismissRow}>
+        <Pressable
+          onPress={onClose}
+          style={styles.dismissRow}
+          accessibilityRole="button"
+          accessibilityLabel="Maybe later"
+        >
           <Text style={[styles.dismiss, { color: c.mutedText }]}>Maybe later</Text>
         </Pressable>
       </View>
@@ -137,7 +157,6 @@ export default function PaywallModal({ visible, onClose, quotaType, regionCode }
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
   },
   sheet: {
     position: "absolute",

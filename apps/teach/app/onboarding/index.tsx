@@ -24,10 +24,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+import Animated from "react-native-reanimated";
 
 import { Radius, Spacing, Typography } from "../../constants/fonts";
 import { useAppTheme } from "../../context/theme";
 import { defaultPlanStart, getSchoolYearForDate, todayIso } from "../../lib/deped-calendar";
+import { enterUp } from "../../lib/motion";
 import { supabase } from "../../lib/supabase";
 
 type Posture = "fresh" | "midterm";
@@ -117,138 +119,163 @@ export default function Onboarding() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.headerRow}>
-          <View
-            style={[
-              styles.logoBubble,
-              { backgroundColor: c.tint + "1A", borderColor: c.tint },
-            ]}
-          >
-            <Ionicons name="school-outline" size={28} color={c.tint} />
+        <Animated.View entering={enterUp()} style={styles.inner}>
+          <View style={styles.headerRow}>
+            <View
+              accessibilityElementsHidden={true}
+              style={[
+                styles.logoBubble,
+                { backgroundColor: c.tintSoft, borderColor: c.tint },
+              ]}
+            >
+              <Ionicons name="school-outline" size={28} color={c.tint} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.title, { color: c.text }]}>Welcome to SchEDU</Text>
+              <Text style={[styles.subtitle, { color: c.mutedText }]}>
+                {"A few quick questions and we'll plan your term."}
+              </Text>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.title, { color: c.text }]}>Welcome to SchEDU</Text>
-            <Text style={[styles.subtitle, { color: c.mutedText }]}>
-              {"A few quick questions and we'll plan your term."}
-            </Text>
-          </View>
-        </View>
 
-        <Text style={[styles.sectionLabel, { color: c.mutedText }]}>
-          When do you want to start planning?
-        </Text>
-
-        {sy ? (
-          <Text style={[styles.helperText, { color: c.mutedText }]}>
-            DepEd SY {sy.label} runs {sy.start_date} to {sy.end_date}.
+          <Text style={[styles.sectionLabel, { color: c.mutedText }]}>
+            When do you want to start planning?
           </Text>
-        ) : null}
 
-        <Pressable
-          onPress={() => setPosture("fresh")}
-          style={[
-            styles.optionCard,
-            { backgroundColor: c.card, borderColor: posture === "fresh" ? c.tint : c.border },
-          ]}
-        >
-          {renderRadio(posture === "fresh")}
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.optionTitle, { color: c.text }]}>
-              {sy && today < sy.start_date
-                ? `Start of the school year (${sy.start_date})`
-                : "Start of the school year"}
-            </Text>
-            <Text style={[styles.optionBody, { color: c.mutedText }]}>
-              {sy && today < sy.start_date
-                ? "You're ahead — we'll plan the full year from day one."
-                : "Plan as if you're starting from the term's first day."}
-            </Text>
-          </View>
-        </Pressable>
-
-        <Pressable
-          onPress={() => setPosture("midterm")}
-          style={[
-            styles.optionCard,
-            { backgroundColor: c.card, borderColor: posture === "midterm" ? c.tint : c.border },
-          ]}
-        >
-          {renderRadio(posture === "midterm")}
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.optionTitle, { color: c.text }]}>
-              {`Today (${today}) — I'm joining mid-term`}
-            </Text>
-            <Text style={[styles.optionBody, { color: c.mutedText }]}>
-              {"We'll schedule only from today onward and skip anything you've already covered."}
-            </Text>
-          </View>
-        </Pressable>
-
-        {posture === "midterm" ? (
-          <View
-            style={[
-              styles.midTermBox,
-              { backgroundColor: c.card, borderColor: c.border },
-            ]}
-          >
-            <Text style={[styles.sectionLabel, { color: c.mutedText, marginTop: 0 }]}>
-              Where are you right now?
-            </Text>
+          {sy ? (
             <Text style={[styles.helperText, { color: c.mutedText }]}>
-              How many of each have you already taught/given this term? Leave at 0 if none yet.
+              DepEd SY {sy.label} runs {sy.start_date} to {sy.end_date}.
             </Text>
+          ) : null}
 
-            <CountInput
-              label="Lessons already taught"
-              value={lessonNo}
-              onChange={setLessonNo}
-              color={c}
-            />
-            <CountInput
-              label="Written work already given"
-              value={writtenWorkNo}
-              onChange={setWrittenWorkNo}
-              color={c}
-            />
-            <CountInput
-              label="Performance tasks already given"
-              value={performanceTaskNo}
-              onChange={setPerformanceTaskNo}
-              color={c}
-            />
-            <CountInput
-              label="Exams already given"
-              value={examNo}
-              onChange={setExamNo}
-              color={c}
-            />
-          </View>
-        ) : null}
+          <Pressable
+            onPress={() => setPosture("fresh")}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: posture === "fresh" }}
+            accessibilityLabel={
+              sy && today < sy.start_date
+                ? `Start of the school year (${sy.start_date})`
+                : "Start of the school year"
+            }
+            style={[
+              styles.optionCard,
+              { backgroundColor: c.card, borderColor: posture === "fresh" ? c.tint : c.border },
+            ]}
+          >
+            {renderRadio(posture === "fresh")}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.optionTitle, { color: c.text }]}>
+                {sy && today < sy.start_date
+                  ? `Start of the school year (${sy.start_date})`
+                  : "Start of the school year"}
+              </Text>
+              <Text style={[styles.optionBody, { color: c.mutedText }]}>
+                {sy && today < sy.start_date
+                  ? "You're ahead — we'll plan the full year from day one."
+                  : "Plan as if you're starting from the term's first day."}
+              </Text>
+            </View>
+          </Pressable>
 
-        {errorMsg ? (
-          <Text style={[styles.error, { color: "#DC2626" }]}>{errorMsg}</Text>
-        ) : null}
+          <Pressable
+            onPress={() => setPosture("midterm")}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: posture === "midterm" }}
+            accessibilityLabel={`Today (${today}) — I'm joining mid-term`}
+            style={[
+              styles.optionCard,
+              { backgroundColor: c.card, borderColor: posture === "midterm" ? c.tint : c.border },
+            ]}
+          >
+            {renderRadio(posture === "midterm")}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.optionTitle, { color: c.text }]}>
+                {`Today (${today}) — I'm joining mid-term`}
+              </Text>
+              <Text style={[styles.optionBody, { color: c.mutedText }]}>
+                {"We'll schedule only from today onward and skip anything you've already covered."}
+              </Text>
+            </View>
+          </Pressable>
 
-        <Pressable
-          onPress={handleContinue}
-          disabled={busy}
-          style={[
-            styles.primaryButton,
-            { backgroundColor: busy ? c.mutedText : c.tint },
-          ]}
-        >
-          {busy ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.primaryButtonText}>Create my first plan</Text>
-          )}
-        </Pressable>
+          {posture === "midterm" ? (
+            <View
+              style={[
+                styles.midTermBox,
+                { backgroundColor: c.card, borderColor: c.border },
+              ]}
+            >
+              <Text style={[styles.sectionLabel, { color: c.mutedText, marginTop: 0 }]}>
+                Where are you right now?
+              </Text>
+              <Text style={[styles.helperText, { color: c.mutedText }]}>
+                How many of each have you already taught/given this term? Leave at 0 if none yet.
+              </Text>
 
-        <Pressable onPress={handleSkip} disabled={busy} style={styles.skipButton}>
-          <Text style={[styles.skipText, { color: c.mutedText }]}>
-            Skip for now
-          </Text>
-        </Pressable>
+              <CountInput
+                label="Lessons already taught"
+                value={lessonNo}
+                onChange={setLessonNo}
+                color={c}
+              />
+              <CountInput
+                label="Written work already given"
+                value={writtenWorkNo}
+                onChange={setWrittenWorkNo}
+                color={c}
+              />
+              <CountInput
+                label="Performance tasks already given"
+                value={performanceTaskNo}
+                onChange={setPerformanceTaskNo}
+                color={c}
+              />
+              <CountInput
+                label="Exams already given"
+                value={examNo}
+                onChange={setExamNo}
+                color={c}
+              />
+            </View>
+          ) : null}
+
+          {errorMsg ? (
+            <Text accessibilityLiveRegion="polite" style={[styles.error, { color: c.danger }]}>
+              {errorMsg}
+            </Text>
+          ) : null}
+
+          <Pressable
+            onPress={handleContinue}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Create my first plan"
+            style={[
+              styles.primaryButton,
+              { backgroundColor: busy ? c.mutedText : c.tint },
+            ]}
+          >
+            {busy ? (
+              <ActivityIndicator color={c.onTint} />
+            ) : (
+              <Text style={[styles.primaryButtonText, { color: c.onTint }]}>
+                Create my first plan
+              </Text>
+            )}
+          </Pressable>
+
+          <Pressable
+            onPress={handleSkip}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Skip for now"
+            style={styles.skipButton}
+          >
+            <Text style={[styles.skipText, { color: c.mutedText }]}>
+              Skip for now
+            </Text>
+          </Pressable>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -273,6 +300,7 @@ function CountInput({
         onChangeText={(v) => onChange(v.replace(/[^0-9]/g, ""))}
         keyboardType="number-pad"
         maxLength={3}
+        accessibilityLabel={label}
         style={[
           styles.countInput,
           {
@@ -291,6 +319,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingTop: Spacing.xxxl + Spacing.lg,
     paddingBottom: Spacing.xxxl,
+  },
+  inner: {
     gap: Spacing.lg,
   },
   headerRow: {
@@ -308,22 +338,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   title: {
-    fontSize: Typography.h1.fontSize,
+    ...Typography.h1,
     fontWeight: "700",
   },
   subtitle: {
-    fontSize: Typography.body.fontSize,
+    ...Typography.body,
     marginTop: 2,
   },
   sectionLabel: {
-    fontSize: Typography.caption.fontSize,
+    ...Typography.caption,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginTop: Spacing.md,
   },
   helperText: {
-    fontSize: Typography.caption.fontSize,
+    ...Typography.caption,
     marginBottom: Spacing.xs,
   },
   optionCard: {
@@ -348,11 +378,11 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   optionTitle: {
-    fontSize: Typography.h3.fontSize,
+    ...Typography.h3,
     fontWeight: "600",
   },
   optionBody: {
-    fontSize: Typography.body.fontSize,
+    ...Typography.body,
     marginTop: 4,
     lineHeight: 20,
   },
@@ -369,7 +399,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
   },
   countLabel: {
-    fontSize: Typography.body.fontSize,
+    ...Typography.body,
     flex: 1,
     paddingRight: Spacing.md,
   },
@@ -380,7 +410,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     textAlign: "center",
-    fontSize: Typography.body.fontSize,
+    ...Typography.body,
   },
   primaryButton: {
     paddingVertical: Spacing.lg,
@@ -389,8 +419,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
   },
   primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: Typography.h3.fontSize,
+    ...Typography.h3,
     fontWeight: "600",
   },
   skipButton: {
@@ -398,10 +427,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   skipText: {
-    fontSize: Typography.body.fontSize,
+    ...Typography.body,
   },
   error: {
-    fontSize: Typography.body.fontSize,
+    ...Typography.body,
     textAlign: "center",
     marginTop: Spacing.sm,
   },

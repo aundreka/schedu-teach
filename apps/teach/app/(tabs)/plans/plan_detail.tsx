@@ -37,6 +37,7 @@ import { supabase } from "../../../lib/supabase";
 import { formatTermProgress } from "../../../lib/term-progress";
 import { rebalanceDay } from "../../../algorithm/07_run";
 import Toast from "../../../components/Toast";
+import WeeklySchedule from "../../../components/WeeklySchedule";
 
 type PlanDetail = {
   lesson_plan_id: string;
@@ -282,17 +283,35 @@ function mapPlanEntry(row: any): PlanEntryItem | null {
   };
 }
 
-const DANGER = "#DC2626";
+type ThemeColors = ReturnType<typeof useAppTheme>["colors"];
 
-function statusPalette(status: string): { bg: string; fg: string } {
+function statusPalette(status: string, c: ThemeColors): { bg: string; fg: string } {
   switch (status) {
     case "active":
     case "published":
-      return { bg: "rgba(34,197,94,0.14)", fg: "#15803D" };
+      return { bg: c.tintSoft, fg: c.tintDeep };
     case "archived":
-      return { bg: "rgba(107,114,128,0.16)", fg: "#4B5563" };
+      return { bg: c.surfaceAlt, fg: c.mutedText };
     default:
-      return { bg: "rgba(245,158,11,0.16)", fg: "#B45309" };
+      return { bg: c.warningSoft, fg: c.warning };
+  }
+}
+
+function triggerPalette(triggerType: string, c: ThemeColors): { bg: string; fg: string } {
+  switch (triggerType) {
+    case "creation":
+    case "requirements_changed":
+      return { bg: c.tintSoft, fg: c.tintDeep };
+    case "suspension":
+      return { bg: c.warningSoft, fg: c.warning };
+    case "block_deleted":
+      return { bg: c.dangerSoft, fg: c.danger };
+    case "unsuspension":
+    case "block_added":
+    case "manual_restore":
+      return { bg: c.infoSoft, fg: c.info };
+    default:
+      return { bg: c.surfaceAlt, fg: c.mutedText };
   }
 }
 
@@ -881,6 +900,17 @@ export default function PlanDetailScreen() {
     );
   }, [deleting, handleDeletePlan, plan, saving]);
 
+  // Secondary actions live behind the header's ⋯ menu — one primary action
+  // (Edit) stays visible, everything else recedes.
+  const openOverflowMenu = useCallback(() => {
+    Alert.alert(plan?.title || "Plan actions", undefined, [
+      { text: "Recreate plan", onPress: confirmRecreate },
+      { text: "Duplicate plan", onPress: handleDuplicate },
+      { text: "Delete plan", style: "destructive", onPress: confirmDeletePlan },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }, [plan?.title, confirmRecreate, handleDuplicate, confirmDeletePlan]);
+
   const recurringEntries = useMemo(
     () =>
       (isEditing ? draftEntries : entries)
@@ -902,11 +932,11 @@ export default function PlanDetailScreen() {
   );
 
   const cardBg = c.card;
-  const fieldBg = isDark ? "rgba(255,255,255,0.04)" : "#F8FAFC";
-  const chipBg = isDark ? "rgba(255,255,255,0.06)" : "#EEF2F7";
+  const fieldBg = c.surfaceAlt;
+  const chipBg = c.surfaceAlt;
   const filledText = c.text;
   const mutedText = c.mutedText;
-  const status = statusPalette(plan?.status ?? "draft");
+  const status = statusPalette(plan?.status ?? "draft", c);
   const subjectLine = plan
     ? plan.subject_code
       ? `${plan.subject_code} · ${plan.subject_title}`
@@ -955,21 +985,39 @@ export default function PlanDetailScreen() {
                       disabled={saving}
                     >
                       {saving ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
+                        <ActivityIndicator color={c.onTint} size="small" />
                       ) : (
-                        <Text style={styles.actionPrimaryText}>Save</Text>
+                        <Text style={[styles.actionPrimaryText, { color: c.onTint }]}>Save</Text>
                       )}
                     </Pressable>
                   </>
                 ) : (
-                  <Pressable
-                    style={[styles.actionBtn, styles.actionPrimary, { backgroundColor: c.tint, borderColor: c.tint, opacity: deleting ? 0.6 : 1 }]}
-                    onPress={handleEdit}
-                    disabled={deleting}
-                  >
-                    <Ionicons name="create-outline" size={15} color="#FFFFFF" />
-                    <Text style={styles.actionPrimaryText}>Edit</Text>
-                  </Pressable>
+                  <>
+                    <Pressable
+                      style={[styles.actionBtn, styles.actionPrimary, { backgroundColor: c.tint, borderColor: c.tint, opacity: deleting ? 0.6 : 1 }]}
+                      onPress={handleEdit}
+                      disabled={deleting}
+                      accessibilityRole="button"
+                      accessibilityLabel="Edit plan"
+                    >
+                      <Ionicons name="create-outline" size={15} color={c.onTint} />
+                      <Text style={[styles.actionPrimaryText, { color: c.onTint }]}>Edit</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.backBtn, { borderColor: c.border, backgroundColor: cardBg }]}
+                      onPress={openOverflowMenu}
+                      disabled={deleting || saving}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="More actions"
+                    >
+                      {deleting ? (
+                        <ActivityIndicator size="small" color={c.mutedText} />
+                      ) : (
+                        <Ionicons name="ellipsis-horizontal" size={17} color={c.text} />
+                      )}
+                    </Pressable>
+                  </>
                 )}
               </View>
             ) : null}
@@ -1011,7 +1059,7 @@ export default function PlanDetailScreen() {
               ) : (
                 <View style={styles.timeline}>
                   {versions.map((entry, i) => {
-                    const triggerPalette = TRIGGER_PALETTE[entry.triggerType] ?? { bg: "#F3F4F6", fg: "#6B7280" };
+                    const trigger = triggerPalette(entry.triggerType, c);
                     const isLast = i === versions.length - 1;
                     const isRestoring = restoringId === entry.versionId;
                     return (
@@ -1022,8 +1070,8 @@ export default function PlanDetailScreen() {
                         </View>
                         <View style={[styles.timelineCard, { backgroundColor: cardBg, borderColor: c.border }]}>
                           <View style={styles.timelineCardTop}>
-                            <View style={[styles.triggerChip, { backgroundColor: triggerPalette.bg }]}>
-                              <Text style={[styles.triggerChipText, { color: triggerPalette.fg }]}>
+                            <View style={[styles.triggerChip, { backgroundColor: trigger.bg }]}>
+                              <Text style={[styles.triggerChipText, { color: trigger.fg }]}>
                                 {TRIGGER_LABELS[entry.triggerType] ?? entry.triggerType}
                               </Text>
                             </View>
@@ -1181,42 +1229,17 @@ export default function PlanDetailScreen() {
                 )}
               </View>
 
-              {!isEditing ? (
-                <View style={styles.secondaryActions}>
-                  <Pressable
-                    style={[styles.secondaryBtn, { borderColor: c.border, backgroundColor: cardBg, opacity: deleting || saving ? 0.5 : 1 }]}
-                    onPress={confirmRecreate}
-                    disabled={deleting || saving}
-                    accessibilityRole="button"
-                    accessibilityLabel="Recreate lesson plan"
-                  >
-                    <Ionicons name="refresh" size={15} color={c.tint} />
-                    <Text style={[styles.secondaryBtnText, { color: filledText }]}>Recreate</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.secondaryBtn, { borderColor: c.border, backgroundColor: cardBg, opacity: deleting || saving ? 0.5 : 1 }]}
-                    onPress={handleDuplicate}
-                    disabled={deleting || saving}
-                    accessibilityRole="button"
-                    accessibilityLabel="Duplicate lesson plan"
-                  >
-                    <Ionicons name="copy-outline" size={15} color={mutedText} />
-                    <Text style={[styles.secondaryBtnText, { color: filledText }]}>Duplicate</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.secondaryBtn, { borderColor: c.border, backgroundColor: cardBg, opacity: deleting ? 0.5 : 1 }]}
-                    onPress={confirmDeletePlan}
-                    disabled={deleting || saving}
-                    accessibilityRole="button"
-                    accessibilityLabel="Delete lesson plan"
-                  >
-                    {deleting ? (
-                      <ActivityIndicator size="small" color={DANGER} />
-                    ) : (
-                      <Ionicons name="trash-outline" size={15} color={DANGER} />
-                    )}
-                    <Text style={[styles.secondaryBtnText, { color: DANGER }]}>Delete</Text>
-                  </Pressable>
+              {!isEditing && recurringEntries.length > 0 ? (
+                <View style={styles.weeklyWrap}>
+                  <WeeklySchedule
+                    entries={recurringEntries.map((entry) => ({
+                      id: entry.plan_entry_id,
+                      day: entry.day,
+                      startTime: entry.start_time,
+                      endTime: entry.end_time,
+                      meetingType: entry.meeting_type,
+                    }))}
+                  />
                 </View>
               ) : null}
 
@@ -1236,7 +1259,7 @@ export default function PlanDetailScreen() {
                     active ? { backgroundColor: c.tint, borderColor: c.tint } : undefined,
                   ];
                   const label = (
-                    <Text style={[styles.dayChipPillText, { color: active ? "#FFFFFF" : mutedText }]}>
+                    <Text style={[styles.dayChipPillText, { color: active ? c.onTint : mutedText }]}>
                       {DAY_LABEL[day].slice(0, 3)}
                     </Text>
                   );
@@ -1276,7 +1299,7 @@ export default function PlanDetailScreen() {
                     <View style={styles.slotStack}>
                       {rows.map((entry) => {
                         const isLab = entry.room === "laboratory";
-                        const accent = isLab ? "#D9534F" : "#2D7BD8";
+                        const accent = isLab ? c.category.performanceTask.base : c.category.lesson.base;
                         return (
                           <View
                             key={entry.plan_entry_id}
@@ -1508,16 +1531,6 @@ const TRIGGER_LABELS: Record<string, string> = {
   manual_restore: "Restored",
 };
 
-const TRIGGER_PALETTE: Record<string, { bg: string; fg: string }> = {
-  creation: { bg: "#D1FAE5", fg: "#065F46" },
-  suspension: { bg: "#FEF3C7", fg: "#92400E" },
-  unsuspension: { bg: "#E0F2FE", fg: "#0369A1" },
-  block_added: { bg: "#EDE9FE", fg: "#5B21B6" },
-  block_deleted: { bg: "#FEE2E2", fg: "#991B1B" },
-  requirements_changed: { bg: "#F0FDF4", fg: "#15803D" },
-  manual_restore: { bg: "#EFF6FF", fg: "#1D4ED8" },
-};
-
 const cardShadow = {
   shadowColor: "#0F172A",
   shadowOpacity: 0.06,
@@ -1572,7 +1585,6 @@ const styles = StyleSheet.create({
   },
   actionPrimaryText: {
     ...Typography.caption,
-    color: "#FFFFFF",
     fontWeight: "700",
   },
   pageTitle: { ...Typography.h1 },
@@ -1644,6 +1656,7 @@ const styles = StyleSheet.create({
   },
   editPick: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
 
+  weeklyWrap: { marginTop: Spacing.xs },
   secondaryActions: { flexDirection: "row", gap: Spacing.sm },
   secondaryBtn: {
     flex: 1,

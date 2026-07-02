@@ -15,10 +15,11 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
+import { useAppTheme } from "../../context/theme";
 import CalendarBlockBar from "./calendar-block-bar";
 import { dayOfMonth, getMonthMatrix, monthKeyOf, type ISODate } from "./dates";
 import type { ScheduleBlock } from "./schedule";
-import { WEEKDAY_INITIALS } from "./theme";
+import { MONTH_NAMES, WEEKDAY_INITIALS } from "./theme";
 
 const WEEKDAY_HEADER_H = 22;
 const DATE_BAND_H = 22; // day-number strip at the top of a week row
@@ -133,15 +134,22 @@ function DateCell({
   colors: Props["colors"];
   onPress: () => void;
 }) {
+  const { colors: c } = useAppTheme();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
+  const [, monthStr] = date.split("-");
+  const monthName = MONTH_NAMES[Number(monthStr) - 1] ?? "";
+  const accessibilityLabel = `${monthName} ${dayOfMonth(date)}${isSuspended ? ", suspended" : ""}`;
+
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       style={[
         styles.dateCell,
         { width: colW, height: weekH },
-        isSuspended && { backgroundColor: "rgba(0,0,0,0.04)" },
+        isSuspended && { backgroundColor: c.warningSoft },
       ]}
       onPress={onPress}
       onPressIn={() => { scale.value = withSpring(0.92, { damping: 12, stiffness: 280 }); }}
@@ -163,7 +171,7 @@ function DateCell({
           <Ionicons
             name="moon"
             size={8}
-            color="#F59E0B"
+            color={c.warning}
             style={styles.suspendedIcon}
           />
         ) : null}

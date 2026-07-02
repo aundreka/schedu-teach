@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Animated, {
@@ -20,6 +21,9 @@ import { router } from "expo-router";
 import { Radius, Spacing, Typography } from "../../../constants/fonts";
 import TabPageHeader from "../../../components/tab-page-header";
 import AnimatedPressable from "../../../components/AnimatedPressable";
+import SubjectCover from "../../../components/SubjectCover";
+import { EmptyState, ErrorState } from "../../../components/ui";
+import { PlanSeed } from "../../../components/illustrations";
 import { useAppTheme } from "../../../context/theme";
 import { usePullToRefresh } from "../../../hooks/usePullToRefresh";
 import { subscribeToLessonPlanRefresh } from "../../../lib/lesson-plan-refresh";
@@ -86,29 +90,42 @@ function toPlanCard(row: any): PlanCardItem | null {
 
 // ─── Animated card component ──────────────────────────────────────────────────
 
-type PlanCardProps = { plan: PlanCardItem; index: number; cardTextColor: string };
+type PlanCardProps = { plan: PlanCardItem; index: number; width: number; today: string };
 
-function PlanCard({ plan, index, cardTextColor }: PlanCardProps) {
+function planProgress(startDate: string, endDate: string, today: string): number | undefined {
+  const start = new Date(`${startDate}T00:00:00`).getTime();
+  const end = new Date(`${endDate}T00:00:00`).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return undefined;
+  const now = new Date(`${today}T00:00:00`).getTime();
+  return Math.max(0, Math.min(1, (now - start) / (end - start)));
+}
+
+function PlanCard({ plan, index, width, today }: PlanCardProps) {
   const yearText = normalizeYear(plan.subject_year);
-  const subtitle = [plan.subject_code, yearText, plan.section_name].filter(Boolean).join(" - ");
+  const subtitle = [plan.subject_code, yearText, plan.section_name].filter(Boolean).join(" · ");
 
   return (
     <Animated.View entering={FadeInDown.duration(320).springify().delay(index * 55)}>
       <AnimatedPressable
-        animatedStyle={[styles.card, { backgroundColor: getCardColor(plan.subject_code) }]}
         onPress={() =>
           router.push({
             pathname: "/plans/plan_detail",
             params: { lessonPlanId: plan.lesson_plan_id },
           })
         }
+        accessibilityRole="button"
+        accessibilityLabel={`${plan.title}, ${subtitle || "no subject"}`}
       >
-        <Text style={[styles.cardCode, { color: cardTextColor }]} numberOfLines={2}>
-          {plan.title}
-        </Text>
-        <Text style={[styles.cardSub, { color: cardTextColor }]} numberOfLines={1}>
-          {subtitle || "No subject"}
-        </Text>
+        <SubjectCover
+          seed={plan.lesson_plan_id}
+          title={plan.title}
+          code={subtitle || undefined}
+          color={getCardColor(plan.subject_code)}
+          progress={planProgress(plan.start_date, plan.end_date, today)}
+          width={width}
+          height={116}
+          radius={Radius.lg}
+        />
       </AnimatedPressable>
     </Animated.View>
   );
@@ -162,7 +179,13 @@ function CollapsibleSection({ label, textColor, expanded, onToggle, children }: 
 
   return (
     <>
-      <Pressable style={styles.sectionHeader} onPress={onToggle}>
+      <Pressable
+        style={styles.sectionHeader}
+        onPress={onToggle}
+        accessibilityRole="button"
+        accessibilityLabel={`${label} plans`}
+        accessibilityState={{ expanded }}
+      >
         <Text style={[styles.sectionTitle, { color: textColor }]}>{label}</Text>
         <Animated.View style={caretStyle}>
           <Ionicons name="caret-down" size={14} color={textColor} />
@@ -179,8 +202,10 @@ function CollapsibleSection({ label, textColor, expanded, onToggle, children }: 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function PlansScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
+  const { width: windowWidth } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [plans, setPlans] = useState<PlanCardItem[]>([]);
   const [showCurrent, setShowCurrent] = useState(true);
   const [loadKey, setLoadKey] = useState(0);
@@ -212,8 +237,9 @@ export default function PlansScreen() {
 
       setPlans(mapped);
       setLoadKey((k) => k + 1);
+      setLoadError(false);
     } catch {
-      setPlans([]);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -237,12 +263,11 @@ export default function PlansScreen() {
     [plans, today]
   );
 
-  const cardTextColor = "#F8FAFC";
-  const surface = useMemo(() => (scheme === "dark" ? c.card : "#ECECEC"), [c.card, scheme]);
+  const cardWidth = windowWidth - Spacing.lg * 2;
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>
-      <View style={[styles.content, { backgroundColor: surface }]}>
+      <View style={styles.content}>
         <TabPageHeader
           title="Plans"
           textColor={c.text}
@@ -258,6 +283,20 @@ export default function PlansScreen() {
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator color={c.tint} />
+          </View>
+        ) : loadError ? (
+          <View style={styles.center}>
+            <ErrorState title="Couldn't load your plans" onRetry={loadPlans} />
+          </View>
+        ) : plans.length === 0 ? (
+          <View style={styles.center}>
+            <EmptyState
+              illustration={<PlanSeed size={210} />}
+              title="No plans yet"
+              body="Create a lesson plan and schEDU schedules the whole term for you."
+              ctaLabel="Create a lesson plan"
+              onCta={() => router.push("/create/lessonplan")}
+            />
           </View>
         ) : (
           <ScrollView
@@ -277,7 +316,7 @@ export default function PlansScreen() {
               {currentPlans.length > 0 ? (
                 <View style={styles.cardsWrap}>
                   {currentPlans.map((plan, i) => (
-                    <PlanCard key={plan.lesson_plan_id} plan={plan} index={i} cardTextColor={cardTextColor} />
+                    <PlanCard key={plan.lesson_plan_id} plan={plan} index={i} width={cardWidth} today={today} />
                   ))}
                 </View>
               ) : (
@@ -289,20 +328,17 @@ export default function PlansScreen() {
               <Text style={[styles.sectionTitle, { color: c.text }]}>All</Text>
             </View>
 
-            {plans.length > 0 ? (
-              <View style={styles.cardsWrap}>
-                {plans.map((plan, i) => (
-                  <PlanCard
-                    key={plan.lesson_plan_id}
-                    plan={plan}
-                    index={currentPlans.length + i}
-                    cardTextColor={cardTextColor}
-                  />
-                ))}
-              </View>
-            ) : (
-              <Text style={[styles.emptyText, { color: c.mutedText }]}>No plans found.</Text>
-            )}
+            <View style={styles.cardsWrap}>
+              {plans.map((plan, i) => (
+                <PlanCard
+                  key={plan.lesson_plan_id}
+                  plan={plan}
+                  index={currentPlans.length + i}
+                  width={cardWidth}
+                  today={today}
+                />
+              ))}
+            </View>
           </ScrollView>
         )}
       </View>
@@ -320,22 +356,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     marginBottom: Spacing.md,
   },
-  sectionTitle: { ...Typography.h2, fontSize: 17, lineHeight: 22, fontWeight: "500" },
+  sectionTitle: { ...Typography.h3 },
   cardsWrap: { gap: Spacing.md, paddingBottom: Spacing.md },
-  card: {
-    borderRadius: Radius.lg,
-    minHeight: 106,
-    paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.lg,
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.22,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  cardCode: { ...Typography.h2, fontSize: 24, lineHeight: 30, fontStyle: "italic", fontWeight: "700" },
-  cardSub: { ...Typography.body, fontSize: 14, lineHeight: 20, marginTop: 2 },
   allHeaderWrap: { marginTop: Spacing.lg, marginBottom: Spacing.md },
   listContent: { paddingBottom: Spacing.xxxl },
   emptyText: { ...Typography.body, marginBottom: Spacing.md },

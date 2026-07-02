@@ -8,6 +8,7 @@ import { useState } from "react";
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Radius, Spacing, Typography } from "../../constants/fonts";
+import { useAppTheme } from "../../context/theme";
 import type { PlanSummary } from "./schedule";
 
 export function normalizeYear(year: string | null): string {
@@ -47,6 +48,7 @@ export default function SubjectPill({
   mutedColor,
   borderColor,
 }: Props) {
+  const { colors: c } = useAppTheme();
   const [open, setOpen] = useState(false);
   const subtitle = planSubtitle(subjectYear, sectionName);
   const pickable = plans.length > 0;
@@ -54,7 +56,7 @@ export default function SubjectPill({
   return (
     <>
       <Pressable
-        style={[styles.pill, { backgroundColor: surface }]}
+        style={[styles.pill, { backgroundColor: surface, shadowColor: c.shadow }]}
         onPress={() => pickable && setOpen(true)}
       >
         <Ionicons name="caret-down" size={13} color={mutedColor} style={styles.caret} />
@@ -71,7 +73,7 @@ export default function SubjectPill({
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setOpen(false)}>
+        <Pressable style={[styles.overlay, { backgroundColor: c.backdrop }]} onPress={() => setOpen(false)}>
           <Pressable
             style={[styles.sheet, { backgroundColor: surface, borderColor }]}
             onPress={(event) => event.stopPropagation()}
@@ -100,7 +102,7 @@ export default function SubjectPill({
                         {[itemSubtitle, item.title].filter(Boolean).join(" · ")}
                       </Text>
                     </View>
-                    {active ? <Ionicons name="checkmark" size={18} color="#22C55E" /> : null}
+                    {active ? <Ionicons name="checkmark" size={18} color={c.tint} /> : null}
                   </Pressable>
                 );
               }}
@@ -121,7 +123,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: Radius.lg,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.16,
     shadowRadius: 5,
@@ -146,7 +147,6 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.18)",
     justifyContent: "center",
     paddingHorizontal: Spacing.xl,
   },

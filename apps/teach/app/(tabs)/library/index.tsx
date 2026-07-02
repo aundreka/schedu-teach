@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   Modal,
   Pressable,
   RefreshControl,
@@ -9,6 +8,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Animated, {
@@ -20,11 +20,16 @@ import Animated, {
   Easing,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import { useAppTheme } from "../../../context/theme";
 import { Radius, Spacing, Typography } from "../../../constants/fonts";
 import TabPageHeader from "../../../components/tab-page-header";
 import AnimatedPressable from "../../../components/AnimatedPressable";
+import SubjectCover from "../../../components/SubjectCover";
+import { EmptyState, ErrorState } from "../../../components/ui";
+import { EmptyShelf } from "../../../components/illustrations";
 import { usePullToRefresh } from "../../../hooks/usePullToRefresh";
 import { supabase } from "../../../lib/supabase";
 import { getSubjectFallbackColor } from "../../../lib/subject-fallback-color";
@@ -38,6 +43,8 @@ type LibrarySubject = {
   subject_image: string | null;
   subject_image_signed_url: string | null;
 };
+
+const CARD_H = 226;
 
 function normalizeRow(row: any): LibrarySubject | null {
   const subjectRaw = row?.subject;
@@ -71,9 +78,14 @@ function isHttpUrl(value: string) {
 
 // ─── Animated subject card ────────────────────────────────────────────────────
 
-type SubjectCardProps = { item: LibrarySubject; index: number; textColor: string; mutedText: string; border: string };
+type SubjectCardProps = {
+  item: LibrarySubject;
+  index: number;
+  cardWidth: number;
+  mutedText: string;
+};
 
-function SubjectCard({ item, index, textColor, mutedText, border }: SubjectCardProps) {
+function SubjectCard({ item, index, cardWidth, mutedText }: SubjectCardProps) {
   const fallbackColor = getSubjectFallbackColor(`${item.subject_id}:${item.code}`);
 
   return (
@@ -82,6 +94,8 @@ function SubjectCard({ item, index, textColor, mutedText, border }: SubjectCardP
       entering={FadeInDown.duration(320).springify().delay(index * 55)}
     >
       <AnimatedPressable
+        accessibilityRole="button"
+        accessibilityLabel={`${item.title}, ${item.school_name}`}
         onPress={() =>
           router.push({
             pathname: "/library/subject_detail",
@@ -89,36 +103,35 @@ function SubjectCard({ item, index, textColor, mutedText, border }: SubjectCardP
           })
         }
       >
-        <View
-          style={[
-            styles.cardTop,
-            { backgroundColor: item.subject_image_signed_url ? border : fallbackColor },
-          ]}
-        >
-          {item.subject_image_signed_url ? (
+        {item.subject_image_signed_url ? (
+          <View style={styles.coverCard}>
             <Image
               source={{ uri: item.subject_image_signed_url }}
               style={styles.cardImage}
-              resizeMode="cover"
+              contentFit="cover"
             />
-          ) : (
-            <View style={styles.imageFallback}>
-              <Text
-                style={styles.fallbackCode}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.7}
-              >
-                {item.code}
+            {/* Legibility scrim — white meta over imagery is intentional. */}
+            <LinearGradient colors={["transparent", "rgba(0,0,0,0.45)"]} style={styles.coverScrim} />
+            <View style={styles.coverMeta}>
+              <Text style={styles.coverCode} numberOfLines={1}>
+                {item.code.toUpperCase()}
+              </Text>
+              <Text style={styles.coverTitle} numberOfLines={2}>
+                {item.title}
               </Text>
             </View>
-          )}
-        </View>
-        <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>
-          <Text style={styles.codeText}>{item.code}</Text>
-          {" - "}
-          {item.title}
-        </Text>
+          </View>
+        ) : (
+          <SubjectCover
+            seed={item.subject_id}
+            title={item.title}
+            code={item.code}
+            color={fallbackColor}
+            width={cardWidth}
+            height={CARD_H}
+            radius={Radius.md}
+          />
+        )}
         <Text style={[styles.cardSub, { color: mutedText }]} numberOfLines={1}>
           {item.school_name}
         </Text>
@@ -175,7 +188,13 @@ function CollapsibleSection({ label, textColor, expanded, onToggle, children }: 
 
   return (
     <>
-      <Pressable style={styles.sectionHeader} onPress={onToggle}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${label} subjects`}
+        accessibilityState={{ expanded }}
+        style={styles.sectionHeader}
+        onPress={onToggle}
+      >
         <Text style={[styles.filterText, { color: textColor }]}>{label}</Text>
         <Animated.View style={caretStyle}>
           <Ionicons name="chevron-down" size={14} color={textColor} />
@@ -193,7 +212,9 @@ function CollapsibleSection({ label, textColor, expanded, onToggle, children }: 
 
 export default function LibraryScreen() {
   const { colors: c, scheme } = useAppTheme();
+  const { width: windowWidth } = useWindowDimensions();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<LibrarySubject[]>([]);
   const [currentSubjectIds, setCurrentSubjectIds] = useState<Set<string>>(new Set());
   const [searchOpen, setSearchOpen] = useState(false);
@@ -204,8 +225,12 @@ export default function LibraryScreen() {
   const [selectedYear, setSelectedYear] = useState<string>("all");
   const [loadKey, setLoadKey] = useState(0);
 
+  // Grid cards are 48% of the content width (space-between leaves the gutter).
+  const cardWidth = Math.floor((windowWidth - Spacing.lg * 2) * 0.48);
+
   const loadSubjects = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const {
         data: { user },
@@ -232,7 +257,7 @@ export default function LibraryScreen() {
         new Set(
           mappedBase
             .map((item) => item.subject_image)
-            .filter((img): img is string => Boolean(img) && !isHttpUrl(img)),
+            .filter((img): img is string => typeof img === "string" && img.length > 0 && !isHttpUrl(img)),
         ),
       );
       const signedByPath = new Map<string, string>();
@@ -273,9 +298,9 @@ export default function LibraryScreen() {
       setSubjects(mapped);
       setCurrentSubjectIds(current);
       setLoadKey((k) => k + 1);
-    } catch {
-      setSubjects([]);
-      setCurrentSubjectIds(new Set());
+    } catch (err: any) {
+      // Honest failure: surface the error instead of rendering an empty shelf.
+      setLoadError(err?.message ?? "Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -288,8 +313,8 @@ export default function LibraryScreen() {
   const { refreshing, onRefresh } = usePullToRefresh(loadSubjects);
 
   const surface = useMemo(
-    () => (scheme === "dark" ? c.card : "#F8F8F8"),
-    [c.card, scheme]
+    () => (scheme === "dark" ? c.card : c.surfaceAlt),
+    [c.card, c.surfaceAlt, scheme]
   );
 
   const institutionOptions = useMemo(() => {
@@ -337,9 +362,8 @@ export default function LibraryScreen() {
           key={item.subject_id}
           item={item}
           index={indexOffset + i}
-          textColor={c.text}
+          cardWidth={cardWidth}
           mutedText={c.mutedText}
-          border={c.border}
         />
       ))}
     </View>
@@ -355,6 +379,7 @@ export default function LibraryScreen() {
             {
               key: "search",
               icon: "search-outline",
+              label: "Search subjects",
               onPress: () => {
                 setSearchOpen((v) => !v);
                 if (searchOpen) setSearchQuery("");
@@ -363,11 +388,13 @@ export default function LibraryScreen() {
             {
               key: "create",
               icon: "add",
+              label: "Create subject",
               onPress: () => router.push("/create/subject"),
             },
             {
               key: "filter",
               icon: "options-outline",
+              label: "Filter subjects",
               onPress: () => setFilterOpen(true),
             },
           ]}
@@ -404,30 +431,44 @@ export default function LibraryScreen() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.tint} />
             }
           >
-            <CollapsibleSection
-              label="Current"
-              textColor={c.text}
-              expanded={showCurrent}
-              onToggle={() => setShowCurrent((v) => !v)}
-            >
-              {sortedCurrentSubjects.length > 0 ? (
-                renderCards(sortedCurrentSubjects)
-              ) : (
-                <Text style={[styles.sectionEmptyText, { color: c.mutedText }]}>
-                  No current subjects.
-                </Text>
-              )}
-            </CollapsibleSection>
-
-            <View style={styles.allHeader}>
-              <Text style={[styles.filterText, { color: c.text }]}>All</Text>
-            </View>
-            {sortedAllSubjects.length > 0 ? (
-              renderCards(sortedAllSubjects, sortedCurrentSubjects.length)
+            {loadError ? (
+              <ErrorState title="Couldn't load your library" onRetry={loadSubjects} />
+            ) : subjects.length === 0 ? (
+              <EmptyState
+                illustration={<EmptyShelf size={210} />}
+                title="No subjects yet"
+                body="Create your first subject to start building lessons, plans, and activities."
+                ctaLabel="Create a subject"
+                onCta={() => router.push("/(tabs)/create/subject")}
+              />
             ) : (
-              <Text style={[styles.sectionEmptyText, { color: c.mutedText }]}>
-                No subjects match the current filters.
-              </Text>
+              <>
+                <CollapsibleSection
+                  label="Current"
+                  textColor={c.text}
+                  expanded={showCurrent}
+                  onToggle={() => setShowCurrent((v) => !v)}
+                >
+                  {sortedCurrentSubjects.length > 0 ? (
+                    renderCards(sortedCurrentSubjects)
+                  ) : (
+                    <Text style={[styles.sectionEmptyText, { color: c.mutedText }]}>
+                      No current subjects.
+                    </Text>
+                  )}
+                </CollapsibleSection>
+
+                <View style={styles.allHeader}>
+                  <Text style={[styles.filterText, { color: c.text }]}>All</Text>
+                </View>
+                {sortedAllSubjects.length > 0 ? (
+                  renderCards(sortedAllSubjects, sortedCurrentSubjects.length)
+                ) : (
+                  <Text style={[styles.sectionEmptyText, { color: c.mutedText }]}>
+                    No subjects match the current filters.
+                  </Text>
+                )}
+              </>
             )}
           </ScrollView>
         )}
@@ -439,7 +480,10 @@ export default function LibraryScreen() {
         animationType="fade"
         onRequestClose={() => setFilterOpen(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setFilterOpen(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}
+          onPress={() => setFilterOpen(false)}
+        >
           <Pressable
             style={[styles.modalCard, { borderColor: c.border, backgroundColor: c.card }]}
             onPress={() => {}}
@@ -454,12 +498,15 @@ export default function LibraryScreen() {
                 return (
                   <Pressable
                     key={institution}
+                    accessibilityRole="button"
+                    accessibilityLabel={label}
+                    accessibilityState={{ selected }}
                     onPress={() => setSelectedInstitution(institution)}
                     style={[
                       styles.schoolChip,
                       {
                         borderColor: selected ? c.tint : c.border,
-                        backgroundColor: selected ? `${c.tint}22` : c.card,
+                        backgroundColor: selected ? c.tintSoft : c.card,
                       },
                     ]}
                   >
@@ -479,12 +526,15 @@ export default function LibraryScreen() {
                 return (
                   <Pressable
                     key={year}
+                    accessibilityRole="button"
+                    accessibilityLabel={label}
+                    accessibilityState={{ selected }}
                     onPress={() => setSelectedYear(year)}
                     style={[
                       styles.schoolChip,
                       {
                         borderColor: selected ? c.tint : c.border,
-                        backgroundColor: selected ? `${c.tint}22` : c.card,
+                        backgroundColor: selected ? c.tintSoft : c.card,
                       },
                     ]}
                   >
@@ -498,6 +548,8 @@ export default function LibraryScreen() {
 
             <View style={styles.modalActions}>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Reset filters"
                 onPress={() => {
                   setSelectedInstitution("all");
                   setSelectedYear("all");
@@ -507,10 +559,12 @@ export default function LibraryScreen() {
                 <Text style={[styles.modalBtnText, { color: c.text }]}>Reset</Text>
               </Pressable>
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Apply filters"
                 onPress={() => setFilterOpen(false)}
                 style={[styles.modalBtnPrimary, { backgroundColor: c.tint }]}
               >
-                <Text style={styles.modalBtnPrimaryText}>Apply</Text>
+                <Text style={[styles.modalBtnPrimaryText, { color: c.onTint }]}>Apply</Text>
               </Pressable>
             </View>
           </Pressable>
@@ -523,14 +577,6 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   page: { flex: 1 },
   content: { flex: 1, paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg },
-  filterBtn: {
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.sm,
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 4,
-  },
   filterText: { ...Typography.h3 },
   searchWrap: {
     marginTop: Spacing.md,
@@ -555,24 +601,27 @@ const styles = StyleSheet.create({
   allHeader: { marginTop: Spacing.md, marginBottom: Spacing.sm },
   gridWrap: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   cardWrap: { width: "48%", marginBottom: Spacing.lg },
-  cardTop: { borderRadius: Radius.md, height: 226, overflow: "hidden", marginBottom: Spacing.sm },
-  cardImage: { width: "100%", height: "100%" },
-  imageFallback: { flex: 1, alignItems: "center", justifyContent: "center" },
-  fallbackCode: {
-    ...Typography.h1,
-    color: "#FFFFFF",
-    fontWeight: "700",
-    paddingHorizontal: Spacing.md,
-    textAlign: "center",
+  coverCard: {
+    borderRadius: Radius.md,
+    height: CARD_H,
+    overflow: "hidden",
   },
-  cardTitle: { ...Typography.h3, fontWeight: "700", textAlign: "center" },
-  codeText: { fontStyle: "italic" },
-  cardSub: { ...Typography.body, textAlign: "center", marginTop: 2 },
+  cardImage: { width: "100%", height: "100%" },
+  coverScrim: { position: "absolute", left: 0, right: 0, bottom: 0, height: 84 },
+  coverMeta: { position: "absolute", left: 14, right: 12, bottom: 12 },
+  // White meta over the cover image/scrim is intentional (sits on imagery).
+  coverCode: {
+    ...Typography.label,
+    color: "rgba(255,255,255,0.85)",
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  coverTitle: { color: "#FFFFFF", fontSize: 16, fontWeight: "700", lineHeight: 21 },
+  cardSub: { ...Typography.body, textAlign: "center", marginTop: Spacing.sm },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   sectionEmptyText: { ...Typography.body, marginBottom: Spacing.md },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "center",
     padding: Spacing.lg,
   },
@@ -601,5 +650,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: Spacing.md,
   },
-  modalBtnPrimaryText: { ...Typography.h3, color: "#FFFFFF", fontWeight: "700" },
+  modalBtnPrimaryText: { ...Typography.h3, fontWeight: "700" },
 });

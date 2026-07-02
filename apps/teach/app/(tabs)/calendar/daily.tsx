@@ -80,8 +80,12 @@ type BlockActionState = {
 
 type PositionedEntry = { entry: DayBlock; top: number; height: number; left: number; width: number };
 
+// Text/icon color on the saturated danger swipe action — fixed light value for
+// contrast in both themes.
+const ON_DANGER = "#FFFFFF";
+
 export default function DailyCalendarScreen() {
-  const { colors: c } = useAppTheme();
+  const { colors: c, scheme } = useAppTheme();
   const { width: windowWidth } = useWindowDimensions();
   const contentWidth = Math.max(280, windowWidth - PAGE_PADDING_H * 2);
 
@@ -351,16 +355,16 @@ export default function DailyCalendarScreen() {
             accessibilityRole="button"
             accessibilityLabel="Suspend day"
           >
-            <Ionicons name="moon" size={16} color="#F59E0B" />
+            <Ionicons name="moon" size={16} color={c.warning} />
           </Pressable>
           <Pressable
             onPress={openCreate}
-            style={[styles.createBtn, { backgroundColor: c.tint }]}
+            style={[styles.createBtn, { backgroundColor: c.tint, shadowColor: c.shadow }]}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="Create block"
           >
-            <Ionicons name="add" size={22} color="#FFFFFF" />
+            <Ionicons name="add" size={22} color={c.onTint} />
           </Pressable>
         </View>
 
@@ -389,7 +393,7 @@ export default function DailyCalendarScreen() {
                   <Pressable key={`d${i}`} style={styles.weekNumCell} onPress={() => selectDay(d)}>
                     {selected ? (
                       <View style={[styles.daySelected, { backgroundColor: c.tint }]}>
-                        <Text style={styles.daySelectedText}>{dayOfMonth(d)}</Text>
+                        <Text style={[styles.daySelectedText, { color: c.onTint }]}>{dayOfMonth(d)}</Text>
                       </View>
                     ) : (
                       <Text style={[styles.dayNumber, { color: c.mutedText }, d === today && styles.dayNumberToday]}>
@@ -443,8 +447,8 @@ export default function DailyCalendarScreen() {
                 style={[styles.nowLine, { top: ((nowMinutes - startHour * 60) / 60) * HOUR_H }]}
                 pointerEvents="none"
               >
-                <View style={styles.nowDot} />
-                <View style={styles.nowBar} />
+                <View style={[styles.nowDot, { backgroundColor: c.danger }]} />
+                <View style={[styles.nowBar, { backgroundColor: c.danger }]} />
               </View>
             ) : null}
 
@@ -476,9 +480,11 @@ export default function DailyCalendarScreen() {
                     renderRightActions={() => (
                       <Pressable
                         onPress={() => confirmDeleteEntry(entry)}
-                        style={styles.deleteAction}
+                        style={[styles.deleteAction, { backgroundColor: c.danger }]}
+                        accessibilityRole="button"
+                        accessibilityLabel="Delete block"
                       >
-                        <Ionicons name="trash" size={20} color="#FFFFFF" />
+                        <Ionicons name="trash" size={20} color={ON_DANGER} />
                         <Text style={styles.deleteActionText}>Delete</Text>
                       </Pressable>
                     )}
@@ -489,8 +495,9 @@ export default function DailyCalendarScreen() {
                         styles.card,
                         {
                           minHeight: height,
-                          borderColor: borderFor(entry.category),
-                          backgroundColor: entry.isSuspended ? "#F3F4F6" : c.card,
+                          borderColor: borderFor(entry.category, scheme),
+                          backgroundColor: entry.isSuspended ? c.surfaceAlt : c.card,
+                          shadowColor: c.shadow,
                         },
                       ]}
                     >
@@ -510,8 +517,8 @@ export default function DailyCalendarScreen() {
                         </Text>
                         {entry.isSuspended && entry.lockReason ? (
                           <View style={styles.lockBadgeRow}>
-                            <Ionicons name="lock-closed" size={11} color="#B91C1C" />
-                            <Text style={styles.lockBadgeText} numberOfLines={1}>
+                            <Ionicons name="lock-closed" size={11} color={c.danger} />
+                            <Text style={[styles.lockBadgeText, { color: c.danger }]} numberOfLines={1}>
                               {entry.lockReason}
                             </Text>
                           </View>
@@ -618,7 +625,6 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.18,
     shadowRadius: 4,
@@ -681,7 +687,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   daySelectedText: {
-    color: "#FFFFFF",
     fontSize: 15,
     fontWeight: "700",
   },
@@ -719,12 +724,10 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: "#EF4444",
   },
   nowBar: {
     flex: 1,
     height: 1.5,
-    backgroundColor: "#EF4444",
   },
   emptyDay: {
     position: "absolute",
@@ -740,7 +743,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "stretch",
     gap: Spacing.sm,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -769,7 +771,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 11,
     fontWeight: "600",
-    color: "#B91C1C",
   },
   detailBtn: {
     width: 22,
@@ -784,7 +785,6 @@ const styles = StyleSheet.create({
   },
   deleteAction: {
     width: DELETE_ACTION_W,
-    backgroundColor: "#EF4444",
     alignItems: "center",
     justifyContent: "center",
     gap: 2,
@@ -792,7 +792,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 12,
   },
   deleteActionText: {
-    color: "#FFFFFF",
+    color: ON_DANGER,
     fontSize: 11,
     fontWeight: "700",
   },

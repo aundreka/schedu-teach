@@ -375,6 +375,7 @@ type ClassRowProps = {
 };
 
 function ClassRow({ card, index, textColor, borderColor }: ClassRowProps) {
+  const { scheme } = useAppTheme();
   return (
     <Animated.View
       style={styles.classRow}
@@ -395,7 +396,7 @@ function ClassRow({ card, index, textColor, borderColor }: ClassRowProps) {
       <View style={[styles.classDivider, { backgroundColor: borderColor }]} />
       <View style={styles.chipColumn}>
         {card.blocks.map((block) => {
-          const tone = toneFor(block.category);
+          const tone = toneFor(block.category, scheme);
           return (
             <AnimatedPressable
               key={block.blockId}
@@ -403,7 +404,7 @@ function ClassRow({ card, index, textColor, borderColor }: ClassRowProps) {
               animatedStyle={[styles.chip, { borderColor: tone.bg, backgroundColor: tone.bg }]}
               hitSlop={4}
             >
-              <Text style={[styles.chipText, { color: "#FFFFFF" }]} numberOfLines={2}>
+              <Text style={[styles.chipText, { color: tone.fg }]} numberOfLines={2}>
                 {chipLabel(block)}
               </Text>
             </AnimatedPressable>

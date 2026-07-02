@@ -58,7 +58,7 @@ function monthIndexFor(months: YearMonth[], iso: string): number {
 }
 
 export default function CalendarScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const { width: windowWidth } = useWindowDimensions();
   const contentWidth = Math.max(280, windowWidth - PAGE_PADDING_H * 2);
 
@@ -154,15 +154,16 @@ export default function CalendarScreen() {
     () => ({
       text: c.text,
       muted: c.mutedText,
-      faint: scheme === "dark" ? "#3A4350" : "#C8CCD3",
+      // Out-of-month day numbers stay subtle in both schemes.
+      faint: c.hairline,
       border: c.border,
       todayBg: c.tint,
-      todayText: "#FFFFFF",
+      todayText: c.onTint,
     }),
-    [c.text, c.mutedText, c.border, c.tint, scheme],
+    [c.text, c.mutedText, c.hairline, c.border, c.tint, c.onTint],
   );
 
-  const pillSurface = scheme === "dark" ? c.card : "#FFFFFF";
+  const pillSurface = c.card;
 
   const onOverflow = useCallback(() => {
     Alert.alert(schedule?.title ?? "Calendar", undefined, [

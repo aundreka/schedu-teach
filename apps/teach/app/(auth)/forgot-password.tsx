@@ -9,11 +9,14 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
+import Animated from "react-native-reanimated";
 
+import { Input } from "../../components/ui";
+import { Typography } from "../../constants/fonts";
 import { useAppTheme } from "../../context/theme";
+import { enterUp } from "../../lib/motion";
 import { supabase } from "../../lib/supabase";
 
 export default function ForgotPassword() {
@@ -76,8 +79,14 @@ export default function ForgotPassword() {
     >
       <View style={styles.content}>
         <View style={styles.topRow}>
-          <Pressable onPress={() => router.back()} disabled={busy} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={20} color={c.text} />
+          <Pressable
+            onPress={() => router.back()}
+            disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={styles.backBtn}
+          >
+            <Ionicons name="chevron-back" size={20} color={c.text} accessibilityElementsHidden={true} />
             <Text style={{ color: c.text, fontWeight: "600" }}>Back</Text>
           </Pressable>
         </View>
@@ -89,21 +98,25 @@ export default function ForgotPassword() {
           </Text>
         </View>
 
-        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
-          <TextInput
+        <Animated.View
+          entering={enterUp()}
+          style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}
+        >
+          <Input
             value={email}
             onChangeText={setEmail}
             placeholder="Email"
-            placeholderTextColor={c.mutedText}
             autoCapitalize="none"
             keyboardType="email-address"
-            style={[styles.input, { borderColor: c.border, color: c.text }]}
+            containerStyle={styles.inputWrap}
             editable={!busy}
           />
 
           <Pressable
             onPress={handleResetRequest}
             disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Send Reset Link"
             style={({ pressed }) => [
               styles.primaryBtn,
               { backgroundColor: c.tint },
@@ -112,21 +125,32 @@ export default function ForgotPassword() {
             ]}
           >
             {busy ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={c.onTint} />
             ) : (
-              <Text style={styles.primaryBtnText}>Send Reset Link</Text>
+              <Text style={[styles.primaryBtnText, { color: c.onTint }]}>Send Reset Link</Text>
             )}
           </Pressable>
 
-          {errorMsg ? <Text style={[styles.error, { color: "#ef4444" }]}>{errorMsg}</Text> : null}
-          {successMsg ? (
-            <Text style={[styles.success, { color: c.tint }]}>{successMsg}</Text>
+          {errorMsg ? (
+            <Text accessibilityLiveRegion="polite" style={[styles.error, { color: c.danger }]}>
+              {errorMsg}
+            </Text>
           ) : null}
-        </View>
+          {successMsg ? (
+            <Text accessibilityLiveRegion="polite" style={[styles.success, { color: c.tint }]}>
+              {successMsg}
+            </Text>
+          ) : null}
+        </Animated.View>
 
         <View style={styles.footerRow}>
           <Text style={{ color: c.mutedText }}>Remembered your password? </Text>
-          <Pressable onPress={() => router.replace("/(auth)")} disabled={busy}>
+          <Pressable
+            onPress={() => router.replace("/(auth)")}
+            disabled={busy}
+            accessibilityRole="link"
+            accessibilityLabel="Sign in"
+          >
             <Text style={[styles.link, { color: c.tint }]}>Sign in</Text>
           </Pressable>
         </View>
@@ -160,8 +184,8 @@ const styles = StyleSheet.create({
   },
 
   titleBlock: { marginTop: 10, marginBottom: 14 },
-  title: { fontSize: 26, fontWeight: "800" },
-  subtitle: { marginTop: 6, fontSize: 13, lineHeight: 18 },
+  title: { ...Typography.h1 },
+  subtitle: { ...Typography.bodySm, marginTop: 6 },
 
   card: {
     borderWidth: 1,
@@ -169,13 +193,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
 
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+  inputWrap: {
     marginBottom: 10,
-    fontSize: 14,
   },
 
   primaryBtn: {
@@ -185,10 +204,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 4,
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  primaryBtnText: { ...Typography.body, fontWeight: "700" },
 
-  error: { marginTop: 10, fontSize: 13 },
-  success: { marginTop: 10, fontSize: 13 },
+  error: { ...Typography.bodySm, marginTop: 10 },
+  success: { ...Typography.bodySm, marginTop: 10 },
 
   footerRow: {
     marginTop: 16,

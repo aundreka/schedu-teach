@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Linking,
   Pressable,
   RefreshControl,
@@ -12,11 +11,23 @@ import {
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as Localization from "expo-localization";
+import { LinearGradient } from "expo-linear-gradient";
 import { useAppTheme } from "../../context/theme";
 import { useSubscriptionContext } from "../../context/subscription";
 import { getLocalePricing, startCheckout, getBillingManageUrl } from "../../lib/pricing";
 import { supabase } from "../../lib/supabase";
 import type { SubscriptionTier } from "../../hooks/useSubscription";
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorState,
+  ListRow,
+  ProgressRing,
+  SectionHeader,
+  Skeleton,
+} from "../../components/ui";
+import { Spacing, Typography } from "../../constants/fonts";
 
 type BillingEvent = {
   billing_event_id: string;
@@ -40,74 +51,57 @@ const TIER_SHORT: Record<SubscriptionTier, string> = {
   tier2: "MAX",
 };
 
-function badgeColors(tier: SubscriptionTier, c: ReturnType<typeof useAppTheme>["colors"]) {
-  if (tier === "tier1") return { bg: "#FFF3CD", text: "#B45309" };
-  if (tier === "tier2") return { bg: "#E8F5E9", text: c.tint };
-  return { bg: c.border, text: c.mutedText };
-}
+const TIER_BADGE_TONE: Record<SubscriptionTier, "neutral" | "pro" | "max"> = {
+  free:  "neutral",
+  tier1: "pro",
+  tier2: "max",
+};
 
-// ── Usage bar ────────────────────────────────────────────────────────────────
+// ── Usage ring ───────────────────────────────────────────────────────────────
 
-function UsageBar({
-  label,
+function UsageRing({
+  sublabel,
+  a11yLabel,
   used,
   limit,
 }: {
-  label: string;
+  sublabel: string;
+  a11yLabel: string;
   used: number;
   limit: number;
 }) {
-  const { colors: c } = useAppTheme();
-  const pct = Math.min((used / Math.max(limit, 1)) * 100, 100);
   const overLimit = used >= limit;
-
   return (
-    <View style={usageStyles.wrap}>
-      <View style={usageStyles.row}>
-        <Text style={[usageStyles.label, { color: c.text }]}>{label}</Text>
-        <Text style={[usageStyles.count, { color: overLimit ? "#EF4444" : c.mutedText }]}>
-          {used} / {limit}
-        </Text>
-      </View>
-      <View style={[usageStyles.track, { backgroundColor: c.border }]}>
-        <View
-          style={[
-            usageStyles.fill,
-            { width: `${pct}%`, backgroundColor: overLimit ? "#EF4444" : c.tint },
-          ]}
-        />
-      </View>
-    </View>
+    <ProgressRing
+      size={76}
+      value={used / Math.max(limit, 1)}
+      label={`${used}/${limit}`}
+      sublabel={sublabel}
+      danger={overLimit}
+      accessibilityLabel={`${a11yLabel}: ${used} of ${limit} used`}
+    />
   );
 }
-
-const usageStyles = StyleSheet.create({
-  wrap:  { gap: 6 },
-  row:   { flexDirection: "row", justifyContent: "space-between" },
-  label: { fontSize: 13, fontWeight: "500" },
-  count: { fontSize: 12 },
-  track: { height: 6, borderRadius: 3, overflow: "hidden" },
-  fill:  { height: 6, borderRadius: 3 },
-});
 
 // ── Tier card ────────────────────────────────────────────────────────────────
 
 function TierCard({
   tier,
   currentTier,
+  recommended,
   price,
   onUpgrade,
   upgrading,
 }: {
   tier: SubscriptionTier;
   currentTier: SubscriptionTier;
+  recommended: boolean;
   price: string;
   onUpgrade?: () => void;
   upgrading: boolean;
 }) {
   const { colors: c } = useAppTheme();
   const isCurrent = tier === currentTier;
-  const badge = badgeColors(tier, c);
 
   const ROWS = [
     { label: "Lesson plans", values: { free: "2 lifetime", tier1: "10",      tier2: "20"  } },
@@ -116,70 +110,52 @@ function TierCard({
   ];
 
   return (
-    <View
+    <Card
+      variant={recommended ? "elevated" : "flat"}
       style={[
         tierCardStyles.card,
-        {
-          backgroundColor: c.card,
-          borderColor: isCurrent ? c.tint : c.border,
-          borderWidth: isCurrent ? 1.5 : 1,
-        },
+        recommended && { borderWidth: 1.5, borderColor: c.tint },
       ]}
     >
       <View style={tierCardStyles.top}>
-        <View style={[tierCardStyles.badge, { backgroundColor: badge.bg }]}>
-          <Text style={[tierCardStyles.badgeText, { color: badge.text }]}>
-            {TIER_SHORT[tier]}
-          </Text>
-        </View>
-        <Text style={[tierCardStyles.price, { color: c.text }]}>
-          {tier === "free" ? "Free" : `${price}/mo`}
-        </Text>
+        <Text style={[Typography.h3, { color: c.text }]}>{TIER_NAMES[tier]}</Text>
+        <Badge label={TIER_SHORT[tier]} tone={TIER_BADGE_TONE[tier]} />
       </View>
 
-      {ROWS.map((row) => (
-        <View key={row.label} style={tierCardStyles.row}>
-          <Text style={[tierCardStyles.rowLabel, { color: c.mutedText }]}>{row.label}</Text>
-          <Text style={[tierCardStyles.rowValue, { color: c.text }]}>
-            {row.values[tier]}
-          </Text>
-        </View>
-      ))}
+      <Text style={[Typography.h2, { color: c.text }]}>
+        {tier === "free" ? "Free" : `${price}/mo`}
+      </Text>
+
+      <View style={tierCardStyles.rows}>
+        {ROWS.map((row) => (
+          <View key={row.label} style={tierCardStyles.row}>
+            <Text style={[Typography.bodySm, { color: c.mutedText }]}>{row.label}</Text>
+            <Text style={[Typography.bodySm, { color: c.text, fontWeight: "600" }]}>
+              {row.values[tier]}
+            </Text>
+          </View>
+        ))}
+      </View>
 
       {isCurrent ? (
-        <View style={[tierCardStyles.currentBadge, { backgroundColor: c.background }]}>
-          <Text style={[tierCardStyles.currentText, { color: c.tint }]}>Current plan</Text>
-        </View>
+        <Button title="Current plan" variant="secondary" disabled />
       ) : tier !== "free" && onUpgrade ? (
-        <Pressable
+        <Button
+          title={`Upgrade to ${TIER_SHORT[tier]}`}
           onPress={onUpgrade}
-          disabled={upgrading}
-          style={[tierCardStyles.upgradeBtn, { backgroundColor: c.tint, opacity: upgrading ? 0.7 : 1 }]}
-        >
-          {upgrading ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={tierCardStyles.upgradeBtnText}>Upgrade to {TIER_SHORT[tier]}</Text>
-          )}
-        </Pressable>
+          loading={upgrading}
+          accessibilityLabel={`Upgrade to the ${TIER_SHORT[tier]} plan, ${price} per month`}
+        />
       ) : null}
-    </View>
+    </Card>
   );
 }
 
 const tierCardStyles = StyleSheet.create({
-  card:         { borderRadius: 14, padding: 14, gap: 8 },
-  top:          { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
-  badge:        { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText:    { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
-  price:        { fontSize: 16, fontWeight: "700" },
-  row:          { flexDirection: "row", justifyContent: "space-between" },
-  rowLabel:     { fontSize: 12 },
-  rowValue:     { fontSize: 12, fontWeight: "600" },
-  currentBadge: { borderRadius: 8, paddingVertical: 9, alignItems: "center", marginTop: 4 },
-  currentText:  { fontSize: 13, fontWeight: "600" },
-  upgradeBtn:   { borderRadius: 10, paddingVertical: 10, alignItems: "center", marginTop: 4 },
-  upgradeBtnText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  card: { gap: Spacing.sm },
+  top:  { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  rows: { gap: Spacing.xs, marginBottom: Spacing.xs },
+  row:  { flexDirection: "row", justifyContent: "space-between" },
 });
 
 // ── Main screen ──────────────────────────────────────────────────────────────
@@ -190,14 +166,16 @@ export default function SubscriptionScreen() {
   const [upgrading, setUpgrading] = useState<"tier1" | "tier2" | null>(null);
   const [billingHistory, setBillingHistory] = useState<BillingEvent[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState(false);
 
   const regionCode = Localization.getLocales()[0]?.regionCode ?? null;
   const pricing = getLocalePricing(regionCode);
-  const badge = badgeColors(sub.tier, c);
 
   const loadHistory = useCallback(async () => {
     setHistoryLoading(true);
-    const { data } = await supabase.rpc("get_billing_history");
+    setHistoryError(false);
+    const { data, error } = await supabase.rpc("get_billing_history");
+    if (error) setHistoryError(true);
     if (data) setBillingHistory(data as BillingEvent[]);
     setHistoryLoading(false);
   }, []);
@@ -214,6 +192,21 @@ export default function SubscriptionScreen() {
     if (!iso) return null;
     return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   };
+
+  // The paid tier one step above the current one gets the highlight ring.
+  const recommendedTier: SubscriptionTier | null =
+    sub.tier === "free" ? "tier1" : sub.tier === "tier1" ? "tier2" : null;
+
+  const planMeta =
+    sub.tier === "free"
+      ? "No expiry"
+      : sub.currentPeriodEnd
+        ? sub.cancelAtPeriodEnd
+          ? `Cancels ${formatDate(sub.currentPeriodEnd)}`
+          : `Renews ${formatDate(sub.currentPeriodEnd)}`
+        : null;
+
+  const loadFailed = !!sub.error && !sub.isLoading;
 
   return (
     <View style={[styles.container, { backgroundColor: c.background }]}>
@@ -234,156 +227,166 @@ export default function SubscriptionScreen() {
           >
             <Ionicons name="chevron-back" size={22} color={c.text} />
           </Pressable>
-          <Text style={[styles.screenTitle, { color: c.text }]}>My Plan</Text>
+          <Text style={[Typography.h2, styles.screenTitle, { color: c.text }]}>My Plan</Text>
           <View style={styles.backBtn} />
         </View>
 
-        {/* Current plan card */}
-        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
-          <View style={styles.planRow}>
-            <View style={[styles.planBadge, { backgroundColor: badge.bg }]}>
-              <Text style={[styles.planBadgeText, { color: badge.text }]}>
-                {TIER_SHORT[sub.tier]}
-              </Text>
+        {loadFailed ? (
+          <ErrorState
+            title="Couldn't load your plan"
+            body="Check your connection and try again."
+            onRetry={() => void sub.refetch()}
+          />
+        ) : (
+          <>
+            {/* Hero: current plan */}
+            <Card padded={false} style={styles.hero}>
+              <LinearGradient
+                colors={[c.tintSoft, "transparent"]}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.heroInner}>
+                <Badge label={TIER_SHORT[sub.tier]} tone={TIER_BADGE_TONE[sub.tier]} />
+                <Text style={[Typography.h1, { color: c.text }]}>{TIER_NAMES[sub.tier]}</Text>
+                {planMeta ? (
+                  <Text style={[Typography.bodySm, { color: c.mutedText }]}>{planMeta}</Text>
+                ) : null}
+              </View>
+            </Card>
+
+            {/* Usage */}
+            <SectionHeader title="Usage" />
+            <Card style={styles.usageRow}>
+              <UsageRing
+                sublabel="PLANS"
+                a11yLabel="Lesson plans"
+                used={sub.lessonPlansUsed}
+                limit={sub.lessonPlansLimit}
+              />
+              <UsageRing
+                sublabel="SUBJECTS"
+                a11yLabel="Subjects"
+                used={sub.subjectsUsed}
+                limit={sub.subjectsLimit}
+              />
+              <UsageRing
+                sublabel="AI TODAY"
+                a11yLabel="Automated activities and exams today"
+                used={sub.aiUsedToday}
+                limit={sub.aiDailyLimit}
+              />
+            </Card>
+
+            {/* Plans */}
+            <SectionHeader title="Plans" />
+            <View style={styles.tierGrid}>
+              <TierCard
+                tier="free"
+                currentTier={sub.tier}
+                recommended={false}
+                price="Free"
+                upgrading={false}
+              />
+              <TierCard
+                tier="tier1"
+                currentTier={sub.tier}
+                recommended={recommendedTier === "tier1"}
+                price={pricing.tier1Price}
+                onUpgrade={() => handleUpgrade("tier1")}
+                upgrading={upgrading === "tier1"}
+              />
+              <TierCard
+                tier="tier2"
+                currentTier={sub.tier}
+                recommended={recommendedTier === "tier2"}
+                price={pricing.tier2Price}
+                onUpgrade={() => handleUpgrade("tier2")}
+                upgrading={upgrading === "tier2"}
+              />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.planName, { color: c.text }]}>{TIER_NAMES[sub.tier]}</Text>
-              {sub.tier !== "free" && sub.currentPeriodEnd && (
-                <Text style={[styles.planMeta, { color: c.mutedText }]}>
-                  {sub.cancelAtPeriodEnd
-                    ? `Cancels ${formatDate(sub.currentPeriodEnd)}`
-                    : `Renews ${formatDate(sub.currentPeriodEnd)}`}
+
+            <Text style={[Typography.caption, styles.localeNote, { color: c.mutedText }]}>
+              Prices shown in {pricing.currency} based on your region.
+              {"\n"}Billed monthly. Cancel anytime.
+            </Text>
+
+            {/* Billing history */}
+            <SectionHeader title="Billing history" />
+            {historyLoading ? (
+              <View style={styles.historySkeletons}>
+                <Skeleton height={44} />
+                <Skeleton height={44} />
+                <Skeleton height={44} />
+              </View>
+            ) : historyError ? (
+              <View style={styles.historyErrorWrap}>
+                <Text style={[Typography.bodySm, styles.emptyHistory, { color: c.mutedText }]}>
+                  Couldn&apos;t load your billing history.
                 </Text>
-              )}
-              {sub.tier === "free" && (
-                <Text style={[styles.planMeta, { color: c.mutedText }]}>No expiry</Text>
-              )}
-            </View>
-          </View>
-        </View>
+                <Button
+                  title="Retry"
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => void loadHistory()}
+                  style={styles.historyRetryBtn}
+                />
+              </View>
+            ) : billingHistory.length === 0 ? (
+              <Text style={[Typography.bodySm, styles.emptyHistory, { color: c.mutedText }]}>
+                No billing history yet.
+              </Text>
+            ) : (
+              billingHistory.map((evt, i) => {
+                const date = new Date(evt.occurred_at).toLocaleDateString(undefined, {
+                  year: "numeric", month: "short", day: "numeric",
+                });
+                const amountStr = evt.amount_cents != null && evt.currency
+                  ? `${evt.currency} ${(evt.amount_cents / 100).toFixed(2)}`
+                  : undefined;
+                return (
+                  <ListRow
+                    key={evt.billing_event_id}
+                    title={evt.description ?? evt.event_type}
+                    subtitle={date}
+                    value={amountStr}
+                    chevron={false}
+                    divider={i < billingHistory.length - 1}
+                  />
+                );
+              })
+            )}
 
-        {/* Usage section */}
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Usage</Text>
-        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border, gap: 14 }]}>
-          <UsageBar label="Lesson Plans" used={sub.lessonPlansUsed} limit={sub.lessonPlansLimit} />
-          <UsageBar label="Subjects"     used={sub.subjectsUsed}    limit={sub.subjectsLimit}    />
-          <UsageBar label="Activity/exam today" used={sub.aiUsedToday}     limit={sub.aiDailyLimit}     />
-        </View>
-
-        {/* Plans section */}
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Plans</Text>
-        <View style={styles.tierGrid}>
-          <TierCard
-            tier="free"
-            currentTier={sub.tier}
-            price="Free"
-            upgrading={false}
-          />
-          <TierCard
-            tier="tier1"
-            currentTier={sub.tier}
-            price={pricing.tier1Price}
-            onUpgrade={() => handleUpgrade("tier1")}
-            upgrading={upgrading === "tier1"}
-          />
-          <TierCard
-            tier="tier2"
-            currentTier={sub.tier}
-            price={pricing.tier2Price}
-            onUpgrade={() => handleUpgrade("tier2")}
-            upgrading={upgrading === "tier2"}
-          />
-        </View>
-
-        <Text style={[styles.localeNote, { color: c.mutedText }]}>
-          Prices shown in {pricing.currency} based on your region.
-          {"\n"}Billed monthly. Cancel anytime.
-        </Text>
-
-        {/* Billing History */}
-        <Text style={[styles.sectionTitle, { color: c.text }]}>Billing History</Text>
-        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
-          {historyLoading ? (
-            <ActivityIndicator color={c.tint} style={{ paddingVertical: 12 }} />
-          ) : billingHistory.length === 0 ? (
-            <Text style={[styles.emptyHistory, { color: c.mutedText }]}>
-              No billing history yet.
-            </Text>
-          ) : (
-            billingHistory.map((evt, i) => {
-              const isLast = i === billingHistory.length - 1;
-              const date = new Date(evt.occurred_at).toLocaleDateString(undefined, {
-                year: "numeric", month: "short", day: "numeric",
-              });
-              const amountStr = evt.amount_cents != null && evt.currency
-                ? `${evt.currency} ${(evt.amount_cents / 100).toFixed(2)}`
-                : null;
-              return (
-                <View
-                  key={evt.billing_event_id}
-                  style={[
-                    historyStyles.row,
-                    !isLast && { borderBottomWidth: 1, borderBottomColor: c.border },
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[historyStyles.desc, { color: c.text }]}>
-                      {evt.description ?? evt.event_type}
-                    </Text>
-                    <Text style={[historyStyles.date, { color: c.mutedText }]}>{date}</Text>
-                  </View>
-                  {amountStr && (
-                    <Text style={[historyStyles.amount, { color: c.text }]}>{amountStr}</Text>
-                  )}
-                </View>
-              );
-            })
-          )}
-        </View>
-
-        {/* Cancel link (paid users only) */}
-        {sub.tier !== "free" && (
-          <Pressable
-            onPress={() => Linking.openURL(getBillingManageUrl())}
-            style={styles.cancelRow}
-          >
-            <Text style={[styles.cancelText, { color: c.mutedText }]}>
-              Manage or cancel subscription
-            </Text>
-          </Pressable>
+            {/* Manage / cancel (paid users only) */}
+            {sub.tier !== "free" && (
+              <Button
+                title="Manage or cancel subscription"
+                variant="ghost"
+                onPress={() => Linking.openURL(getBillingManageUrl())}
+                style={styles.manageBtn}
+                accessibilityHint="Opens the billing portal in your browser"
+              />
+            )}
+          </>
         )}
       </ScrollView>
     </View>
   );
 }
 
-const historyStyles = StyleSheet.create({
-  row:    { flexDirection: "row", alignItems: "center", paddingVertical: 10, gap: 8 },
-  desc:   { fontSize: 13, fontWeight: "500" },
-  date:   { fontSize: 11, marginTop: 2 },
-  amount: { fontSize: 13, fontWeight: "600" },
-});
-
 const styles = StyleSheet.create({
   container:    { flex: 1 },
-  content:      { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 40, gap: 12 },
-  topRow:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 },
+  content:      { paddingHorizontal: Spacing.lg, paddingTop: Spacing.md, paddingBottom: 40 },
+  topRow:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: Spacing.sm },
   backBtn:      { width: 36, alignItems: "flex-start" },
-  screenTitle:  { fontSize: 22, fontWeight: "800", letterSpacing: -0.3 },
-  sectionTitle: { fontSize: 14, fontWeight: "700", marginTop: 4, marginBottom: -4 },
-  card: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 14,
-  },
-  planRow:      { flexDirection: "row", alignItems: "center", gap: 12 },
-  planBadge:    { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  planBadgeText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
-  planName:     { fontSize: 16, fontWeight: "700" },
-  planMeta:     { fontSize: 12, marginTop: 2 },
-  tierGrid:     { gap: 10 },
-  localeNote:   { fontSize: 11, textAlign: "center", lineHeight: 16 },
-  cancelRow:    { alignItems: "center", paddingVertical: 4 },
-  cancelText:   { fontSize: 13, textDecorationLine: "underline" },
-  emptyHistory: { fontSize: 13, textAlign: "center", paddingVertical: 12 },
+  screenTitle:  { fontWeight: "700" },
+  hero:         { overflow: "hidden" },
+  heroInner:    { padding: Spacing.lg, gap: Spacing.sm },
+  usageRow:     { flexDirection: "row", alignItems: "center", justifyContent: "space-around" },
+  tierGrid:     { gap: Spacing.md },
+  localeNote:   { textAlign: "center", marginTop: Spacing.lg },
+  historySkeletons: { gap: Spacing.sm },
+  historyErrorWrap: { alignItems: "center" },
+  historyRetryBtn:  { marginTop: Spacing.sm, alignSelf: "center" },
+  emptyHistory: { textAlign: "center", paddingVertical: Spacing.md },
+  manageBtn:    { marginTop: Spacing.xxl },
 });

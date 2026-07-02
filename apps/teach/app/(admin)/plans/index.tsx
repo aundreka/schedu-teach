@@ -296,6 +296,7 @@ export default function PlansScreen() {
 
         return {
           planId: plan.lesson_plan_id,
+          subjectCode: subject?.code ?? "PLAN",
           title: `${subject?.code ?? "PLAN"} — ${plan.title}`,
           teacherName: member?.name ?? "Unknown",
           sectionName: section?.name ?? "—",

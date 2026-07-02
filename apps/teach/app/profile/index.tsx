@@ -19,6 +19,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAppTheme } from "../../context/theme";
 import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { supabase } from "../../lib/supabase";
+import { Button, EmptyState, ErrorState } from "../../components/ui";
+import { EmptyShelf } from "../../components/illustrations";
 
 type SchoolType = "university" | "basic_ed" | "training_center";
 type InstitutionFilter = "all" | "primary" | SchoolType;
@@ -58,6 +60,12 @@ const AVATAR_COLORS = [
   "#14B8A6",
   "#64748B",
 ] as const;
+
+const SCHOOL_TYPE_LABEL: Record<SchoolType, string> = {
+  university: "University",
+  basic_ed: "Basic Education",
+  training_center: "Training Center",
+};
 
 const FILTER_OPTIONS: { label: string; value: InstitutionFilter }[] = [
   { label: "All", value: "all" },
@@ -117,6 +125,7 @@ export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [lessonPlanCount, setLessonPlanCount] = useState(0);
+  const [loadError, setLoadError] = useState(false);
 
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -220,34 +229,6 @@ export default function Profile() {
     setLessonPlanCount(count ?? 0);
   }, []);
 
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      try {
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser();
-
-        if (error) throw error;
-        if (!user) throw new Error("No signed-in user found.");
-
-        setUserId(user.id);
-        await Promise.all([
-          loadInstitutions(user.id),
-          loadUserProfile(user.id, user.email ?? null),
-          loadLessonPlanCount(user.id),
-        ]);
-      } catch (err: any) {
-        Alert.alert("Unable to load profile", err?.message ?? "Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    init();
-  }, [loadInstitutions, loadUserProfile, loadLessonPlanCount]);
-
   const refreshProfile = useCallback(async () => {
     const {
       data: { user },
@@ -263,6 +244,23 @@ export default function Profile() {
       loadLessonPlanCount(user.id),
     ]);
   }, [loadInstitutions, loadLessonPlanCount, loadUserProfile]);
+
+  const loadAll = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      await refreshProfile();
+    } catch {
+      // Surface a retryable error state instead of a silent empty screen.
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [refreshProfile]);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
 
   const { refreshing, onRefresh } = usePullToRefresh(refreshProfile);
 
@@ -458,6 +456,14 @@ export default function Profile() {
           </Pressable>
         </View>
 
+        {loadError && !loading ? (
+          <ErrorState
+            title="Couldn't load your profile"
+            body="Check your connection and try again."
+            onRetry={() => void loadAll()}
+          />
+        ) : (
+        <>
         <View style={[styles.profileCard, { backgroundColor: c.card, borderColor: c.border }]}>
           <View style={styles.profileTopRow}>
             <View style={[styles.profileAvatar, { backgroundColor: c.tint }]}>
@@ -554,6 +560,14 @@ export default function Profile() {
           <View style={[styles.placeholderCard, { borderColor: c.border, backgroundColor: c.card }]}>
             <ActivityIndicator color={c.tint} />
           </View>
+        ) : institutions.length === 0 ? (
+          <EmptyState
+            illustration={<EmptyShelf size={150} />}
+            title="No institutions yet"
+            body="Add your school to organize sections and lesson plans."
+            ctaLabel="Add institution"
+            onCta={() => setShowInstitutionModal(true)}
+          />
         ) : filteredInstitutions.length === 0 ? (
           <View style={[styles.placeholderCard, { borderColor: c.border, backgroundColor: c.card }]}>
             <Text style={[styles.placeholderText, { color: c.mutedText }]}>No institutions match your filter.</Text>
@@ -574,6 +588,9 @@ export default function Profile() {
                         router.push({ pathname: "/profile/institution", params: { schoolId: inst.school_id } })
                       }
                       onLongPress={() => handleInstitutionLongPress(inst)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${inst.name}, ${SCHOOL_TYPE_LABEL[inst.type]}${inst.is_primary ? ", default" : ""}`}
+                      accessibilityHint="Long press to make default"
                       style={({ pressed }) => [styles.gridItem, { opacity: pressed ? 0.85 : 1 }]}
                     >
                       <View style={styles.avatarWrap}>
@@ -586,7 +603,7 @@ export default function Profile() {
                         )}
                         {inst.is_primary ? (
                           <View style={[styles.defaultDot, { backgroundColor: c.tint }]}>
-                            <Ionicons name="checkmark" size={11} color="#FFFFFF" />
+                            <Ionicons name="checkmark" size={11} color={c.onTint} />
                           </View>
                         ) : null}
                       </View>
@@ -602,23 +619,18 @@ export default function Profile() {
           </View>
         )}
 
-        <Pressable
+        </>
+        )}
+
+        <Button
+          title="Sign Out"
+          icon="log-out-outline"
+          variant="secondary"
           onPress={handleSignOut}
-          disabled={signingOut}
-          style={({ pressed }) => [
-            styles.signOutBtn,
-            {
-              backgroundColor: signingOut ? `${c.mutedText}66` : c.card,
-              borderColor: c.border,
-              opacity: pressed ? 0.88 : 1,
-            },
-          ]}
-        >
-          <Ionicons name="log-out-outline" size={16} color={c.text} />
-          <Text style={[styles.signOutText, { color: c.text }]}>
-            {signingOut ? "Signing out..." : "Sign Out"}
-          </Text>
-        </Pressable>
+          loading={signingOut}
+          style={styles.signOutBtn}
+          accessibilityLabel="Sign Out"
+        />
       </ScrollView>
 
       <Modal visible={showFilterModal} transparent animationType="fade" onRequestClose={() => setShowFilterModal(false)}>

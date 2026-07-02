@@ -3,7 +3,6 @@ import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
   ActivityIndicator,
@@ -14,8 +13,12 @@ import {
 import { router } from "expo-router";
 import * as Linking from "expo-linking";
 import { Ionicons } from "@expo/vector-icons";
+import Animated from "react-native-reanimated";
 
+import { Typography } from "../../constants/fonts";
 import { useAppTheme } from "../../context/theme";
+import { Input } from "../../components/ui";
+import { enterUp } from "../../lib/motion";
 // ✅ change this path if your supabase client lives elsewhere
 import { supabase } from "../../lib/supabase";
 
@@ -123,7 +126,11 @@ export default function AuthIndex() {
       <View style={styles.content}>
         {/* Brand (similar layout to your reference image) */}
         <View style={styles.brandRow}>
-          <Image source={require("../../assets/images/icon.png")} style={styles.brandLogo} />
+          <Image
+            source={require("../../assets/images/icon.png")}
+            style={styles.brandLogo}
+            accessibilityElementsHidden={true}
+          />
           <View>
             <Text style={[styles.brandTitle, { color: c.text }]}>schEDU</Text>
             <Text style={[styles.brandTag, { color: c.mutedText }]}>Smarter Lesson Planning</Text>
@@ -131,30 +138,33 @@ export default function AuthIndex() {
         </View>
 
         {/* Card */}
-        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
-          <TextInput
+        <Animated.View
+          entering={enterUp()}
+          style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}
+        >
+          <Input
             value={identifier}
             onChangeText={setIdentifier}
             placeholder="Username or email"
-            placeholderTextColor={c.mutedText}
             autoCapitalize="none"
-            style={[styles.input, { borderColor: c.border, color: c.text }]}
+            containerStyle={styles.inputWrap}
             editable={!busy}
           />
 
-          <TextInput
+          <Input
             value={password}
             onChangeText={setPassword}
             placeholder="Password"
-            placeholderTextColor={c.mutedText}
             secureTextEntry
-            style={[styles.input, { borderColor: c.border, color: c.text }]}
+            containerStyle={styles.inputWrap}
             editable={!busy}
           />
 
           <Pressable
             onPress={handlePasswordSignIn}
             disabled={busy}
+            accessibilityRole="button"
+            accessibilityLabel="Sign In"
             style={({ pressed }) => [
               styles.primaryBtn,
               { backgroundColor: c.tint },
@@ -163,24 +173,28 @@ export default function AuthIndex() {
             ]}
           >
             {loadingEmailPass ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={c.onTint} />
             ) : (
-              <Text style={styles.primaryBtnText}>Sign In</Text>
+              <Text style={[styles.primaryBtnText, { color: c.onTint }]}>Sign In</Text>
             )}
           </Pressable>
 
           <Pressable
             onPress={() => router.push("/(auth)/forgot-password")}
             disabled={busy}
+            accessibilityRole="link"
+            accessibilityLabel="Forgot password?"
             style={{ alignSelf: "flex-start", marginTop: 10 }}
           >
             <Text style={[styles.link, { color: c.mutedText }]}>Forgot password?</Text>
           </Pressable>
 
           {errorMsg ? (
-            <Text style={[styles.error, { color: "#ef4444" }]}>{errorMsg}</Text>
+            <Text accessibilityLiveRegion="polite" style={[styles.error, { color: c.danger }]}>
+              {errorMsg}
+            </Text>
           ) : null}
-        </View>
+        </Animated.View>
 
         {/* Divider */}
         <View style={styles.dividerRow}>
@@ -221,7 +235,12 @@ export default function AuthIndex() {
         {/* Register */}
         <View style={styles.registerRow}>
           <Text style={{ color: c.mutedText }}>Don’t have an Account? </Text>
-          <Pressable onPress={() => router.push("/(auth)/sign-up")} disabled={busy}>
+          <Pressable
+            onPress={() => router.push("/(auth)/sign-up")}
+            disabled={busy}
+            accessibilityRole="link"
+            accessibilityLabel="Register"
+          >
             <Text style={[styles.registerLink, { color: c.tint }]}>Register</Text>
           </Pressable>
         </View>
@@ -259,7 +278,7 @@ function IconAuthButton({
       {loading ? (
         <ActivityIndicator />
       ) : (
-        <Ionicons name={icon} size={18} color={c.text} />
+        <Ionicons name={icon} size={18} color={c.text} accessibilityElementsHidden={true} />
       )}
     </Pressable>
   );
@@ -286,8 +305,8 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
   },
-  brandTitle: { fontSize: 30, fontWeight: "800", letterSpacing: 0.5 },
-  brandTag: { fontSize: 12, marginTop: -2 },
+  brandTitle: { ...Typography.display, letterSpacing: 0.5 },
+  brandTag: { ...Typography.caption, marginTop: -2 },
 
   card: {
     borderWidth: 1,
@@ -295,13 +314,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
 
-  input: {
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+  inputWrap: {
     marginBottom: 10,
-    fontSize: 14,
   },
 
   primaryBtn: {
@@ -311,11 +325,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 4,
   },
-  primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  primaryBtnText: { ...Typography.body, fontWeight: "700" },
 
-  link: { fontSize: 13, textDecorationLine: "underline" },
+  link: { ...Typography.bodySm, textDecorationLine: "underline" },
 
-  error: { marginTop: 10, fontSize: 13 },
+  error: { ...Typography.bodySm, marginTop: 10 },
 
   dividerRow: {
     flexDirection: "row",
@@ -324,7 +338,7 @@ const styles = StyleSheet.create({
     marginVertical: 18,
   },
   dividerLine: { flex: 1, height: 1 },
-  dividerText: { fontSize: 12 },
+  dividerText: { ...Typography.caption },
 
   oauthRow: {
     flexDirection: "row",

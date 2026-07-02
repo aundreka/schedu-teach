@@ -17,6 +17,8 @@ import { useAppTheme } from "../../context/theme";
 import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { supabase } from "../../lib/supabase";
 import { useSubscriptionContext } from "../../context/subscription";
+import { Button, Card, ListRow } from "../../components/ui";
+import { Spacing } from "../../constants/fonts";
 
 const TIER_LABELS = { free: "Free Plan", tier1: "PRO Plan", tier2: "MAX Plan" } as const;
 
@@ -190,18 +192,14 @@ export default function Settings() {
         </View>
 
         {/* My Plan */}
-        <Pressable
-          onPress={() => router.push("/profile/subscription")}
-          style={[styles.card, styles.navRow, { backgroundColor: c.card, borderColor: c.border }]}
-        >
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.title, { color: c.text, marginBottom: 2 }]}>My Plan</Text>
-            <Text style={[styles.detailLabel, { color: c.mutedText }]}>
-              {TIER_LABELS[sub.tier]} · View usage &amp; upgrade
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={c.mutedText} />
-        </Pressable>
+        <Card padded={false} style={styles.listCard}>
+          <ListRow
+            title="My Plan"
+            subtitle={`${TIER_LABELS[sub.tier]} · View usage & upgrade`}
+            onPress={() => router.push("/profile/subscription")}
+            divider={false}
+          />
+        </Card>
 
         <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
           <Text style={[styles.title, { color: c.text }]}>User Details</Text>
@@ -215,12 +213,7 @@ export default function Settings() {
               <Text style={[styles.detailLabel, { color: c.mutedText, marginBottom: 12 }]}>
                 We couldn&apos;t load your profile. Pull down to refresh and try again.
               </Text>
-              <Pressable
-                onPress={() => void loadUserDetails()}
-                style={[styles.secondaryBtn, { borderColor: c.border, backgroundColor: c.background }]}
-              >
-                <Text style={[styles.secondaryBtnText, { color: c.text }]}>Retry</Text>
-              </Pressable>
+              <Button title="Retry" variant="secondary" onPress={() => void loadUserDetails()} />
             </View>
           ) : !isEditing ? (
             <View style={styles.detailsWrap}>
@@ -241,12 +234,12 @@ export default function Settings() {
                 <Text style={[styles.detailValue, { color: c.text }]}>{savedDetails.email || "-"}</Text>
               </View>
 
-              <Pressable
+              <Button
+                title="Edit"
+                variant="secondary"
                 onPress={() => setIsEditing(true)}
-                style={[styles.secondaryBtn, { borderColor: c.border, backgroundColor: c.background }]}
-              >
-                <Text style={[styles.secondaryBtnText, { color: c.text }]}>Edit</Text>
-              </Pressable>
+                accessibilityLabel="Edit user details"
+              />
             </View>
           ) : (
             <View style={styles.formWrap}>
@@ -281,14 +274,16 @@ export default function Settings() {
                 placeholderTextColor={c.mutedText}
                 style={[styles.input, { color: c.text, borderColor: c.border, backgroundColor: c.background }]}
               />
-              <Pressable
+              <Button
+                title="Save"
                 onPress={handleSaveDetails}
+                loading={saving}
+                accessibilityLabel="Save user details"
+              />
+              <Button
+                title="Cancel"
+                variant="secondary"
                 disabled={saving}
-                style={[styles.saveBtn, { backgroundColor: c.tint, opacity: saving ? 0.8 : 1 }]}
-              >
-                <Text style={styles.saveBtnText}>{saving ? "Saving..." : "Save"}</Text>
-              </Pressable>
-              <Pressable
                 onPress={() => {
                   setFirstName(savedDetails.firstName);
                   setLastName(savedDetails.lastName);
@@ -296,11 +291,7 @@ export default function Settings() {
                   setEmail(savedDetails.email);
                   setIsEditing(false);
                 }}
-                disabled={saving}
-                style={[styles.secondaryBtn, { borderColor: c.border }]}
-              >
-                <Text style={[styles.secondaryBtnText, { color: c.text }]}>Cancel</Text>
-              </Pressable>
+              />
             </View>
           )}
         </View>
@@ -310,6 +301,9 @@ export default function Settings() {
 
           <Pressable
             onPress={() => setOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Theme: ${currentLabel}`}
+            accessibilityHint="Opens the theme picker"
             style={[styles.dropdown, { backgroundColor: c.card, borderColor: c.border }]}
           >
             <Text style={{ color: c.text, fontSize: 14 }}>{currentLabel}</Text>
@@ -317,38 +311,42 @@ export default function Settings() {
           </Pressable>
         </View>
 
-        <Pressable onPress={handleDeleteAccount} style={styles.deleteRow}>
-          <Text style={[styles.deleteText, { color: "#EF4444" }]}>Delete Account</Text>
+        <Pressable
+          onPress={handleDeleteAccount}
+          style={styles.deleteRow}
+          accessibilityRole="button"
+          accessibilityLabel="Delete Account"
+        >
+          <Text style={[styles.deleteText, { color: c.danger }]}>Delete Account</Text>
         </Pressable>
       </ScrollView>
 
       {/* Modal */}
       <Modal transparent animationType="fade" visible={open}>
-        <Pressable style={styles.overlay} onPress={() => setOpen(false)} />
+        <Pressable
+          style={[styles.overlay, { backgroundColor: c.backdrop }]}
+          onPress={() => setOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Close theme picker"
+        />
 
         <View style={[styles.sheet, { backgroundColor: c.card, borderColor: c.border }]}>
-          {OPTIONS.map((opt) => {
+          {OPTIONS.map((opt, i) => {
             const active = opt.value === theme;
             return (
-              <Pressable
+              <ListRow
                 key={opt.value}
+                title={opt.label}
                 onPress={() => {
-                  setTheme(opt.value as any);
+                  setTheme(opt.value);
                   setOpen(false);
                 }}
-                style={[styles.option, active && { backgroundColor: c.background }]}
-              >
-                <Text
-                  style={{
-                    color: active ? c.tint : c.text,
-                    fontWeight: active ? "600" : "400",
-                  }}
-                >
-                  {opt.label}
-                </Text>
-
-                {active && <Ionicons name="checkmark" size={18} color={c.tint} />}
-              </Pressable>
+                chevron={false}
+                divider={i < OPTIONS.length - 1}
+                right={active ? <Ionicons name="checkmark" size={18} color={c.tint} /> : undefined}
+                accessibilityLabel={active ? `${opt.label}, selected` : opt.label}
+                style={styles.option}
+              />
             );
           })}
         </View>
@@ -372,11 +370,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
   },
-  navRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
+  listCard: { paddingHorizontal: Spacing.lg },
   title: {
     fontSize: 18,
     fontWeight: "600",
@@ -404,23 +398,6 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     fontSize: 14,
   },
-  saveBtn: {
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 11,
-    marginTop: 2,
-  },
-  saveBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
-  secondaryBtn: {
-    borderWidth: 1,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-  },
-  secondaryBtnText: { fontSize: 14, fontWeight: "600" },
-
   dropdown: {
     height: 44,
     borderWidth: 1,
@@ -433,7 +410,6 @@ const styles = StyleSheet.create({
 
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.25)",
   },
 
   sheet: {
@@ -448,10 +424,6 @@ const styles = StyleSheet.create({
 
   option: {
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
   },
   deleteRow: { alignItems: "center", paddingVertical: 8 },
   deleteText: { fontSize: 13 },

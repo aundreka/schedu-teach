@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import Animated from "react-native-reanimated";
+
+import { Typography } from "../../constants/fonts";
+import { useAppTheme } from "../../context/theme";
+import { enterFade } from "../../lib/motion";
 import { supabase } from "../../lib/supabase";
 
 export default function AuthCallbackScreen() {
+  const { colors: c } = useAppTheme();
   const params = useLocalSearchParams<{
     code?: string | string[];
     error?: string | string[];
@@ -56,10 +62,15 @@ export default function AuthCallbackScreen() {
   }, [params.code, params.error, params.error_description]);
 
   return (
-    <View style={styles.screen}>
+    <Animated.View
+      entering={enterFade()}
+      style={[styles.screen, { backgroundColor: c.background }]}
+    >
       <ActivityIndicator />
-      <Text style={styles.text}>{message}</Text>
-    </View>
+      <Text accessibilityLiveRegion="polite" style={[styles.text, { color: c.mutedText }]}>
+        {message}
+      </Text>
+    </Animated.View>
   );
 }
 
@@ -72,8 +83,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   text: {
-    fontSize: 14,
-    opacity: 0.8,
+    ...Typography.bodySm,
     textAlign: "center",
   },
 });

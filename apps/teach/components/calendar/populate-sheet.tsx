@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import BottomSheet from "../BottomSheet";
 import Toast from "../Toast";
+import { useAppTheme } from "../../context/theme";
 import { runRepopulate } from "../../lib/rebalance-service";
 import { emitLessonPlanRefresh } from "../../lib/lesson-plan-refresh";
 import type {
@@ -32,12 +33,6 @@ function formatDate(isoDate: string): string {
   const date = new Date(y, (mo ?? 1) - 1, d ?? 1);
   return date.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
-
-const KIND_COLORS: Record<string, { bg: string; text: string }> = {
-  written_work: { bg: "#EFF6FF", text: "#1D4ED8" },
-  performance_task: { bg: "#F0FDF4", text: "#15803D" },
-  buffer: { bg: "#F5F3FF", text: "#6D28D9" },
-};
 
 const KIND_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   written_work: "pencil",
@@ -56,6 +51,18 @@ type Props = {
 };
 
 export default function PopulateSheet({ visible, planId, vacancies, onClose, onDone }: Props) {
+  const { colors: c } = useAppTheme();
+
+  // Category tokens for the fill-option chips, keyed by the scheduler's kind.
+  const kindColors = useMemo<Record<string, { bg: string; text: string }>>(
+    () => ({
+      written_work: { bg: c.category.writtenWork.soft, text: c.category.writtenWork.onSoft },
+      performance_task: { bg: c.category.performanceTask.soft, text: c.category.performanceTask.onSoft },
+      buffer: { bg: c.category.buffer.soft, text: c.category.buffer.onSoft },
+    }),
+    [c],
+  );
+
   // Flatten suggestions from all vacancy reports
   const suggestions = useMemo<VacancySuggestion[]>(
     () => vacancies.flatMap((r) => r.suggestions),
@@ -133,38 +140,38 @@ export default function PopulateSheet({ visible, planId, vacancies, onClose, onD
     <>
       <BottomSheet visible={visible} onClose={onClose} snapFraction={0.68}>
         <View style={styles.header}>
-          <View style={styles.headerDot} />
+          <View style={[styles.headerDot, { backgroundColor: c.tint }]} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>
+            <Text style={[styles.title, { color: c.text }]}>
               {totalCount} open session{totalCount !== 1 ? "s" : ""}
             </Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.subtitle, { color: c.mutedText }]}>
               Your schedule has empty slots. Fill them or skip.
             </Text>
           </View>
           <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
-            <Ionicons name="close" size={22} color="#9CA3AF" />
+            <Ionicons name="close" size={22} color={c.faintText} />
           </Pressable>
         </View>
 
         {suggestions.length === 0 ? (
           <View style={styles.center}>
-            <Ionicons name="checkmark-circle" size={36} color="#10B981" />
-            <Text style={styles.empty}>All slots are filled!</Text>
+            <Ionicons name="checkmark-circle" size={36} color={c.tint} />
+            <Text style={[styles.empty, { color: c.mutedText }]}>All slots are filled!</Text>
           </View>
         ) : (
           <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
             {suggestions.map((sug) => {
               const activeChoice = choices[sug.slot_key];
               return (
-                <View key={sug.slot_key} style={styles.suggestionCard}>
-                  <Text style={styles.suggestionDate}>{formatDate(sug.slot_date)}</Text>
-                  <Text style={styles.placementLabel}>
+                <View key={sug.slot_key} style={[styles.suggestionCard, { borderBottomColor: c.hairline }]}>
+                  <Text style={[styles.suggestionDate, { color: c.text }]}>{formatDate(sug.slot_date)}</Text>
+                  <Text style={[styles.placementLabel, { color: c.faintText }]}>
                     {sug.placement.replace(/_/g, " ")}
                   </Text>
                   <View style={styles.optionRow}>
                     {sug.options.map((opt, oi) => {
-                      const palette = KIND_COLORS[opt.kind] ?? { bg: "#F9FAFB", text: "#374151" };
+                      const palette = kindColors[opt.kind] ?? { bg: c.surfaceAlt, text: c.text };
                       const isActive =
                         activeChoice &&
                         activeChoice.kind === opt.kind &&
@@ -173,18 +180,21 @@ export default function PopulateSheet({ visible, planId, vacancies, onClose, onD
                         <Pressable
                           key={oi}
                           onPress={() => pickOption(sug.slot_key, opt)}
+                          accessibilityRole="button"
+                          accessibilityLabel={opt.label}
+                          accessibilityState={{ selected: Boolean(isActive) }}
                           style={[
                             styles.optionChip,
-                            { borderColor: isActive ? palette.text : "#E5E7EB", backgroundColor: isActive ? palette.bg : "#FFFFFF" },
+                            { borderColor: isActive ? palette.text : c.border, backgroundColor: isActive ? palette.bg : c.card },
                           ]}
                         >
                           <Ionicons
                             name={KIND_ICONS[opt.kind] ?? "bookmark"}
                             size={13}
-                            color={isActive ? palette.text : "#9CA3AF"}
+                            color={isActive ? palette.text : c.faintText}
                           />
                           <Text
-                            style={[styles.optionLabel, { color: isActive ? palette.text : "#6B7280" }]}
+                            style={[styles.optionLabel, { color: isActive ? palette.text : c.mutedText }]}
                           >
                             {opt.label}
                           </Text>
@@ -193,12 +203,15 @@ export default function PopulateSheet({ visible, planId, vacancies, onClose, onD
                     })}
                     <Pressable
                       onPress={() => skipSlot(sug.slot_key)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Skip this slot"
+                      accessibilityState={{ selected: !activeChoice }}
                       style={[
                         styles.optionChip,
-                        { borderColor: !activeChoice ? "#6B7280" : "#E5E7EB" },
+                        { borderColor: !activeChoice ? c.mutedText : c.border },
                       ]}
                     >
-                      <Text style={[styles.optionLabel, { color: !activeChoice ? "#374151" : "#9CA3AF" }]}>
+                      <Text style={[styles.optionLabel, { color: !activeChoice ? c.text : c.faintText }]}>
                         Skip
                       </Text>
                     </Pressable>
@@ -210,18 +223,29 @@ export default function PopulateSheet({ visible, planId, vacancies, onClose, onD
         )}
 
         <View style={styles.footer}>
-          <Pressable onPress={onClose} style={styles.cancelBtn} disabled={saving}>
-            <Text style={styles.cancelText}>Skip all</Text>
+          <Pressable
+            onPress={onClose}
+            style={[styles.cancelBtn, { borderColor: c.border }]}
+            disabled={saving}
+            accessibilityRole="button"
+            accessibilityLabel="Skip all"
+          >
+            <Text style={[styles.cancelText, { color: c.mutedText }]}>Skip all</Text>
           </Pressable>
           <Pressable
             onPress={handleFill}
             disabled={saving || filledCount === 0}
-            style={[styles.fillBtn, (saving || filledCount === 0) && styles.fillBtnDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel="Fill selected slots"
+            style={[
+              styles.fillBtn,
+              { backgroundColor: c.tint, opacity: saving || filledCount === 0 ? 0.5 : 1 },
+            ]}
           >
             {saving ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
+              <ActivityIndicator color={c.onTint} size="small" />
             ) : (
-              <Text style={styles.fillText}>
+              <Text style={[styles.fillText, { color: c.onTint }]}>
                 Fill {filledCount > 0 ? `${filledCount} slot${filledCount > 1 ? "s" : ""}` : "slots"}
               </Text>
             )}
@@ -251,17 +275,14 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#3B82F6",
     marginTop: 4,
   },
   title: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#111827",
   },
   subtitle: {
     fontSize: 13,
-    color: "#6B7280",
     marginTop: 1,
   },
   center: {
@@ -270,7 +291,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   empty: {
-    color: "#6B7280",
     fontSize: 14,
   },
   list: {
@@ -280,16 +300,13 @@ const styles = StyleSheet.create({
   suggestionCard: {
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#F3F4F6",
   },
   suggestionDate: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#111827",
   },
   placementLabel: {
     fontSize: 11,
-    color: "#9CA3AF",
     marginTop: 1,
     marginBottom: 8,
     textTransform: "capitalize",
@@ -324,29 +341,22 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: "#E5E7EB",
     alignItems: "center",
     justifyContent: "center",
   },
   cancelText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#6B7280",
   },
   fillBtn: {
     flex: 2,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#3B82F6",
     alignItems: "center",
     justifyContent: "center",
-  },
-  fillBtnDisabled: {
-    backgroundColor: "#BFDBFE",
   },
   fillText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#FFFFFF",
   },
 });

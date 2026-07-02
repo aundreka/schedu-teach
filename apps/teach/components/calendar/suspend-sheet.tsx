@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import BottomSheet from "../BottomSheet";
 import Toast from "../Toast";
+import { useAppTheme } from "../../context/theme";
 import { getSlotsForDay, suspendSlots, unsuspendSlot, type SlotSuspensionInfo } from "../../lib/rebalance-service";
 import { emitLessonPlanRefresh } from "../../lib/lesson-plan-refresh";
 
@@ -45,7 +46,12 @@ type Props = {
   onDone: (displaced: number, vacancies: number) => void;
 };
 
+// Text on the saturated amber confirm button — fixed light value for contrast
+// in both themes.
+const ON_WARNING = "#FFFFFF";
+
 export default function SuspendSheet({ visible, planId, dateISO, onClose, onDone }: Props) {
+  const { colors: c } = useAppTheme();
   const [slots, setSlots] = useState<SlotSuspensionInfo[]>([]);
   const [selected, setSelected] = useState<Set<string | null>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -148,37 +154,42 @@ export default function SuspendSheet({ visible, planId, dateISO, onClose, onDone
     <>
       <BottomSheet visible={visible} onClose={onClose} snapFraction={0.62}>
         <View style={styles.header}>
-          <Ionicons name="moon" size={18} color="#F59E0B" />
+          <Ionicons name="moon" size={18} color={c.warning} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Suspend classes</Text>
-            <Text style={styles.subtitle}>{formatDate(dateISO)}</Text>
+            <Text style={[styles.title, { color: c.text }]}>Suspend classes</Text>
+            <Text style={[styles.subtitle, { color: c.mutedText }]}>{formatDate(dateISO)}</Text>
           </View>
           <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close">
-            <Ionicons name="close" size={22} color="#9CA3AF" />
+            <Ionicons name="close" size={22} color={c.faintText} />
           </Pressable>
         </View>
 
-        <Text style={styles.hint}>
+        <Text style={[styles.hint, { color: c.mutedText }]}>
           Toggle which class sessions to suspend. The schedule will compress automatically.
         </Text>
 
         {loading ? (
           <View style={styles.center}>
-            <ActivityIndicator color="#F59E0B" />
+            <ActivityIndicator color={c.warning} />
           </View>
         ) : slots.length === 0 ? (
           <View style={styles.center}>
-            <Text style={styles.empty}>No scheduled classes on this day.</Text>
+            <Text style={[styles.empty, { color: c.faintText }]}>No scheduled classes on this day.</Text>
           </View>
         ) : (
           <>
             {/* Select all row */}
-            <Pressable onPress={toggleAll} style={styles.selectAllRow}>
-              <Text style={styles.selectAllText}>{allSelected ? "Unselect all" : "Select all"}</Text>
+            <Pressable
+              onPress={toggleAll}
+              style={[styles.selectAllRow, { borderBottomColor: c.hairline }]}
+              accessibilityRole="button"
+              accessibilityLabel={allSelected ? "Unselect all" : "Select all"}
+            >
+              <Text style={[styles.selectAllText, { color: c.warning }]}>{allSelected ? "Unselect all" : "Select all"}</Text>
               <Ionicons
                 name={allSelected ? "checkbox" : "square-outline"}
                 size={20}
-                color={allSelected ? "#F59E0B" : "#9CA3AF"}
+                color={allSelected ? c.warning : c.faintText}
               />
             </Pressable>
 
@@ -191,29 +202,30 @@ export default function SuspendSheet({ visible, planId, dateISO, onClose, onDone
                     onPress={() => toggleSlot(slot.seriesKey)}
                     style={[
                       styles.slotRow,
-                      isSuspended && styles.slotRowSuspended,
+                      { borderBottomColor: c.hairline },
+                      isSuspended && [styles.slotRowSuspended, { backgroundColor: c.warningSoft }],
                     ]}
                   >
                     <View style={styles.slotTimeCol}>
-                      <Text style={[styles.slotTime, isSuspended && styles.slotTimeSuspended]}>
+                      <Text style={[styles.slotTime, { color: isSuspended ? c.warning : c.text }]}>
                         {formatTime12(slot.startTime)}
                       </Text>
-                      <Text style={styles.slotTimeEnd}>→ {formatTime12(slot.endTime)}</Text>
+                      <Text style={[styles.slotTimeEnd, { color: c.faintText }]}>→ {formatTime12(slot.endTime)}</Text>
                     </View>
                     <View style={styles.slotMeta}>
-                      <Text style={[styles.slotLabel, isSuspended && styles.slotLabelSuspended]}>
+                      <Text style={[styles.slotLabel, { color: isSuspended ? c.warning : c.tintDeep }]}>
                         {isSuspended ? "Suspended" : "Active"}
                       </Text>
                       {slot.isSuspended && !isSuspended ? (
-                        <Text style={styles.slotRestoreLabel}>Will unsuspend</Text>
+                        <Text style={[styles.slotRestoreLabel, { color: c.info }]}>Will unsuspend</Text>
                       ) : null}
                     </View>
                     <Switch
                       value={isSuspended}
                       onValueChange={() => toggleSlot(slot.seriesKey)}
-                      thumbColor={isSuspended ? "#F59E0B" : "#D1D5DB"}
-                      trackColor={{ true: "#FDE68A", false: "#F3F4F6" }}
-                      ios_backgroundColor="#F3F4F6"
+                      thumbColor={isSuspended ? c.warning : c.border}
+                      trackColor={{ true: c.warningSoft, false: c.surfaceAlt }}
+                      ios_backgroundColor={c.surfaceAlt}
                     />
                   </Pressable>
                 );
@@ -225,21 +237,25 @@ export default function SuspendSheet({ visible, planId, dateISO, onClose, onDone
         <View style={styles.footer}>
           <Pressable
             onPress={onClose}
-            style={styles.cancelBtn}
+            style={[styles.cancelBtn, { borderColor: c.border }]}
             disabled={saving}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
           >
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={[styles.cancelText, { color: c.mutedText }]}>Cancel</Text>
           </Pressable>
           <Pressable
             onPress={handleConfirm}
             disabled={saving || !hasChanges}
+            accessibilityRole="button"
+            accessibilityLabel={allSelected && slots.length > 0 ? "Suspend all classes" : "Apply changes"}
             style={[
               styles.confirmBtn,
-              (!hasChanges || saving) && styles.confirmBtnDisabled,
+              { backgroundColor: c.warning, opacity: !hasChanges || saving ? 0.5 : 1 },
             ]}
           >
             {saving ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
+              <ActivityIndicator color={ON_WARNING} size="small" />
             ) : (
               <Text style={styles.confirmText}>
                 {allSelected && slots.length > 0 ? "Suspend all classes" : "Apply changes"}
@@ -270,16 +286,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 17,
     fontWeight: "800",
-    color: "#111827",
   },
   subtitle: {
     fontSize: 13,
-    color: "#6B7280",
     marginTop: 1,
   },
   hint: {
     fontSize: 13,
-    color: "#6B7280",
     paddingHorizontal: 20,
     marginBottom: 10,
     lineHeight: 18,
@@ -289,7 +302,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   empty: {
-    color: "#9CA3AF",
     fontSize: 14,
   },
   selectAllRow: {
@@ -299,12 +311,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#F3F4F6",
   },
   selectAllText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#F59E0B",
   },
   list: {
     maxHeight: 260,
@@ -315,11 +325,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#F3F4F6",
     gap: 10,
   },
   slotRowSuspended: {
-    backgroundColor: "#FFFBEB",
     borderRadius: 10,
     paddingHorizontal: 6,
     marginHorizontal: -6,
@@ -330,14 +338,9 @@ const styles = StyleSheet.create({
   slotTime: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#111827",
-  },
-  slotTimeSuspended: {
-    color: "#F59E0B",
   },
   slotTimeEnd: {
     fontSize: 11,
-    color: "#9CA3AF",
     marginTop: 1,
   },
   slotMeta: {
@@ -346,14 +349,9 @@ const styles = StyleSheet.create({
   slotLabel: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#10B981",
-  },
-  slotLabelSuspended: {
-    color: "#F59E0B",
   },
   slotRestoreLabel: {
     fontSize: 11,
-    color: "#3B82F6",
     marginTop: 2,
   },
   footer: {
@@ -368,29 +366,23 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: "#E5E7EB",
     alignItems: "center",
     justifyContent: "center",
   },
   cancelText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#6B7280",
   },
   confirmBtn: {
     flex: 2,
     height: 48,
     borderRadius: 12,
-    backgroundColor: "#F59E0B",
     alignItems: "center",
     justifyContent: "center",
-  },
-  confirmBtnDisabled: {
-    backgroundColor: "#FDE68A",
   },
   confirmText: {
     fontSize: 15,
     fontWeight: "700",
-    color: "#FFFFFF",
+    color: ON_WARNING,
   },
 });

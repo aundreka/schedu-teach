@@ -159,7 +159,7 @@ export default function BlockEditor({
   onDelete,
 }: Props) {
   const insets = useSafeAreaInsets();
-  const { colors: c } = useAppTheme();
+  const { colors: c, scheme } = useAppTheme();
   const isEdit = mode === "edit";
 
   type Phase = "review" | "step";
@@ -202,7 +202,7 @@ export default function BlockEditor({
   }, [visible, isEdit, initial, plans]);
 
   const activePlan = useMemo(() => plans.find((p) => p.lessonPlanId === planId) ?? null, [plans, planId]);
-  const accent = accentFor(category);
+  const accent = accentFor(category, scheme);
 
   type LessonChapter = { chapterId: string | null; chapterTitle: string | null; lessons: PlanLesson[] };
   type LessonUnit = { unitId: string | null; unitTitle: string | null; chapters: LessonChapter[] };
@@ -415,8 +415,14 @@ export default function BlockEditor({
       <View style={[styles.screen, { backgroundColor: c.background, paddingTop: insets.top + 8, paddingBottom: insets.bottom }]}>
         {/* header */}
         <View style={styles.header}>
-          <Pressable onPress={showHeaderClose ? onClose : goBack} hitSlop={10} style={styles.headerBtn}>
-            <Ionicons name={showHeaderClose ? "close" : "chevron-back"} size={24} color="#374151" />
+          <Pressable
+            onPress={showHeaderClose ? onClose : goBack}
+            hitSlop={10}
+            style={styles.headerBtn}
+            accessibilityRole="button"
+            accessibilityLabel={showHeaderClose ? "Close" : "Back"}
+          >
+            <Ionicons name={showHeaderClose ? "close" : "chevron-back"} size={24} color={c.text} />
           </Pressable>
           {inReview ? (
             <View style={styles.dots} />
@@ -432,14 +438,14 @@ export default function BlockEditor({
                     hitSlop={8}
                     style={[
                       styles.dot,
-                      { backgroundColor: i === step ? accent : i < step || isEdit ? "#D1D5DB" : "#E5E7EB" },
+                      { backgroundColor: i === step ? c.tint : c.border },
                     ]}
                   />
                 );
               })}
             </View>
           )}
-          <Text style={styles.headerTitle}>{isEdit ? "Edit" : "New"}</Text>
+          <Text style={[styles.headerTitle, { color: c.faintText }]}>{isEdit ? "Edit" : "New"}</Text>
         </View>
 
         <Text style={[styles.question, { color: c.text }]}>
@@ -450,10 +456,10 @@ export default function BlockEditor({
           {inReview ? (
             <View style={{ gap: Spacing.lg }}>
               {/* live preview of how the block looks */}
-              <View style={[styles.previewCard, { backgroundColor: c.card, borderLeftColor: activePlan?.color ?? accent }]}>
+              <View style={[styles.previewCard, { backgroundColor: c.card, shadowColor: c.shadow, borderLeftColor: activePlan?.color ?? accent }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.previewSubject, { color: c.text }]}>{activePlan?.subjectTitle ?? "Your class"}</Text>
-                  <Text style={styles.previewSub}>{activePlan?.subtitle ?? ""}</Text>
+                  <Text style={[styles.previewSub, { color: c.mutedText }]}>{activePlan?.subtitle ?? ""}</Text>
                   <Text style={[styles.previewBody, { color: accent }]} numberOfLines={1}>
                     {SUBCATEGORY_LABEL[subcategory] ?? subcategory}
                     {scope.length === 1 && lessonsById.get(scope[0])
@@ -465,30 +471,30 @@ export default function BlockEditor({
                 </View>
               </View>
 
-              <Text style={styles.hint}>
+              <Text style={[styles.hint, { color: c.faintText }]}>
                 {formatLongDate(dateISO)} · {formatDuration(endMin - startMin)}
               </Text>
 
-              <View style={styles.rowList}>
+              <View style={[styles.rowList, { backgroundColor: c.surfaceAlt }]}>
                 {reviewRows.map((row, i) => (
                   <Pressable
                     key={row.key}
                     onPress={() => openStep(row.step)}
-                    style={[styles.editRow, i < reviewRows.length - 1 && styles.editRowDivider]}
+                    style={[styles.editRow, i < reviewRows.length - 1 && [styles.editRowDivider, { borderBottomColor: c.hairline }]]}
                   >
-                    <Text style={styles.editRowLabel}>{row.label}</Text>
-                    <Text style={styles.editRowValue} numberOfLines={1}>
+                    <Text style={[styles.editRowLabel, { color: c.text }]}>{row.label}</Text>
+                    <Text style={[styles.editRowValue, { color: c.mutedText }]} numberOfLines={1}>
                       {row.value}
                     </Text>
-                    <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+                    <Ionicons name="chevron-forward" size={16} color={c.faintText} />
                   </Pressable>
                 ))}
               </View>
 
               {onDelete ? (
-                <Pressable onPress={remove} style={styles.deleteBtn}>
-                  <Ionicons name="trash-outline" size={16} color="#DC2626" />
-                  <Text style={styles.deleteText}>Delete this block</Text>
+                <Pressable onPress={remove} style={styles.deleteBtn} accessibilityRole="button" accessibilityLabel="Delete this block">
+                  <Ionicons name="trash-outline" size={16} color={c.danger} />
+                  <Text style={[styles.deleteText, { color: c.danger }]}>Delete this block</Text>
                 </Pressable>
               ) : null}
             </View>
@@ -502,9 +508,12 @@ export default function BlockEditor({
                   <Pressable
                     key={cat}
                     onPress={() => pickCategory(cat)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${CATEGORY_LABEL[cat]}. ${CATEGORY_BLURB[cat]}`}
+                    accessibilityState={{ selected }}
                     style={[
                       styles.bigCard,
-                      { backgroundColor: accentFor(cat), opacity: selected ? 1 : 0.92 },
+                      { backgroundColor: accentFor(cat, scheme), shadowColor: c.shadow, opacity: selected ? 1 : 0.92 },
                       selected && styles.bigCardSelected,
                     ]}
                   >
@@ -531,10 +540,13 @@ export default function BlockEditor({
                   <Pressable
                     key={sub}
                     onPress={() => pickSubcategory(sub)}
+                    accessibilityRole="button"
+                    accessibilityLabel={SUBCATEGORY_LABEL[sub] ?? sub}
+                    accessibilityState={{ selected }}
                     style={[
                       styles.smallCard,
-                      { backgroundColor: selected ? accent : tintFor(category), borderColor: accent },
-                      selected && styles.smallCardSelected,
+                      { backgroundColor: selected ? accent : tintFor(category, scheme), borderColor: accent },
+                      selected && [styles.smallCardSelected, { shadowColor: c.shadow }],
                     ]}
                   >
                     <Ionicons
@@ -545,6 +557,14 @@ export default function BlockEditor({
                     <Text style={[styles.smallCardLabel, { color: selected ? ON_ACCENT : c.text }]}>
                       {SUBCATEGORY_LABEL[sub] ?? sub}
                     </Text>
+                    {selected ? (
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={18}
+                        color={ON_ACCENT}
+                        style={styles.smallCardCheck}
+                      />
+                    ) : null}
                   </Pressable>
                 );
               })}
@@ -554,7 +574,7 @@ export default function BlockEditor({
           {!inReview && step === 2 ? (
             <View style={{ gap: Spacing.lg }}>
               {plans.length === 0 ? (
-                <Text style={styles.hint}>Create a lesson plan first to add blocks.</Text>
+                <Text style={[styles.hint, { color: c.faintText }]}>Create a lesson plan first to add blocks.</Text>
               ) : null}
               {(isEdit && activePlan ? [activePlan] : plans).map((plan) => {
                 const locked = !isEdit && plans.length > 1 && Boolean(planId) && planId !== plan.lessonPlanId;
@@ -577,13 +597,13 @@ export default function BlockEditor({
                     >
                       <View style={[styles.planDot, { backgroundColor: plan.color }]} />
                       <Text style={[styles.planTitle, { color: c.text }]}>{plan.subjectTitle}</Text>
-                      <Text style={styles.planSub}>· {plan.subtitle}</Text>
+                      <Text style={[styles.planSub, { color: c.faintText }]}>· {plan.subtitle}</Text>
                       {chosen && !isEdit ? (
                         <Ionicons name="checkmark-circle" size={16} color={plan.color} style={{ marginLeft: 4 }} />
                       ) : null}
                     </Pressable>
                     {plan.lessons.length === 0 ? (
-                      <Text style={styles.hint}>No lessons listed for this plan.</Text>
+                      <Text style={[styles.hint, { color: c.faintText }]}>No lessons listed for this plan.</Text>
                     ) : (
                       <View style={{ gap: Spacing.md }}>
                         {outline.map((unit, ui) => (
@@ -597,7 +617,7 @@ export default function BlockEditor({
                                 style={{ gap: Spacing.xs }}
                               >
                                 {chapter.chapterTitle ? (
-                                  <Text style={styles.chapterHeader}>{chapter.chapterTitle}</Text>
+                                  <Text style={[styles.chapterHeader, { color: c.mutedText }]}>{chapter.chapterTitle}</Text>
                                 ) : null}
                                 <View style={[styles.chipWrap, { marginTop: 4 }]}>
                                   {chapter.lessons.map((lesson) => {
@@ -636,7 +656,7 @@ export default function BlockEditor({
                   </View>
                 );
               })}
-              <Text style={styles.hint}>
+              <Text style={[styles.hint, { color: c.faintText }]}>
                 {category === "lesson" ? "Pick the lesson this covers." : "Pick the lessons this covers (optional)."}
               </Text>
             </View>
@@ -646,7 +666,7 @@ export default function BlockEditor({
             <View style={{ gap: Spacing.xl }}>
               <View style={styles.wheelRow}>
                 <View style={styles.wheelCol}>
-                  <Text style={styles.timeLabel}>Starts at</Text>
+                  <Text style={[styles.timeLabel, { color: c.mutedText }]}>Starts at</Text>
                   <DateTimePicker
                     mode="time"
                     display="spinner"
@@ -660,7 +680,7 @@ export default function BlockEditor({
                   />
                 </View>
                 <View style={styles.wheelCol}>
-                  <Text style={styles.timeLabel}>Ends at</Text>
+                  <Text style={[styles.timeLabel, { color: c.mutedText }]}>Ends at</Text>
                   <DateTimePicker
                     mode="time"
                     display="spinner"
@@ -674,14 +694,14 @@ export default function BlockEditor({
                   />
                 </View>
               </View>
-              <Text style={styles.hint}>
+              <Text style={[styles.hint, { color: c.faintText }]}>
                 {formatLongDate(dateISO)} · {formatDuration(endMin - startMin)}
               </Text>
 
               {overlapWith ? (
-                <View style={styles.conflictBanner}>
-                  <Ionicons name="warning" size={16} color="#B91C1C" />
-                  <Text style={styles.conflictText}>
+                <View style={[styles.conflictBanner, { backgroundColor: c.dangerSoft, borderColor: c.danger }]}>
+                  <Ionicons name="warning" size={16} color={c.danger} />
+                  <Text style={[styles.conflictText, { color: c.danger }]}>
                     Conflicts with {overlapWith.subjectTitle} · {overlapWith.label} (
                     {formatTime12(overlapWith.startTime)}–{formatTime12(overlapWith.endTime)})
                   </Text>
@@ -689,10 +709,10 @@ export default function BlockEditor({
               ) : null}
 
               {!isEdit ? (
-                <View style={[styles.previewCard, { backgroundColor: c.card, borderLeftColor: activePlan?.color ?? accent }]}>
+                <View style={[styles.previewCard, { backgroundColor: c.card, shadowColor: c.shadow, borderLeftColor: activePlan?.color ?? accent }]}>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.previewSubject, { color: c.text }]}>{activePlan?.subjectTitle ?? "Your class"}</Text>
-                    <Text style={styles.previewSub}>{activePlan?.subtitle ?? ""}</Text>
+                    <Text style={[styles.previewSub, { color: c.mutedText }]}>{activePlan?.subtitle ?? ""}</Text>
                   </View>
                   <View style={[styles.previewChip, { borderColor: accent }]}>
                     <Text style={[styles.previewChipText, { color: accent }]}>{SUBCATEGORY_LABEL[subcategory] ?? subcategory}</Text>
@@ -706,8 +726,8 @@ export default function BlockEditor({
           {!isEdit && step > 0 ? (
             <View style={styles.summaryRow}>
               {summaryChips.map((chip) => (
-                <Pressable key={chip.key} onPress={() => openStep(chip.step)} style={styles.summaryChip}>
-                  <Text style={styles.summaryChipText} numberOfLines={1}>
+                <Pressable key={chip.key} onPress={() => openStep(chip.step)} style={[styles.summaryChip, { backgroundColor: c.surfaceAlt }]}>
+                  <Text style={[styles.summaryChipText, { color: c.mutedText }]} numberOfLines={1}>
                     {chip.label}
                   </Text>
                 </Pressable>
@@ -717,7 +737,7 @@ export default function BlockEditor({
         </ScrollView>
 
         {/* footer */}
-        <View style={[styles.footer, { borderTopColor: "#EEF0F2" }]}>
+        <View style={[styles.footer, { borderTopColor: c.hairline }]}>
           {inReview ? (
             <Pressable
               onPress={submit}
@@ -786,7 +806,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
     fontSize: 13,
     fontWeight: "600",
-    color: "#9CA3AF",
   },
   question: {
     ...Typography.h1,
@@ -811,7 +830,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Spacing.lg,
     overflow: "hidden",
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
     shadowRadius: 8,
@@ -866,7 +884,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.lg,
   },
   smallCardSelected: {
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.18,
     shadowRadius: 6,
@@ -876,6 +893,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     textAlign: "center",
+  },
+  smallCardCheck: {
+    position: "absolute",
+    top: 8,
+    right: 8,
   },
   // --- step 2: scope ---
   planHeader: {
@@ -893,11 +915,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "800",
     fontStyle: "italic",
-    color: "#1F2937",
   },
   planSub: {
     fontSize: 12,
-    color: "#9CA3AF",
   },
   chipWrap: {
     gap: Spacing.sm,
@@ -905,7 +925,6 @@ const styles = StyleSheet.create({
   unitHeader: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#111827",
     textTransform: "uppercase",
     letterSpacing: 0.4,
     marginTop: Spacing.xs,
@@ -913,7 +932,6 @@ const styles = StyleSheet.create({
   chapterHeader: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#6B7280",
     marginTop: Spacing.xs,
   },
   lessonChip: {
@@ -936,13 +954,11 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 12,
-    color: "#9CA3AF",
   },
   // --- step 3: time ---
   timeLabel: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#6B7280",
     marginBottom: Spacing.sm,
     textAlign: "center",
   },
@@ -961,8 +977,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#FEF2F2",
-    borderColor: "#FECACA",
     borderWidth: 1,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.md,
@@ -970,7 +984,6 @@ const styles = StyleSheet.create({
   },
   conflictText: {
     flex: 1,
-    color: "#B91C1C",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -982,7 +995,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 6,
     paddingVertical: Spacing.lg,
     paddingHorizontal: Spacing.lg,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
@@ -992,11 +1004,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
     fontStyle: "italic",
-    color: "#111827",
   },
   previewSub: {
     fontSize: 12,
-    color: "#6B7280",
     marginTop: 1,
   },
   previewBody: {
@@ -1005,7 +1015,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   rowList: {
-    backgroundColor: "#F9FAFB",
     borderRadius: Radius.lg,
     overflow: "hidden",
   },
@@ -1018,18 +1027,15 @@ const styles = StyleSheet.create({
   },
   editRowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E7EB",
   },
   editRowLabel: {
     fontSize: 14,
     fontWeight: "600",
-    color: "#374151",
     width: 88,
   },
   editRowValue: {
     flex: 1,
     fontSize: 14,
-    color: "#6B7280",
     textAlign: "right",
   },
   previewChip: {
@@ -1050,7 +1056,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
   },
   deleteText: {
-    color: "#DC2626",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -1062,7 +1067,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xxl,
   },
   summaryChip: {
-    backgroundColor: "#F3F4F6",
     borderRadius: Radius.round,
     paddingHorizontal: Spacing.md,
     paddingVertical: 6,
@@ -1070,7 +1074,6 @@ const styles = StyleSheet.create({
   },
   summaryChipText: {
     fontSize: 12,
-    color: "#4B5563",
     fontWeight: "500",
   },
   // --- footer ---

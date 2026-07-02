@@ -30,6 +30,7 @@ import PaywallModal from "../../../components/PaywallModal";
 import wordnetIndex from "../../../generated/wordnet-index.json";
 import * as Haptics from "expo-haptics";
 import Animated, {
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
