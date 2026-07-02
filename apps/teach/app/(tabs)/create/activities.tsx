@@ -58,6 +58,7 @@ import * as Localization from "expo-localization";
 import { formatEdgeFunctionError } from "../../../lib/edge-function-errors";
 import { supabase } from "../../../lib/supabase";
 import PaywallModal from "../../../components/PaywallModal";
+import SuccessMoment from "../../../components/SuccessMoment";
 
 type PickerKind = "category" | "type" | "subject" | "scope" | null;
 type ScreenStep = "details" | "components";
@@ -166,13 +167,16 @@ function AnimatedFieldBox({
   activeBg: string;
   activeBorder: string;
 }) {
+  const { colors: c } = useAppTheme();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
     <Animated.View
       style={[
         styles.fieldBox,
-        active ? [styles.activeFieldBox, { backgroundColor: activeBg, borderColor: activeBorder }] : styles.disabledFieldBox,
+        active
+          ? [styles.activeFieldBox, { backgroundColor: activeBg, borderColor: activeBorder }]
+          : [styles.disabledFieldBox, { backgroundColor: c.surfaceAlt, borderColor: c.border }],
         animStyle,
       ]}
     >
@@ -205,6 +209,7 @@ function AnimatedChip({
   selectedBorder: string;
   textColor: string;
 }) {
+  const { colors: c } = useAppTheme();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const onTint = category === "written_work" || category === "performance_task";
@@ -212,7 +217,7 @@ function AnimatedChip({
     <Animated.View
       style={[
         styles.chip,
-        { backgroundColor: baseBg },
+        { backgroundColor: baseBg, borderColor: c.border },
         selected && [styles.selectedChip, { borderColor: selectedBorder }],
         selected && category === "written_work" && styles.yellowChip,
         selected && category === "performance_task" && styles.blueChip,
@@ -230,19 +235,34 @@ function AnimatedChip({
           onPress();
         }}
       >
-        <Text style={[styles.chipText, { color: selected && onTint ? ON_TINT : textColor }]}>{label}</Text>
+        <Text style={[styles.chipText, { color: selected && onTint ? c.onTint : textColor }]}>{label}</Text>
       </Pressable>
     </Animated.View>
   );
 }
 
-const ON_TINT = "#111111";
-
-// The live document preview emulates a printed sheet of paper — it stays a
-// fixed light surface with dark ink in both light and dark themes so the
-// preview always reads like the exported document.
-const PAPER_BG = "#FFFFFF";
-const PAPER_TEXT = "#111111";
+// ---------------------------------------------------------------------------
+// Paper palette — the live document preview emulates a printed sheet of paper.
+// It deliberately stays a fixed light surface with dark ink in BOTH light and
+// dark themes so the preview always reads like the exported document. These
+// are the only hex values allowed in this file; everything else (the chrome)
+// must use theme tokens from useAppTheme().
+// ---------------------------------------------------------------------------
+const PAPER_BG = "#FFFFFF"; // the sheet itself
+const PAPER_TEXT = "#111111"; // headings / strongest ink
+const PAPER_INK = "#222222"; // body lines / table cells
+const PAPER_INK_SOFT = "#333333"; // subheadings
+const PAPER_INK_FAINT = "#444444"; // edit-badge label
+const PAPER_ICON = "#555555"; // chevrons / small glyphs on the sheet
+const PAPER_MUTED = "#666666"; // metadata / secondary labels on the sheet
+const PAPER_PLACEHOLDER = "#BCBCBC"; // placeholder text inside on-sheet inputs
+const PAPER_CONTROL_BORDER = "#D9D9D9"; // edit badge + inline count input borders
+const PAPER_HAIRLINE = "#E5E5E5"; // dividers / table rules
+const PAPER_BORDER = "#E7E7E7"; // sheet edge
+const PAPER_HAIRLINE_FAINT = "#EFEFEF"; // lightest table row rules
+const PAPER_FIELD_BG = "#FAFAFA"; // on-sheet field / badge / table-header fill
+const PAPER_CHIP_WW = "#FFF17D"; // written-work chip yellow
+const PAPER_CHIP_PT = "#AFCBED"; // performance-task chip blue
 
 export default function ActivitiesScreen() {
   const { colors: c } = useAppTheme();
@@ -279,6 +299,7 @@ export default function ActivitiesScreen() {
   const [generatedPdfStoragePath, setGeneratedPdfStoragePath] = useState<string | null>(null);
   const [generatedDocxStoragePath, setGeneratedDocxStoragePath] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState<PickerKind>(null);
+  const [successNav, setSuccessNav] = useState<{ pathname: string; activityId: string } | null>(null);
 
   const stepDirection = useRef<"forward" | "back">("forward");
   const genPulse = useSharedValue(1);
@@ -779,7 +800,7 @@ export default function ActivitiesScreen() {
             ? "/library/exam_detail"
             : "/library/ww_detail";
 
-      router.push({ pathname: targetPath as any, params: { activityId: savedRow.activity_id } });
+      setSuccessNav({ pathname: targetPath, activityId: String(savedRow.activity_id) });
     } catch (err: any) {
       Alert.alert("Could not generate activity", err?.message ?? "Please try again.");
     } finally {
@@ -940,8 +961,8 @@ export default function ActivitiesScreen() {
         </View>
 
         <View style={styles.progressDots}>
-          <View style={[styles.dot, screenStep === "details" ? [styles.dotActive, { backgroundColor: c.text }] : styles.dotInactive]} />
-          <View style={[styles.dot, screenStep === "components" ? [styles.dotActive, { backgroundColor: c.text }] : styles.dotInactive]} />
+          <View style={[styles.dot, screenStep === "details" ? [styles.dotActive, { backgroundColor: c.text }] : [styles.dotInactive, { backgroundColor: c.border }]]} />
+          <View style={[styles.dot, screenStep === "components" ? [styles.dotActive, { backgroundColor: c.text }] : [styles.dotInactive, { backgroundColor: c.border }]]} />
         </View>
 
         {screenStep === "details" ? (
@@ -959,7 +980,7 @@ export default function ActivitiesScreen() {
           >
             <View style={styles.centeredSections}>
               <View style={styles.sectionBlock}>
-                <Text style={styles.sectionLabel}>Overview</Text>
+                <Text style={[styles.sectionLabel, { color: c.faintText }]}>Overview</Text>
                 <View style={styles.fieldGrid}>
                   <AnimatedFieldBox
                     active={Boolean(category)}
@@ -968,7 +989,7 @@ export default function ActivitiesScreen() {
                     activeBorder={c.text}
                   >
                     <Text
-                      style={[styles.fieldText, category ? { color: c.text } : styles.disabledFieldText]}
+                      style={[styles.fieldText, { color: category ? c.text : c.faintText }]}
                       numberOfLines={1}
                     >
                       {getCategoryLabel(category)}
@@ -982,7 +1003,7 @@ export default function ActivitiesScreen() {
                     activeBorder={c.text}
                   >
                     <Text
-                      style={[styles.fieldText, activityType ? { color: c.text } : styles.disabledFieldText]}
+                      style={[styles.fieldText, { color: activityType ? c.text : c.faintText }]}
                       numberOfLines={1}
                     >
                       {activityType ? getActivityTypeLabel(activityType) : "Activity Type"}
@@ -996,7 +1017,7 @@ export default function ActivitiesScreen() {
                     activeBorder={c.text}
                   >
                     <Text
-                      style={[styles.fieldText, selectedSubject ? { color: c.text } : styles.disabledFieldText]}
+                      style={[styles.fieldText, { color: selectedSubject ? c.text : c.faintText }]}
                       numberOfLines={1}
                     >
                       {subjectLabel}
@@ -1012,7 +1033,7 @@ export default function ActivitiesScreen() {
                     <Text
                       style={[
                         styles.fieldText,
-                        selectedScopeLessons.length ? { color: c.text } : styles.disabledFieldText,
+                        { color: selectedScopeLessons.length ? c.text : c.faintText },
                       ]}
                       numberOfLines={1}
                     >
@@ -1023,15 +1044,20 @@ export default function ActivitiesScreen() {
               </View>
 
               <View style={styles.sectionBlock}>
-                <Text style={styles.sectionLabel}>Requirements</Text>
+                <Text style={[styles.sectionLabel, { color: c.faintText }]}>Requirements</Text>
                 {category === "written_work" ? (
                   <TextInput
                     value={numberOfItems}
                     onChangeText={setNumberOfItems}
                     keyboardType="number-pad"
                     placeholder="No. of Items"
-                    placeholderTextColor="#BCBCBC"
-                    style={[styles.inputField, styles.fullField, styles.compactInput, { color: c.text }]}
+                    placeholderTextColor={c.faintText}
+                    style={[
+                      styles.inputField,
+                      styles.fullField,
+                      styles.compactInput,
+                      { color: c.text, backgroundColor: c.surfaceAlt, borderColor: c.border },
+                    ]}
                   />
                 ) : null}
 
@@ -1043,8 +1069,13 @@ export default function ActivitiesScreen() {
                       ? "Leave blank for default creation, or describe the task, output, grading focus, and instructions."
                       : "Leave blank for default creation, or describe the coverage, difficulty, directions, and answer rules."
                   }
-                  placeholderTextColor="#BCBCBC"
-                  style={[styles.inputField, styles.fullField, styles.requirementsInput, { color: c.text }]}
+                  placeholderTextColor={c.faintText}
+                  style={[
+                    styles.inputField,
+                    styles.fullField,
+                    styles.requirementsInput,
+                    { color: c.text, backgroundColor: c.surfaceAlt, borderColor: c.border },
+                  ]}
                   multiline
                   numberOfLines={6}
                   maxLength={700}
@@ -1053,14 +1084,14 @@ export default function ActivitiesScreen() {
               </View>
 
               <View style={styles.sectionBlock}>
-                <Text style={styles.sectionLabel}>Template</Text>
+                <Text style={[styles.sectionLabel, { color: c.faintText }]}>Template</Text>
                 <Pressable style={[styles.uploadButton, { backgroundColor: c.card, borderColor: c.border }]} onPress={pickTemplateFile}>
                   <Ionicons name="document-attach-outline" size={17} color={c.text} />
                   <Text style={[styles.uploadButtonText, { color: c.text }]}>
                     {templateAsset ? templateAsset.name : "Upload template file (optional)"}
                   </Text>
                 </Pressable>
-                <Text style={styles.helperText}>
+                <Text style={[styles.helperText, { color: c.mutedText }]}>
                   Optional. Upload a template only if you want the generated document to follow an existing format.
                 </Text>
               </View>
@@ -1074,8 +1105,8 @@ export default function ActivitiesScreen() {
                   setScreenStep("components");
                 }}
               >
-                <Text style={[styles.proceedButtonText, { color: ON_TINT }]}>Proceed</Text>
-                <Ionicons name="arrow-forward" size={16} color={ON_TINT} />
+                <Text style={[styles.proceedButtonText, { color: c.onTint }]}>Proceed</Text>
+                <Ionicons name="arrow-forward" size={16} color={c.onTint} />
               </Pressable>
             </View>
           </ScrollView>
@@ -1087,7 +1118,7 @@ export default function ActivitiesScreen() {
             entering={SlideInRight.duration(260).springify()}
             exiting={SlideOutRight.duration(200)}
           >
-            <Text style={styles.sectionLabel}>Components</Text>
+            <Text style={[styles.sectionLabel, { color: c.faintText }]}>Components</Text>
             <View style={styles.componentWrap}>
               {componentOptions.map((item) => {
                 const selected = selectedComponents.includes(item.key);
@@ -1108,7 +1139,7 @@ export default function ActivitiesScreen() {
 
             <View style={styles.canvasWrap}>
               <Text style={[styles.canvasTitle, { color: c.text }]}>Live Preview</Text>
-              <View style={styles.canvasSheet}>
+              <View style={[styles.canvasSheet, { shadowColor: c.shadow }]}>
                 <Text style={styles.canvasDocTitle}>{previewHeaderTitle}</Text>
                 <Text style={styles.canvasMetaCentered}>{subjectLabel}</Text>
                 <View style={styles.canvasDivider} />
@@ -1143,7 +1174,7 @@ export default function ActivitiesScreen() {
                           <Ionicons
                             name={isCollapsed ? "chevron-down" : "chevron-up"}
                             size={16}
-                            color="#555555"
+                            color={PAPER_ICON}
                           />
                         </View>
                       </Pressable>
@@ -1162,9 +1193,9 @@ export default function ActivitiesScreen() {
                               }))
                             }
                             keyboardType="number-pad"
-                            style={[styles.inlineEditorInput, { color: c.text, backgroundColor: c.card }]}
+                            style={styles.inlineEditorInput}
                             placeholder="0"
-                            placeholderTextColor="#BCBCBC"
+                            placeholderTextColor={PAPER_PLACEHOLDER}
                           />
                         </View>
                       ) : null}
@@ -1209,17 +1240,17 @@ export default function ActivitiesScreen() {
             </View>
 
             <View style={styles.aiQuotaRow}>
-              <Text style={[styles.aiQuotaText, { color: sub.aiQuotaExceeded ? "#EF4444" : c.mutedText }]}>
+              <Text style={[styles.aiQuotaText, { color: sub.aiQuotaExceeded ? c.danger : c.mutedText }]}>
                 {sub.aiUsedToday} / {sub.aiDailyLimit} activity/exam uses today
               </Text>
             </View>
 
             <Pressable
-              style={[styles.generateButton, (generating || savingDraft) && styles.disabledButton]}
+              style={[styles.generateButton, { backgroundColor: c.tint }, (generating || savingDraft) && styles.disabledButton]}
               onPress={handleGenerate}
               disabled={generating || savingDraft}
             >
-              <Animated.Text style={[styles.generateButtonText, genPulseStyle]}>
+              <Animated.Text style={[styles.generateButtonText, { color: c.onTint }, genPulseStyle]}>
                 {generating ? "Generating..." : `Create ${getActivityTypeLabel(activityType)}`}
               </Animated.Text>
             </Pressable>
@@ -1241,13 +1272,13 @@ export default function ActivitiesScreen() {
       </View>
 
       <Modal transparent visible={pickerOpen !== null} animationType="fade" onRequestClose={() => setPickerOpen(null)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setPickerOpen(null)}>
+        <Pressable style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]} onPress={() => setPickerOpen(null)}>
           <Pressable style={[styles.modalCard, { backgroundColor: c.card }]} onPress={(event) => event.stopPropagation()}>
             {pickerOpen === "category" ? (
               <>
                 <Text style={[styles.modalTitle, { color: c.text }]}>Select category</Text>
                 <Pressable
-                  style={styles.modalOption}
+                  style={[styles.modalOption, { borderColor: c.border }]}
                   onPress={() => {
                     setCategory("written_work");
                     setPickerOpen(null);
@@ -1256,7 +1287,7 @@ export default function ActivitiesScreen() {
                   <Text style={[styles.modalOptionText, { color: c.text }]}>Written Work</Text>
                 </Pressable>
                 <Pressable
-                  style={styles.modalOption}
+                  style={[styles.modalOption, { borderColor: c.border }]}
                   onPress={() => {
                     setCategory("performance_task");
                     setPickerOpen(null);
@@ -1273,7 +1304,7 @@ export default function ActivitiesScreen() {
                 {activityTypeOptions.map((item) => (
                   <Pressable
                     key={item.key}
-                    style={styles.modalOption}
+                    style={[styles.modalOption, { borderColor: c.border }]}
                     onPress={() => {
                       setActivityType(item.key);
                       setPickerOpen(null);
@@ -1292,7 +1323,7 @@ export default function ActivitiesScreen() {
                   {subjects.map((item) => (
                     <Pressable
                       key={item.subject_id}
-                      style={styles.modalOption}
+                      style={[styles.modalOption, { borderColor: c.border }]}
                       onPress={async () => {
                         try {
                           setSelectedSubjectId(item.subject_id);
@@ -1316,14 +1347,14 @@ export default function ActivitiesScreen() {
                 <Text style={[styles.modalTitle, { color: c.text }]}>Select lesson scope</Text>
                 <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
                   {scopeLessons.length === 0 ? (
-                    <Text style={styles.modalEmpty}>No lessons found for this subject.</Text>
+                    <Text style={[styles.modalEmpty, { color: c.mutedText }]}>No lessons found for this subject.</Text>
                   ) : (
                     scopeLessons.map((lesson) => {
                       const selected = selectedScopeIds.includes(lesson.lesson_id);
                       return (
                         <Pressable
                           key={lesson.lesson_id}
-                          style={[styles.modalOption, selected && styles.modalOptionSelected]}
+                          style={[styles.modalOption, { borderColor: c.border }, selected && { backgroundColor: c.surfaceAlt }]}
                           onPress={() => toggleScope(lesson.lesson_id)}
                         >
                           <View style={styles.scopeRow}>
@@ -1335,8 +1366,8 @@ export default function ActivitiesScreen() {
                     })
                   )}
                 </ScrollView>
-                <Pressable style={styles.doneButton} onPress={() => setPickerOpen(null)}>
-                  <Text style={styles.doneButtonText}>Done</Text>
+                <Pressable style={[styles.doneButton, { backgroundColor: c.tint }]} onPress={() => setPickerOpen(null)}>
+                  <Text style={[styles.doneButtonText, { color: c.onTint }]}>Done</Text>
                 </Pressable>
               </>
             ) : null}
@@ -1349,6 +1380,18 @@ export default function ActivitiesScreen() {
         onClose={() => setPaywallVisible(false)}
         quotaType="ai"
         regionCode={Localization.getLocales()[0]?.regionCode ?? null}
+      />
+
+      <SuccessMoment
+        visible={successNav !== null}
+        message="Activity generated!"
+        onDone={() => {
+          const nav = successNav;
+          setSuccessNav(null);
+          if (nav) {
+            router.push({ pathname: nav.pathname as any, params: { activityId: nav.activityId } });
+          }
+        }}
       />
     </KeyboardAvoidingView>
   );
@@ -1401,8 +1444,8 @@ const styles = StyleSheet.create({
     width: 20,
   },
   dotInactive: {
+    // backgroundColor applied inline (c.border) — StyleSheet is static.
     width: 8,
-    backgroundColor: "#D9D9D9",
   },
   stepContainer: {
     flex: 1,
@@ -1419,11 +1462,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   sectionLabel: {
+    // color applied inline (c.faintText) — StyleSheet is static.
     fontSize: 11,
     fontWeight: "600",
     letterSpacing: 0.8,
     textTransform: "uppercase",
-    color: "#999999",
   },
   fieldGrid: {
     flexDirection: "row",
@@ -1446,12 +1489,11 @@ const styles = StyleSheet.create({
   },
   activeFieldBox: {},
   disabledFieldBox: {
+    // backgroundColor/borderColor applied inline (c.surfaceAlt / c.border).
     width: "48.8%",
     minHeight: 44,
     borderRadius: 8,
-    backgroundColor: "#FAFAFA",
     borderWidth: 1,
-    borderColor: "#E7E7E7",
     overflow: "hidden",
   },
   fieldText: {
@@ -1459,15 +1501,11 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     textAlign: "center",
   },
-  disabledFieldText: {
-    color: "#BCBCBC",
-  },
   inputField: {
+    // backgroundColor/borderColor/color applied inline (c.surfaceAlt / c.border / c.text).
     minHeight: 42,
     borderRadius: 2,
     borderWidth: 1,
-    borderColor: "#E7E7E7",
-    backgroundColor: "#FAFAFA",
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 13,
@@ -1484,9 +1522,9 @@ const styles = StyleSheet.create({
     maxHeight: 176,
   },
   helperText: {
+    // color applied inline (c.mutedText).
     fontSize: 12,
     lineHeight: 17,
-    color: "#6A6A6A",
   },
   uploadButton: {
     minHeight: 42,
@@ -1524,10 +1562,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   chip: {
+    // backgroundColor/borderColor applied inline (c.card / c.border, or paper chip fills when selected).
     minHeight: 40,
     borderRadius: 10,
     borderWidth: 1.2,
-    borderColor: "#DDDDDD",
     overflow: "hidden",
   },
   chipInner: {
@@ -1539,10 +1577,10 @@ const styles = StyleSheet.create({
   },
   selectedChip: {},
   yellowChip: {
-    backgroundColor: "#FFF17D",
+    backgroundColor: PAPER_CHIP_WW,
   },
   blueChip: {
-    backgroundColor: "#AFCBED",
+    backgroundColor: PAPER_CHIP_PT,
   },
   chipText: {
     fontSize: 12,
@@ -1558,14 +1596,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   canvasSheet: {
+    // shadowColor applied inline (c.shadow).
     flex: 1,
     backgroundColor: PAPER_BG,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: "#E7E7E7",
+    borderColor: PAPER_BORDER,
     paddingHorizontal: 18,
     paddingVertical: 18,
-    shadowColor: "#000000",
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 3 },
@@ -1581,19 +1619,19 @@ const styles = StyleSheet.create({
   },
   canvasMeta: {
     fontSize: 11,
-    color: "#666666",
+    color: PAPER_MUTED,
     marginTop: 2,
   },
   canvasMetaCentered: {
     fontSize: 11,
     fontFamily: "Times New Roman",
-    color: "#666666",
+    color: PAPER_MUTED,
     marginTop: 2,
     textAlign: "center",
   },
   canvasDivider: {
     height: 1,
-    backgroundColor: "#E5E5E5",
+    backgroundColor: PAPER_HAIRLINE,
     marginVertical: 12,
   },
   documentSection: {
@@ -1614,13 +1652,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: "#D9D9D9",
+    borderColor: PAPER_CONTROL_BORDER,
     borderRadius: 999,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: PAPER_FIELD_BG,
   },
   editBadgeText: {
     fontSize: 11,
-    color: "#444444",
+    color: PAPER_INK_FAINT,
     fontWeight: "600",
   },
   inlineEditorRow: {
@@ -1634,17 +1672,19 @@ const styles = StyleSheet.create({
   inlineEditorLabel: {
     flex: 1,
     fontSize: 11,
-    color: "#666666",
+    color: PAPER_MUTED,
   },
   inlineEditorInput: {
     width: 72,
     minHeight: 32,
     borderWidth: 1,
-    borderColor: "#D9D9D9",
+    borderColor: PAPER_CONTROL_BORDER,
     borderRadius: 6,
     paddingHorizontal: 10,
     fontSize: 12,
     textAlign: "center",
+    color: PAPER_TEXT,
+    backgroundColor: PAPER_FIELD_BG,
   },
   documentSectionBody: {
     marginTop: 4,
@@ -1663,7 +1703,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Times New Roman",
     lineHeight: 17,
-    color: "#222222",
+    color: PAPER_INK,
     marginBottom: 2,
   },
   canvasIndented: {
@@ -1673,7 +1713,7 @@ const styles = StyleSheet.create({
     paddingLeft: 26,
   },
   canvasSubheading: {
-    color: "#333333",
+    color: PAPER_INK_SOFT,
     fontWeight: "600",
     paddingLeft: 14,
   },
@@ -1683,18 +1723,18 @@ const styles = StyleSheet.create({
   matchingTable: {
     marginTop: 4,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: PAPER_HAIRLINE,
   },
   matchingHeaderRow: {
     flexDirection: "row",
-    backgroundColor: "#FAFAFA",
+    backgroundColor: PAPER_FIELD_BG,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
+    borderBottomColor: PAPER_HAIRLINE,
   },
   matchingBodyRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#EFEFEF",
+    borderBottomColor: PAPER_HAIRLINE_FAINT,
   },
   matchingHeaderCell: {
     flex: 1,
@@ -1703,7 +1743,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Times New Roman",
     fontWeight: "700",
-    color: "#222222",
+    color: PAPER_INK,
   },
   matchingCell: {
     flex: 1,
@@ -1711,7 +1751,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     fontSize: 11,
     fontFamily: "Times New Roman",
-    color: "#222222",
+    color: PAPER_INK,
   },
   aiQuotaRow: {
     alignItems: "flex-end",
@@ -1721,9 +1761,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   generateButton: {
+    // backgroundColor applied inline (c.tint).
     minHeight: 46,
     borderRadius: 12,
-    backgroundColor: "#FFF17D",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1731,9 +1771,9 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   generateButtonText: {
+    // color applied inline (c.onTint).
     fontSize: 14,
     fontWeight: "700",
-    color: ON_TINT,
   },
   generatedFooter: {
     paddingBottom: 8,
@@ -1756,8 +1796,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   modalBackdrop: {
+    // backgroundColor applied inline (c.backdrop).
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.18)",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
@@ -1779,21 +1819,18 @@ const styles = StyleSheet.create({
     maxHeight: 340,
   },
   modalOption: {
+    // borderColor applied inline (c.border); selected bg is inline c.surfaceAlt.
     borderWidth: 1,
-    borderColor: "#D9D9D9",
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-  },
-  modalOptionSelected: {
-    backgroundColor: "#F6F6F6",
   },
   modalOptionText: {
     fontSize: 14,
   },
   modalEmpty: {
+    // color applied inline (c.mutedText).
     fontSize: 13,
-    color: "#666666",
     paddingVertical: 8,
   },
   scopeRow: {
@@ -1803,14 +1840,14 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   doneButton: {
+    // backgroundColor applied inline (c.tint).
     minHeight: 42,
     borderRadius: 12,
-    backgroundColor: "#FFF17D",
     alignItems: "center",
     justifyContent: "center",
   },
   doneButtonText: {
-    color: ON_TINT,
+    // color applied inline (c.onTint).
     fontSize: 13,
     fontWeight: "700",
   },

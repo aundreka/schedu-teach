@@ -40,6 +40,7 @@ import { emitLessonPlanRefresh } from "../../../lib/lesson-plan-refresh";
 import { supabase } from "../../../lib/supabase";
 import PaywallModal from "../../../components/PaywallModal";
 import type { QuotaType } from "../../../components/PaywallModal";
+import SuccessMoment from "../../../components/SuccessMoment";
 import { Badge, Chip, ListRow, SectionHeader, StepFlow, type StepDef } from "../../../components/ui";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -788,6 +789,7 @@ export default function LessonplanScreen() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [successVisible, setSuccessVisible] = useState(false);
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [paywallQuotaType, setPaywallQuotaType] = useState<QuotaType>("lesson_plan");
   const [subjectMenuOpen, setSubjectMenuOpen] = useState(false);
@@ -2225,13 +2227,7 @@ export default function LessonplanScreen() {
       }
 
       emitLessonPlanRefresh();
-      Alert.alert(
-        replacePlanId ? "Lesson plan recreated" : "Lesson plan created",
-        replacePlanId
-          ? "The plan was rebuilt from your inputs and the old version was removed."
-          : "Your lesson plan was saved.",
-        [{ text: "OK", onPress: () => router.push("/(tabs)/calendar") }]
-      );
+      setSuccessVisible(true);
     } catch (err: any) {
       Alert.alert(
         replacePlanId ? "Could not recreate lesson plan" : "Could not create lesson plan",
@@ -2813,6 +2809,15 @@ export default function LessonplanScreen() {
       >
         {stepRenderers[stepIndex]()}
       </StepFlow>
+
+      <SuccessMoment
+        visible={successVisible}
+        message={replacePlanId ? "Plan recreated!" : "Plan generated!"}
+        onDone={() => {
+          setSuccessVisible(false);
+          router.push("/(tabs)/calendar");
+        }}
+      />
 
       <Modal visible={chapterModalOpen} transparent animationType="fade" onRequestClose={() => setChapterModalOpen(false)}>
         <Pressable style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]} onPress={() => setChapterModalOpen(false)}>
