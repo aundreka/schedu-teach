@@ -21,6 +21,7 @@ import { Input } from "../../components/ui";
 import { enterUp } from "../../lib/motion";
 // ✅ change this path if your supabase client lives elsewhere
 import { supabase } from "../../lib/supabase";
+import { completePendingProfile } from "../../lib/pending-profile";
 
 type Provider = "google" | "apple" | "facebook";
 
@@ -80,7 +81,10 @@ export default function AuthIndex() {
         }
       }
 
-      // ✅ signed in — send to your main area
+      // ✅ signed in — finish any profile stashed during a confirm-email
+      // signup (writes the chosen username now that a session exists), then
+      // send to the main area.
+      await completePendingProfile();
       router.replace("/(tabs)");
     } catch (e: any) {
       setErrorMsg(e?.message ?? "Sign in failed.");

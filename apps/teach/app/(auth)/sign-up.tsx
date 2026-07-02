@@ -13,10 +13,11 @@ import {
 } from "react-native";
 import Animated from "react-native-reanimated";
 
-import { Input } from "../../components/ui";
+import { Button, EmptyState, Input } from "../../components/ui";
 import { Typography } from "../../constants/fonts";
 import { useAppTheme } from "../../context/theme";
 import { enterUp } from "../../lib/motion";
+import { savePendingProfile } from "../../lib/pending-profile";
 // ✅ change this path if your supabase client lives elsewhere
 import { supabase } from "../../lib/supabase";
 
@@ -39,6 +40,7 @@ export default function Signup() {
 
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [signupComplete, setSignupComplete] = useState(false);
 
   const normalizedUsername = useMemo(() => username.trim().toLowerCase(), [username]);
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
@@ -80,6 +82,7 @@ export default function Signup() {
         data: {
           first_name: firstName.trim(),
           last_name: lastName.trim(),
+          username: normalizedUsername,
         },
       },
     });
@@ -92,6 +95,21 @@ export default function Signup() {
     const userId = data.user?.id;
     if (!userId) {
       setErrorMsg("Account created, but no user returned. Please try signing in.");
+      return;
+    }
+
+    if (!data.session) {
+      // "Confirm email" is on: there is no session yet, so the profile row
+      // can't be written from here (anon has no UPDATE grant on users — by
+      // design). Stash the chosen username locally; it is applied right after
+      // the first successful sign-in (lib/pending-profile.ts).
+      await savePendingProfile({
+        email: normalizedEmail,
+        username: normalizedUsername,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+      });
+      setSignupComplete(true);
       return;
     }
 
@@ -116,11 +134,6 @@ export default function Signup() {
       return;
     }
 
-    if (!data.session) {
-      router.replace("/(auth)");
-      return;
-    }
-
     router.replace("/(tabs)");
   } catch (e: any) {
     setErrorMsg(e?.message ?? "Sign up failed.");
@@ -133,6 +146,22 @@ export default function Signup() {
     return (
       <View style={[styles.center, { backgroundColor: c.background }]}>
         <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (signupComplete) {
+    return (
+      <View style={[styles.center, { backgroundColor: c.background }]}>
+        <EmptyState
+          illustration={
+            <Ionicons name="mail-unread-outline" size={64} color={c.tint} accessibilityElementsHidden={true} />
+          }
+          title="Check your email"
+          body={`We sent a confirmation link to ${email.trim()}. Confirm it, then sign in — your username will be ready.`}
+          ctaLabel="Go to sign in"
+          onCta={() => router.replace("/(auth)")}
+        />
       </View>
     );
   }
