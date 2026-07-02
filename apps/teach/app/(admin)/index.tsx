@@ -12,15 +12,23 @@ import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { router } from "expo-router";
 import AnimatedPressable from "../../components/AnimatedPressable";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ErrorState } from "../../components/ui";
+import { AvatarPalette, OnAvatar } from "../../constants/colors";
+import { Typography } from "../../constants/fonts";
 import { useAppTheme } from "../../context/theme";
 import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { supabase } from "../../lib/supabase";
+
+type ThemeColors = ReturnType<typeof useAppTheme>["colors"];
+
+/** Semantic tone for a summary-card note; resolved to a theme color at render. */
+type NoteTone = "positive" | "warning" | "muted";
 
 type SummaryCard = {
   label: string;
   value: string;
   note: string;
-  noteColor: string;
+  noteTone: NoteTone;
 };
 
 type PlanStatus = "ACTIVE" | "DRAFT" | "REVIEW" | "UPCOMING";
@@ -30,10 +38,12 @@ type LessonPlanItem = {
   title: string;
   subtitle: string;
   progress: number;
-  accent: string;
   status: PlanStatus;
   updatedAt: string;
 };
+
+/** Semantic teacher activity state; resolved to a theme color at render. */
+type TeacherTone = "active" | "hasPlans" | "idle";
 
 type TeacherItem = {
   userId: string;
@@ -42,13 +52,13 @@ type TeacherItem = {
   subtitle: string;
   plans: number;
   avatarColor: string;
-  statusColor: string;
+  statusTone: TeacherTone;
 };
 
 type ActivityItem = {
   title: string;
   time: string;
-  dotColor: string;
+  status: PlanStatus;
 };
 
 type TermCardData = {
@@ -117,18 +127,27 @@ type MembershipRow = {
   } | null;
 };
 
-const STATUS_STYLES: Record<
-  PlanStatus,
-  { text: string; chipBg: string; chipText: string; bar: string }
-> = {
-  ACTIVE: { text: "ACTIVE", chipBg: "#DFF5EB", chipText: "#146854", bar: "#35B97C" },
-  DRAFT: { text: "DRAFT", chipBg: "#F8ECD9", chipText: "#7A4B10", bar: "#F0A12E" },
-  REVIEW: { text: "REVIEW", chipBg: "#F7E4ED", chipText: "#8F2E57", bar: "#D7487B" },
-  UPCOMING: { text: "UPCOMING", chipBg: "#E2EFFD", chipText: "#114E8D", bar: "#3F88E2" },
-};
+type StatusStyle = { text: string; chipBg: string; chipText: string; bar: string };
 
-const TEACHER_AVATAR_COLORS = ["#D85280", "#438EE6", "#7A70E2", "#1EAA78", "#F39C35"] as const;
-const PLAN_ACCENT_COLORS = ["#E34B55", "#3E87E0", "#35C18B", "#7B6FDE", "#F39C35"] as const;
+function getStatusStyles(c: ThemeColors): Record<PlanStatus, StatusStyle> {
+  return {
+    ACTIVE: { text: "ACTIVE", chipBg: c.tintSoft, chipText: c.category.lesson.onSoft, bar: c.tint },
+    DRAFT: { text: "DRAFT", chipBg: c.warningSoft, chipText: c.category.writtenWork.onSoft, bar: c.warning },
+    REVIEW: { text: "REVIEW", chipBg: c.dangerSoft, chipText: c.danger, bar: c.danger },
+    UPCOMING: { text: "UPCOMING", chipBg: c.infoSoft, chipText: c.info, bar: c.info },
+  };
+}
+
+/** Identity ramp for plan accent bars, drawn from the category tokens so it adapts per scheme. */
+function getAccentPalette(c: ThemeColors): readonly string[] {
+  return [
+    c.category.exam.base,
+    c.category.performanceTask.base,
+    c.category.lesson.base,
+    c.category.buffer.base,
+    c.category.writtenWork.base,
+  ];
+}
 
 const EMPTY_DASHBOARD: DashboardData = {
   greetingName: "Admin",
@@ -139,10 +158,10 @@ const EMPTY_DASHBOARD: DashboardData = {
     progress: 0,
   },
   summaryCards: [
-    { label: "TEACHERS", value: "0", note: "No teachers yet", noteColor: "#7A7A7A" },
-    { label: "SYLLABUSES", value: "0", note: "No subjects yet", noteColor: "#7A7A7A" },
-    { label: "LESSON PLANS", value: "0", note: "No plans yet", noteColor: "#7A7A7A" },
-    { label: "COMPLETION", value: "0%", note: "No scheduled blocks", noteColor: "#7A7A7A" },
+    { label: "TEACHERS", value: "0", note: "No teachers yet", noteTone: "muted" },
+    { label: "SYLLABUSES", value: "0", note: "No subjects yet", noteTone: "muted" },
+    { label: "LESSON PLANS", value: "0", note: "No plans yet", noteTone: "muted" },
+    { label: "COMPLETION", value: "0%", note: "No scheduled blocks", noteTone: "muted" },
   ],
   lessonPlans: [],
   teachers: [],
@@ -266,7 +285,8 @@ function buildTermCard(plans: LessonPlanRow[], today: string): TermCardData {
     return {
       label: formatTermLabel(current.term),
       detail: `Ends ${formatMonthDay(current.end_date)} · ${daysLeft} day${daysLeft === 1 ? "" : "s"} left`,
-      progress: clampPercent((elapsedDays / totalDays) * 100),
+      // Inclusive term math; on the final day (today >= end_date) show 100%.
+      progress: today >= current.end_date ? 100 : clampPercent((elapsedDays / totalDays) * 100),
     };
   }
 
@@ -286,27 +306,36 @@ function buildTermCard(plans: LessonPlanRow[], today: string): TermCardData {
 
 type SummaryCardItemProps = { card: SummaryCard; index: number; cardBg: string; borderColor: string; textColor: string; mutedColor: string };
 function SummaryCardItem({ card, index, cardBg, borderColor, textColor, mutedColor }: SummaryCardItemProps) {
+  const { colors: c } = useAppTheme();
+  const noteColor =
+    card.noteTone === "positive"
+      ? c.category.lesson.onSoft
+      : card.noteTone === "warning"
+        ? c.category.writtenWork.onSoft
+        : c.mutedText;
   return (
     <Animated.View
       entering={FadeInDown.duration(280).delay(index * 60)}
-      style={[styles.summaryCard, { backgroundColor: cardBg, borderColor, shadowColor: "#A79B89" }]}
+      style={[styles.summaryCard, { backgroundColor: cardBg, borderColor, shadowColor: c.shadow }]}
     >
       <Text style={[styles.summaryLabel, { color: mutedColor }]}>{card.label}</Text>
       <Text style={[styles.summaryValue, { color: textColor }]}>{card.value}</Text>
-      <Text style={[styles.summaryNote, { color: card.noteColor }]}>{card.note}</Text>
+      <Text style={[styles.summaryNote, { color: noteColor }]}>{card.note}</Text>
     </Animated.View>
   );
 }
 
 type PlanRowItemProps = { plan: LessonPlanItem; index: number; isLast: boolean; borderColor: string; textColor: string; mutedColor: string };
 function PlanRowItem({ plan, index, isLast, borderColor, textColor, mutedColor }: PlanRowItemProps) {
-  const statusStyle = STATUS_STYLES[plan.status];
+  const { colors: c } = useAppTheme();
+  const statusStyle = getStatusStyles(c)[plan.status];
+  const accent = getPaletteColor(plan.lessonPlanId, getAccentPalette(c));
   return (
     <Animated.View
       entering={FadeInDown.duration(280).delay(index * 50)}
       style={[styles.planRow, !isLast && { borderBottomWidth: 1, borderBottomColor: borderColor }]}
     >
-      <View style={[styles.planAccent, { backgroundColor: plan.accent }]} />
+      <View style={[styles.planAccent, { backgroundColor: accent }]} />
       <View style={styles.planMain}>
         <View style={styles.planTopRow}>
           <View style={styles.planTextWrap}>
@@ -318,7 +347,7 @@ function PlanRowItem({ plan, index, isLast, borderColor, textColor, mutedColor }
               <Text style={[styles.statusChipText, { color: statusStyle.chipText }]}>{statusStyle.text}</Text>
             </View>
             <View style={styles.progressWrap}>
-              <View style={[styles.progressTrack, { backgroundColor: "#E6E9EE" }]}>
+              <View style={[styles.progressTrack, { backgroundColor: c.hairline }]}>
                 <View style={[styles.progressFill, { width: `${plan.progress}%`, backgroundColor: statusStyle.bar }]} />
               </View>
               <Text style={[styles.progressValue, { color: mutedColor }]}>{`${plan.progress}%`}</Text>
@@ -332,6 +361,9 @@ function PlanRowItem({ plan, index, isLast, borderColor, textColor, mutedColor }
 
 type TeacherRowItemProps = { teacher: TeacherItem; index: number; isLast: boolean; borderColor: string; textColor: string; mutedColor: string };
 function TeacherRowItem({ teacher, index, isLast, borderColor, textColor, mutedColor }: TeacherRowItemProps) {
+  const { colors: c } = useAppTheme();
+  const statusColor =
+    teacher.statusTone === "active" ? c.tint : teacher.statusTone === "hasPlans" ? c.warning : c.faintText;
   return (
     <Animated.View
       entering={FadeInDown.duration(280).delay(index * 55)}
@@ -348,19 +380,21 @@ function TeacherRowItem({ teacher, index, isLast, borderColor, textColor, mutedC
         <Text style={[styles.teacherPlanCount, { color: textColor }]}>{teacher.plans}</Text>
         <Text style={[styles.teacherPlanLabel, { color: mutedColor }]}>plans</Text>
       </View>
-      <View style={[styles.teacherStatusDot, { backgroundColor: teacher.statusColor }]} />
+      <View style={[styles.teacherStatusDot, { backgroundColor: statusColor }]} />
     </Animated.View>
   );
 }
 
 type ActivityRowItemProps = { activity: ActivityItem; index: number; isLast: boolean; borderColor: string; textColor: string; mutedColor: string };
 function ActivityRowItem({ activity, index, isLast, borderColor, textColor, mutedColor }: ActivityRowItemProps) {
+  const { colors: c } = useAppTheme();
+  const dotColor = getStatusStyles(c)[activity.status].bar;
   return (
     <Animated.View
       entering={FadeInDown.duration(280).delay(index * 50)}
       style={[styles.activityRow, !isLast && { borderBottomWidth: 1, borderBottomColor: borderColor }]}
     >
-      <View style={[styles.activityDot, { backgroundColor: activity.dotColor }]} />
+      <View style={[styles.activityDot, { backgroundColor: dotColor }]} />
       <View style={styles.activityMain}>
         <Text style={[styles.activityTitle, { color: textColor }]}>{activity.title}</Text>
         <Text style={[styles.activityTime, { color: mutedColor }]}>{activity.time}</Text>
@@ -372,12 +406,14 @@ function ActivityRowItem({ activity, index, isLast, borderColor, textColor, mute
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function AdminDashboardScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardData>(EMPTY_DASHBOARD);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const {
         data: { user },
@@ -528,7 +564,6 @@ export default function AdminDashboardScreen() {
             title: `${subjectCode} - ${plan.title}`,
             subtitle: `${teacherName} · ${sectionName}`,
             progress,
-            accent: getPaletteColor(plan.lesson_plan_id, PLAN_ACCENT_COLORS),
             status,
             updatedAt: plan.updated_at,
           } satisfies LessonPlanItem;
@@ -547,8 +582,8 @@ export default function AdminDashboardScreen() {
             name: teacher.fullName,
             subtitle: `${roleLabel(teacher.role)}${planCount > 0 ? ` · ${planCount} plan${planCount === 1 ? "" : "s"}` : ""}`,
             plans: planCount,
-            avatarColor: getPaletteColor(teacher.userId, TEACHER_AVATAR_COLORS),
-            statusColor: hasActivePlan ? "#39C38C" : planCount > 0 ? "#F2A12D" : "#B8BDC7",
+            avatarColor: getPaletteColor(teacher.userId, AvatarPalette),
+            statusTone: hasActivePlan ? "active" : planCount > 0 ? "hasPlans" : "idle",
           } satisfies TeacherItem;
         })
         .sort((a, b) => (b.plans !== a.plans ? b.plans - a.plans : a.name.localeCompare(b.name)))
@@ -566,7 +601,7 @@ export default function AdminDashboardScreen() {
           return {
             title: `${teacherName} ${activityVerb} ${plan.title}`,
             time: formatRelativeTime(plan.updated_at),
-            dotColor: STATUS_STYLES[status].bar,
+            status,
           } satisfies ActivityItem;
         });
 
@@ -594,7 +629,7 @@ export default function AdminDashboardScreen() {
               : teacherCount > 0
                 ? `${activeTeacherCount} active now`
                 : "No teachers yet",
-          noteColor: teacherCount > 0 ? "#12A66A" : "#7A7A7A",
+          noteTone: teacherCount > 0 ? "positive" : "muted",
         },
         {
           label: "SYLLABUSES",
@@ -605,7 +640,7 @@ export default function AdminDashboardScreen() {
               : subjects.length > 0
                 ? "All published"
                 : "No subjects yet",
-          noteColor: pendingSyllabuses > 0 ? "#C97812" : "#12A66A",
+          noteTone: pendingSyllabuses > 0 ? "warning" : "positive",
         },
         {
           label: "LESSON PLANS",
@@ -616,7 +651,7 @@ export default function AdminDashboardScreen() {
               : lessonPlans.length > 0
                 ? "No new plans this week"
                 : "No plans yet",
-          noteColor: lessonPlans.length > 0 ? "#12A66A" : "#7A7A7A",
+          noteTone: lessonPlans.length > 0 ? "positive" : "muted",
         },
         {
           label: "COMPLETION",
@@ -625,7 +660,7 @@ export default function AdminDashboardScreen() {
             lessonPlans.length > 0
               ? `${visiblePlans.filter((plan) => plan.status === "ACTIVE").length} active plans`
               : "No scheduled blocks",
-          noteColor: averageCompletion >= 70 ? "#12A66A" : "#C97812",
+          noteTone: averageCompletion >= 70 ? "positive" : "warning",
         },
       ];
 
@@ -641,6 +676,7 @@ export default function AdminDashboardScreen() {
     } catch (err: any) {
       Alert.alert("Unable to load dashboard", err?.message ?? "Please try again.");
       setDashboard(EMPTY_DASHBOARD);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -655,16 +691,26 @@ export default function AdminDashboardScreen() {
   const now = useMemo(() => new Date(), []);
   const dateLabel = toDateLabel(now);
   const greeting = greetingForHour(now.getHours());
-  const screenBg = scheme === "dark" ? "#11161C" : "#F5F3EE";
-  const cardBg = scheme === "dark" ? "#171E27" : "#FFFFFF";
-  const sectionCardBg = scheme === "dark" ? "#151C24" : "#FFFFFF";
-  const borderColor = scheme === "dark" ? "#222B35" : "#E8E1D7";
+  const screenBg = c.surfaceAlt;
+  const cardBg = c.card;
+  const sectionCardBg = c.card;
+  const borderColor = c.border;
 
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: screenBg }]} edges={["bottom"]}>
         <View style={styles.center}>
           <ActivityIndicator color={c.tint} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: screenBg }]} edges={["bottom"]}>
+        <View style={styles.center}>
+          <ErrorState title="Unable to load dashboard" onRetry={loadDashboard} />
         </View>
       </SafeAreaView>
     );
@@ -688,12 +734,12 @@ export default function AdminDashboardScreen() {
 
         <Animated.View
           entering={FadeInDown.duration(320).delay(60)}
-          style={[styles.termCard, { backgroundColor: "#DDF5EE", borderColor: "#8CE2CF" }]}
+          style={[styles.termCard, { backgroundColor: c.tintSoft, borderColor: c.category.lesson.border }]}
         >
-          <Text style={styles.termLabel}>{dashboard.termCard.label}</Text>
-          <Text style={styles.termMeta}>{dashboard.termCard.detail}</Text>
-          <View style={styles.termTrack}>
-            <View style={[styles.termFill, { width: `${dashboard.termCard.progress}%` }]} />
+          <Text style={[styles.termLabel, { color: c.category.lesson.onSoft }]}>{dashboard.termCard.label}</Text>
+          <Text style={[styles.termMeta, { color: c.category.lesson.onSoft }]}>{dashboard.termCard.detail}</Text>
+          <View style={[styles.termTrack, { backgroundColor: c.category.lesson.border }]}>
+            <View style={[styles.termFill, { backgroundColor: c.tint, width: `${dashboard.termCard.progress}%` }]} />
           </View>
         </Animated.View>
 
@@ -713,12 +759,16 @@ export default function AdminDashboardScreen() {
 
         <Animated.View entering={FadeInDown.duration(260).delay(300)} style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: c.text }]}>Lesson plans</Text>
-          <AnimatedPressable onPress={() => router.navigate("/(admin)/plans" as any)}>
-            <Text style={[styles.seeAllText, { color: "#14A76D" }]}>See all</Text>
+          <AnimatedPressable
+            accessibilityRole="button"
+            accessibilityLabel="See all lesson plans"
+            onPress={() => router.navigate("/(admin)/plans" as any)}
+          >
+            <Text style={[styles.seeAllText, { color: c.tintDeep }]}>See all</Text>
           </AnimatedPressable>
         </Animated.View>
 
-        <View style={[styles.listCard, { backgroundColor: sectionCardBg, borderColor, shadowColor: "#A79B89" }]}>
+        <View style={[styles.listCard, { backgroundColor: sectionCardBg, borderColor, shadowColor: c.shadow }]}>
           {dashboard.lessonPlans.length > 0 ? (
             dashboard.lessonPlans.map((plan, index) => (
               <PlanRowItem
@@ -738,12 +788,16 @@ export default function AdminDashboardScreen() {
 
         <Animated.View entering={FadeInDown.duration(260).delay(360)} style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: c.text }]}>Teachers</Text>
-          <AnimatedPressable onPress={() => router.navigate("/(admin)/teachers" as any)}>
-            <Text style={[styles.seeAllText, { color: "#14A76D" }]}>See all</Text>
+          <AnimatedPressable
+            accessibilityRole="button"
+            accessibilityLabel="See all teachers"
+            onPress={() => router.navigate("/(admin)/teachers" as any)}
+          >
+            <Text style={[styles.seeAllText, { color: c.tintDeep }]}>See all</Text>
           </AnimatedPressable>
         </Animated.View>
 
-        <View style={[styles.listCard, { backgroundColor: sectionCardBg, borderColor, shadowColor: "#A79B89" }]}>
+        <View style={[styles.listCard, { backgroundColor: sectionCardBg, borderColor, shadowColor: c.shadow }]}>
           {dashboard.teachers.length > 0 ? (
             dashboard.teachers.map((teacher, index) => (
               <TeacherRowItem
@@ -765,7 +819,7 @@ export default function AdminDashboardScreen() {
           <Text style={[styles.sectionTitle, { color: c.text }]}>Recent activity</Text>
         </Animated.View>
 
-        <View style={[styles.listCard, { backgroundColor: sectionCardBg, borderColor, shadowColor: "#A79B89" }]}>
+        <View style={[styles.listCard, { backgroundColor: sectionCardBg, borderColor, shadowColor: c.shadow }]}>
           {dashboard.activities.length > 0 ? (
             dashboard.activities.map((activity, index) => (
               <ActivityRowItem
@@ -809,17 +863,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   dateText: {
-    fontSize: 15,
-    fontWeight: "600",
+    ...Typography.bodyMedium,
   },
   greetingText: {
-    fontSize: 26,
-    fontWeight: "800",
-    letterSpacing: -0.7,
+    ...Typography.display,
   },
   schoolNameText: {
-    fontSize: 15,
-    fontWeight: "500",
+    ...Typography.bodyMedium,
   },
   termCard: {
     borderWidth: 1.5,
@@ -829,27 +879,21 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   termLabel: {
-    color: "#123B38",
-    fontSize: 18,
-    fontWeight: "800",
+    ...Typography.h3,
     letterSpacing: 0.5,
   },
   termMeta: {
-    color: "#13705E",
-    fontSize: 17,
-    fontWeight: "500",
+    ...Typography.body,
   },
   termTrack: {
     marginTop: 6,
     height: 10,
     borderRadius: 999,
-    backgroundColor: "#A7E8D6",
     overflow: "hidden",
   },
   termFill: {
     height: "100%",
     borderRadius: 999,
-    backgroundColor: "#31C287",
   },
   summaryGrid: {
     flexDirection: "row",
@@ -870,21 +914,18 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   summaryLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+    ...Typography.label,
     marginBottom: 10,
   },
   summaryValue: {
+    ...Typography.display,
     fontSize: 44,
     lineHeight: 46,
-    fontWeight: "800",
     letterSpacing: -1.2,
   },
   summaryNote: {
     marginTop: 2,
-    fontSize: 14,
-    fontWeight: "500",
+    ...Typography.bodySm,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -893,13 +934,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   sectionTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: -0.5,
+    ...Typography.h2,
   },
   seeAllText: {
-    fontSize: 16,
-    fontWeight: "600",
+    ...Typography.bodyMedium,
   },
   listCard: {
     borderRadius: 24,
@@ -911,8 +949,7 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   emptyText: {
-    fontSize: 15,
-    fontWeight: "500",
+    ...Typography.bodyMedium,
     paddingHorizontal: 24,
     paddingVertical: 22,
   },
@@ -940,13 +977,10 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   planTitle: {
-    fontSize: 18,
-    fontWeight: "500",
-    letterSpacing: -0.3,
+    ...Typography.h3,
   },
   planSubtitle: {
-    fontSize: 14,
-    fontWeight: "500",
+    ...Typography.bodySm,
   },
   planMeta: {
     alignItems: "flex-end",
@@ -960,9 +994,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   statusChipText: {
-    fontSize: 13,
-    fontWeight: "800",
-    letterSpacing: 0.4,
+    ...Typography.label,
   },
   progressWrap: {
     alignItems: "flex-end",
@@ -980,8 +1012,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   progressValue: {
-    fontSize: 14,
-    fontWeight: "600",
+    ...Typography.bodySm,
   },
   teacherRow: {
     flexDirection: "row",
@@ -998,21 +1029,18 @@ const styles = StyleSheet.create({
     marginRight: 18,
   },
   teacherAvatarText: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "800",
+    ...Typography.h1,
+    color: OnAvatar,
   },
   teacherMain: {
     flex: 1,
     gap: 2,
   },
   teacherName: {
-    fontSize: 18,
-    fontWeight: "500",
+    ...Typography.h3,
   },
   teacherSubtitle: {
-    fontSize: 14,
-    fontWeight: "500",
+    ...Typography.bodySm,
   },
   teacherMeta: {
     alignItems: "flex-end",
@@ -1020,12 +1048,10 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   teacherPlanCount: {
-    fontSize: 20,
-    fontWeight: "800",
+    ...Typography.h2,
   },
   teacherPlanLabel: {
-    fontSize: 14,
-    fontWeight: "500",
+    ...Typography.bodySm,
     marginTop: -2,
   },
   teacherStatusDot: {
@@ -1052,12 +1078,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   activityTitle: {
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: "500",
+    ...Typography.bodyMedium,
   },
   activityTime: {
-    fontSize: 14,
-    fontWeight: "500",
+    ...Typography.bodySm,
   },
 });

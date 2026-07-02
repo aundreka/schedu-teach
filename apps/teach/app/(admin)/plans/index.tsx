@@ -19,9 +19,13 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { ErrorState } from "../../../components/ui";
+import { Typography } from "../../../constants/fonts";
 import { useAppTheme } from "../../../context/theme";
 import { usePullToRefresh } from "../../../hooks/usePullToRefresh";
 import { supabase } from "../../../lib/supabase";
+
+type ThemeColors = ReturnType<typeof useAppTheme>["colors"];
 
 type PlanStatus = "ACTIVE" | "DRAFT" | "REVIEW" | "UPCOMING";
 
@@ -36,18 +40,31 @@ type PlanRow = {
   departmentId: string | null;
   progress: number;
   status: PlanStatus;
-  accent: string;
   updatedAt: string;
 };
 
-const STATUS_STYLES: Record<PlanStatus, { text: string; chipBg: string; chipText: string; bar: string }> = {
-  ACTIVE:   { text: "ACTIVE",    chipBg: "#DFF5EB", chipText: "#146854", bar: "#35B97C" },
-  DRAFT:    { text: "DRAFT",     chipBg: "#F8ECD9", chipText: "#7A4B10", bar: "#F0A12E" },
-  REVIEW:   { text: "REVIEW",    chipBg: "#F7E4ED", chipText: "#8F2E57", bar: "#D7487B" },
-  UPCOMING: { text: "UPCOMING",  chipBg: "#E2EFFD", chipText: "#114E8D", bar: "#3F88E2" },
-};
+type StatusStyle = { text: string; chipBg: string; chipText: string; bar: string };
 
-const ACCENT_COLORS = ["#E34B55", "#3E87E0", "#35C18B", "#7B6FDE", "#F39C35"] as const;
+function getStatusStyles(c: ThemeColors): Record<PlanStatus, StatusStyle> {
+  return {
+    ACTIVE: { text: "ACTIVE", chipBg: c.tintSoft, chipText: c.category.lesson.onSoft, bar: c.tint },
+    DRAFT: { text: "DRAFT", chipBg: c.warningSoft, chipText: c.category.writtenWork.onSoft, bar: c.warning },
+    REVIEW: { text: "REVIEW", chipBg: c.dangerSoft, chipText: c.danger, bar: c.danger },
+    UPCOMING: { text: "UPCOMING", chipBg: c.infoSoft, chipText: c.info, bar: c.info },
+  };
+}
+
+/** Identity ramp for plan accent bars, drawn from the category tokens so it adapts per scheme. */
+function getAccentPalette(c: ThemeColors): readonly string[] {
+  return [
+    c.category.exam.base,
+    c.category.performanceTask.base,
+    c.category.lesson.base,
+    c.category.buffer.base,
+    c.category.writtenWork.base,
+  ];
+}
+
 const STATUS_FILTERS: (PlanStatus | "ALL")[] = ["ALL", "ACTIVE", "DRAFT", "REVIEW", "UPCOMING"];
 
 function getPaletteColor(seed: string, palette: readonly string[]) {
@@ -113,7 +130,7 @@ function AnimatedPill({ label, isActive, onPress, activeBg, activeFg, inactiveBg
   }));
 
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected: isActive }}>
       <Animated.View style={[styles.pill, bgStyle]}>
         <Animated.Text style={[styles.pillText, textStyle]}>{label}</Animated.Text>
       </Animated.View>
@@ -133,13 +150,15 @@ type PlanRowItemProps = {
 };
 
 function PlanRowItem({ plan, index, isLast, borderColor, textColor, mutedColor }: PlanRowItemProps) {
-  const ss = STATUS_STYLES[plan.status];
+  const { colors: c } = useAppTheme();
+  const ss = getStatusStyles(c)[plan.status];
+  const accent = getPaletteColor(plan.planId, getAccentPalette(c));
   return (
     <Animated.View
       entering={FadeInDown.duration(280).delay(index * 50)}
       style={[styles.planRow, !isLast && { borderBottomWidth: 1, borderBottomColor: borderColor }]}
     >
-      <View style={[styles.accentBar, { backgroundColor: plan.accent }]} />
+      <View style={[styles.accentBar, { backgroundColor: accent }]} />
       <View style={styles.planMain}>
         <View style={styles.planTopRow}>
           <View style={styles.planTextWrap}>
@@ -153,7 +172,7 @@ function PlanRowItem({ plan, index, isLast, borderColor, textColor, mutedColor }
               <Text style={[styles.chipText, { color: ss.chipText }]}>{ss.text}</Text>
             </View>
             <View style={styles.progressWrap}>
-              <View style={[styles.progressTrack, { backgroundColor: "#E6E9EE" }]}>
+              <View style={[styles.progressTrack, { backgroundColor: c.hairline }]}>
                 <View style={[styles.progressFill, { width: `${plan.progress}%`, backgroundColor: ss.bar }]} />
               </View>
               <Text style={[styles.progressLabel, { color: mutedColor }]}>{plan.progress}%</Text>
@@ -168,8 +187,9 @@ function PlanRowItem({ plan, index, isLast, borderColor, textColor, mutedColor }
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function PlansScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [search, setSearch] = useState("");
@@ -177,17 +197,18 @@ export default function PlansScreen() {
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [loadKey, setLoadKey] = useState(0);
 
-  const screenBg = scheme === "dark" ? "#11161C" : "#F5F3EE";
-  const cardBg = scheme === "dark" ? "#171E27" : "#FFFFFF";
-  const borderColor = scheme === "dark" ? "#222B35" : "#E8E1D7";
-  const inputBg = scheme === "dark" ? "#171E27" : "#FFFFFF";
-  const pillActiveBg = scheme === "dark" ? "#243B30" : "#DFF5EB";
-  const pillActiveFg = "#146854";
-  const pillInactiveBg = scheme === "dark" ? "#1A2330" : "#F0EDE8";
+  const screenBg = c.surfaceAlt;
+  const cardBg = c.card;
+  const borderColor = c.border;
+  const inputBg = c.card;
+  const pillActiveBg = c.tintSoft;
+  const pillActiveFg = c.category.lesson.onSoft;
+  const pillInactiveBg = c.card;
   const pillInactiveFg = c.mutedText;
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const {
         data: { user },
@@ -303,7 +324,6 @@ export default function PlansScreen() {
           departmentId: member?.departmentId ?? null,
           progress,
           status,
-          accent: getPaletteColor(plan.lesson_plan_id, ACCENT_COLORS),
           updatedAt: plan.updated_at,
         };
       });
@@ -313,6 +333,7 @@ export default function PlansScreen() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Please try again.";
       Alert.alert("Unable to load plans", message);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -353,6 +374,16 @@ export default function PlansScreen() {
       <SafeAreaView style={[styles.safe, { backgroundColor: screenBg }]} edges={["top", "bottom"]}>
         <View style={styles.center}>
           <ActivityIndicator color={c.tint} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: screenBg }]} edges={["top", "bottom"]}>
+        <View style={styles.center}>
+          <ErrorState title="Unable to load plans" onRetry={loadData} />
         </View>
       </SafeAreaView>
     );
@@ -429,7 +460,7 @@ export default function PlansScreen() {
           ))}
         </ScrollView>
 
-        <View style={[styles.listCard, { backgroundColor: cardBg, borderColor }]}>
+        <View style={[styles.listCard, { backgroundColor: cardBg, borderColor, shadowColor: c.shadow }]}>
           {filtered.length === 0 ? (
             <Text style={[styles.emptyText, { color: c.mutedText }]}>
               {plans.length === 0 ? "No lesson plans in this school yet." : "No plans match your search."}
@@ -459,8 +490,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 36, gap: 16 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: { gap: 4 },
-  title: { fontSize: 28, fontWeight: "800", letterSpacing: -0.8 },
-  subtitle: { fontSize: 14, fontWeight: "500" },
+  title: { ...Typography.display },
+  subtitle: { ...Typography.bodySm },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -470,21 +501,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 10,
   },
-  searchInput: { flex: 1, fontSize: 15 },
+  searchInput: { ...Typography.body, flex: 1 },
   pillRow: { flexDirection: "row", gap: 8, paddingVertical: 2 },
   pill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999 },
-  pillText: { fontSize: 14, fontWeight: "600" },
+  pillText: { ...Typography.bodyMedium },
   listCard: {
     borderRadius: 24,
     borderWidth: 1,
     overflow: "hidden",
-    shadowColor: "#A79B89",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 1,
   },
-  emptyText: { fontSize: 15, fontWeight: "500", paddingHorizontal: 24, paddingVertical: 22 },
+  emptyText: { ...Typography.bodyMedium, paddingHorizontal: 24, paddingVertical: 22 },
   planRow: {
     flexDirection: "row",
     paddingVertical: 18,
@@ -495,13 +525,13 @@ const styles = StyleSheet.create({
   planMain: { flex: 1 },
   planTopRow: { flexDirection: "row", gap: 12 },
   planTextWrap: { flex: 1, gap: 2 },
-  planTitle: { fontSize: 16, fontWeight: "500" },
-  planSub: { fontSize: 13, fontWeight: "500" },
+  planTitle: { ...Typography.bodyMedium },
+  planSub: { ...Typography.bodySm },
   planMeta: { alignItems: "flex-end", justifyContent: "space-between", minWidth: 108, gap: 8 },
   chip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8 },
-  chipText: { fontSize: 12, fontWeight: "800", letterSpacing: 0.4 },
+  chipText: { ...Typography.label },
   progressWrap: { alignItems: "flex-end", width: 90, gap: 3 },
   progressTrack: { width: "100%", height: 5, borderRadius: 999, overflow: "hidden" },
   progressFill: { height: "100%", borderRadius: 999 },
-  progressLabel: { fontSize: 13, fontWeight: "600" },
+  progressLabel: { ...Typography.bodySm },
 });

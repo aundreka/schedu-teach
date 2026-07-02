@@ -7,8 +7,6 @@
 //     single bar, and attaches display labels (see ./labels.ts).
 //   • `buildPlan` is re-exported so the create flow / the upcoming admin
 //     calendar share one "run the scheduler" import surface.
-//   • `DEMO_SCHEDULE` is a self-contained sample used when the signed-in
-//     teacher has no plans yet (and is also offered in the plan picker).
 
 import type {
   AlgorithmInput,
@@ -202,54 +200,3 @@ function toScheduleBlock(block: LabeledBlock, orderNo = 1): ScheduleBlock {
 function byFirstDate(a: ScheduleBlock, b: ScheduleBlock): number {
   return (a.dates[0] ?? "").localeCompare(b.dates[0] ?? "") || a.orderNo - b.orderNo;
 }
-
-// ---------------------------------------------------------------------------
-// Sample plan — mirrors the calendar mock so the screen has something to render
-// before the teacher creates a real plan. The blocks are described in the same
-// shape the scheduler emits, then run through the real labelling pass.
-// ---------------------------------------------------------------------------
-
-export const DEMO_PLAN_ID = "__demo";
-
-const DEMO_RAW: RawBlockGroup[] = [
-  { id: "demo-l1", category: "lesson", subcategory: "lecture", rawTitle: "Introduction to Science", metadata: { term_no: 1, lesson_no: 1 }, dates: ["2026-10-12"] },
-  { id: "demo-l2", category: "lesson", subcategory: "lecture", rawTitle: "The Human Body", metadata: { term_no: 1, lesson_no: 2 }, dates: ["2026-10-13"] },
-  { id: "demo-l3", category: "lesson", subcategory: "lecture", rawTitle: "Digestive System", metadata: { term_no: 1, lesson_no: 3 }, dates: ["2026-10-15", "2026-10-16"] },
-  { id: "demo-l4", category: "lesson", subcategory: "lecture", rawTitle: "Skeletal System", metadata: { term_no: 1, lesson_no: 4 }, dates: ["2026-10-19"] },
-  { id: "demo-l5", category: "lesson", subcategory: "lecture", rawTitle: "Muscular System", metadata: { term_no: 1, lesson_no: 5 }, dates: ["2026-10-22", "2026-10-23"] },
-  { id: "demo-sw1", category: "written_work", subcategory: "seatwork", rawTitle: "Lesson 1 & 2", metadata: { term_no: 1 }, dates: ["2026-10-13"] },
-  { id: "demo-q1", category: "written_work", subcategory: "quiz", rawTitle: "Lesson 1 & 2", metadata: { term_no: 1, quiz_no: 1 }, dates: ["2026-10-14"] },
-  { id: "demo-sw2", category: "written_work", subcategory: "seatwork", rawTitle: "Lesson 3 & 4", metadata: { term_no: 1 }, dates: ["2026-10-21"] },
-  {
-    id: "demo-pt1",
-    category: "performance_task",
-    subcategory: "project",
-    rawTitle: "Body system diagram",
-    metadata: { term_no: 1 },
-    dates: ["2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-26", "2026-10-27", "2026-10-28"],
-  },
-  { id: "demo-rev1", category: "buffer", subcategory: "review", rawTitle: "Lesson 1-5", metadata: { term_no: 1 }, dates: ["2026-10-29"] },
-  { id: "demo-sw3", category: "written_work", subcategory: "seatwork", rawTitle: "Lesson 5", metadata: { term_no: 1 }, dates: ["2026-10-26"] },
-  { id: "demo-q2", category: "written_work", subcategory: "quiz", rawTitle: "Lesson 1-5", metadata: { term_no: 1, quiz_no: 2 }, dates: ["2026-10-30"] },
-];
-
-export const DEMO_SCHEDULE: ScheduleData = {
-  planId: DEMO_PLAN_ID,
-  title: "Science · Tesla (sample)",
-  subjectCode: "SCIENCE",
-  subjectYear: "8",
-  sectionName: "Tesla",
-  startDate: "2026-10-01",
-  endDate: "2026-10-31",
-  blocks: labelBlocks(DEMO_RAW).map((b) => toScheduleBlock(b)).sort(byFirstDate),
-};
-
-export const DEMO_PLAN_SUMMARY: PlanSummary = {
-  lessonPlanId: DEMO_PLAN_ID,
-  title: "Sample schedule",
-  subjectCode: "SCIENCE",
-  subjectYear: "8",
-  sectionName: "Tesla",
-  startDate: DEMO_SCHEDULE.startDate,
-  endDate: DEMO_SCHEDULE.endDate,
-};

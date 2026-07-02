@@ -16,6 +16,11 @@ import {
 } from "../../../lib/lesson-editor";
 import { supabase } from "../../../lib/supabase";
 
+// The lesson preview WebView renders the tiptap document on a white "paper"
+// sheet in BOTH color schemes (see tiptapDocumentHtml). The shell behind it
+// must match so loading/short documents don't flash a mismatched color.
+const PAPER_BG = "#FFFFFF";
+
 function parseWebHeight(event: WebViewMessageEvent) {
   try {
     const data = JSON.parse(event.nativeEvent.data) as WebMessage;
@@ -28,7 +33,7 @@ function parseWebHeight(event: WebViewMessageEvent) {
 }
 
 export default function LessonDetailScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const params = useLocalSearchParams<{ lessonId?: string | string[]; subjectId?: string | string[] }>();
   const lessonId = useMemo(() => readParam(params.lessonId), [params.lessonId]);
   const subjectIdParam = useMemo(() => readParam(params.subjectId), [params.subjectId]);
@@ -91,8 +96,8 @@ export default function LessonDetailScreen() {
   }, [loadLesson]);
 
   const { refreshing, onRefresh } = usePullToRefresh(loadLesson);
-  const pageBg = useMemo(() => (scheme === "dark" ? c.background : "#F5F6F7"), [c.background, scheme]);
-  const shellBg = useMemo(() => (scheme === "dark" ? "#0E1218" : "#FFFFFF"), [scheme]);
+  const pageBg = c.background;
+  const shellBg = c.card;
   const resolvedSubjectId = (lesson?.subject_id ?? subjectIdParam) || "";
   const previewSource = useMemo(
     () => ({ html: tiptapDocumentHtml({ editable: false, initialHtml: contentHtml }) }),
@@ -186,11 +191,21 @@ export default function LessonDetailScreen() {
               </Pressable>
               {showMenu ? (
                 <View style={[styles.dropdown, { backgroundColor: shellBg, borderColor: c.border }]}>
-                  <Pressable style={styles.dropdownItem} onPress={goToEditor}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit lesson"
+                    style={styles.dropdownItem}
+                    onPress={goToEditor}
+                  >
                     <Text style={[styles.dropdownText, { color: c.text }]}>Edit</Text>
                   </Pressable>
-                  <Pressable style={styles.dropdownItem} onPress={confirmDeleteLesson}>
-                    <Text style={[styles.dropdownText, { color: "#D64545" }]}>Delete</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete lesson"
+                    style={styles.dropdownItem}
+                    onPress={confirmDeleteLesson}
+                  >
+                    <Text style={[styles.dropdownText, { color: c.danger }]}>Delete</Text>
                   </Pressable>
                 </View>
               ) : null}
@@ -198,7 +213,7 @@ export default function LessonDetailScreen() {
           </View>
         </View>
 
-        <View style={[styles.editorShell, { backgroundColor: shellBg, borderColor: c.border, height: previewHeight }]}>
+        <View style={[styles.editorShell, { backgroundColor: PAPER_BG, borderColor: c.border, height: previewHeight }]}>
           <WebView
             originWhitelist={["*"]}
             source={previewSource}

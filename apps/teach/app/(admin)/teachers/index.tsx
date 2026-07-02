@@ -19,9 +19,14 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { ErrorState } from "../../../components/ui";
+import { AvatarPalette, OnAvatar } from "../../../constants/colors";
+import { Typography } from "../../../constants/fonts";
 import { useAppTheme } from "../../../context/theme";
 import { usePullToRefresh } from "../../../hooks/usePullToRefresh";
 import { supabase } from "../../../lib/supabase";
+
+type ThemeColors = ReturnType<typeof useAppTheme>["colors"];
 
 type Department = {
   department_id: string;
@@ -40,13 +45,15 @@ type TeacherRow = {
   hasAnyPlan: boolean;
 };
 
-const AVATAR_COLORS = ["#D85280", "#438EE6", "#7A70E2", "#1EAA78", "#F39C35"] as const;
+type TierStyle = { label: string; bg: string; fg: string };
 
-const TIER_LABELS: Record<string, { label: string; bg: string; fg: string }> = {
-  tier2: { label: "PRO", bg: "#DFF5EB", fg: "#146854" },
-  tier1: { label: "T1", bg: "#E2EFFD", fg: "#114E8D" },
-  free: { label: "FREE", bg: "#F1F1F1", fg: "#7A7A7A" },
-};
+function getTierStyles(c: ThemeColors): Record<string, TierStyle> {
+  return {
+    tier2: { label: "PRO", bg: c.tierMaxBg, fg: c.tierMaxFg },
+    tier1: { label: "T1", bg: c.infoSoft, fg: c.info },
+    free: { label: "FREE", bg: c.surfaceAlt, fg: c.mutedText },
+  };
+}
 
 function getPaletteColor(seed: string, palette: readonly string[]) {
   const hash = seed.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
@@ -99,7 +106,7 @@ function AnimatedPill({ label, isActive, onPress, activeBg, activeFg, inactiveBg
   }));
 
   return (
-    <Pressable onPress={onPress}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityState={{ selected: isActive }}>
       <Animated.View style={[styles.pill, bgStyle]}>
         <Animated.Text style={[styles.pillText, textStyle]}>{label}</Animated.Text>
       </Animated.View>
@@ -119,9 +126,11 @@ type TeacherListRowProps = {
 };
 
 function TeacherListRow({ teacher, index, isLast, borderColor, textColor, mutedColor }: TeacherListRowProps) {
-  const avatarColor = getPaletteColor(teacher.userId, AVATAR_COLORS);
-  const statusColor = teacher.hasActivePlan ? "#39C38C" : teacher.hasAnyPlan ? "#F2A12D" : "#B8BDC7";
-  const tierStyle = TIER_LABELS[teacher.tier] ?? TIER_LABELS.free;
+  const { colors: c } = useAppTheme();
+  const avatarColor = getPaletteColor(teacher.userId, AvatarPalette);
+  const statusColor = teacher.hasActivePlan ? c.tint : teacher.hasAnyPlan ? c.warning : c.faintText;
+  const tierStyles = getTierStyles(c);
+  const tierStyle = tierStyles[teacher.tier] ?? tierStyles.free;
 
   return (
     <Animated.View
@@ -149,25 +158,27 @@ function TeacherListRow({ teacher, index, isLast, borderColor, textColor, mutedC
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function TeachersScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [teachers, setTeachers] = useState<TeacherRow[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [search, setSearch] = useState("");
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
   const [loadKey, setLoadKey] = useState(0);
 
-  const screenBg = scheme === "dark" ? "#11161C" : "#F5F3EE";
-  const cardBg = scheme === "dark" ? "#171E27" : "#FFFFFF";
-  const borderColor = scheme === "dark" ? "#222B35" : "#E8E1D7";
-  const inputBg = scheme === "dark" ? "#171E27" : "#FFFFFF";
-  const pillActiveBg = scheme === "dark" ? "#243B30" : "#DFF5EB";
-  const pillActiveFg = "#146854";
-  const pillInactiveBg = scheme === "dark" ? "#1A2330" : "#F0EDE8";
+  const screenBg = c.surfaceAlt;
+  const cardBg = c.card;
+  const borderColor = c.border;
+  const inputBg = c.card;
+  const pillActiveBg = c.tintSoft;
+  const pillActiveFg = c.category.lesson.onSoft;
+  const pillInactiveBg = c.card;
   const pillInactiveFg = c.mutedText;
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const {
         data: { user },
@@ -267,6 +278,7 @@ export default function TeachersScreen() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Please try again.";
       Alert.alert("Unable to load teachers", message);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -302,6 +314,16 @@ export default function TeachersScreen() {
       <SafeAreaView style={[styles.safe, { backgroundColor: screenBg }]} edges={["top", "bottom"]}>
         <View style={styles.center}>
           <ActivityIndicator color={c.tint} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: screenBg }]} edges={["top", "bottom"]}>
+        <View style={styles.center}>
+          <ErrorState title="Unable to load teachers" onRetry={loadData} />
         </View>
       </SafeAreaView>
     );
@@ -377,7 +399,7 @@ export default function TeachersScreen() {
           </ScrollView>
         )}
 
-        <View style={[styles.listCard, { backgroundColor: cardBg, borderColor }]}>
+        <View style={[styles.listCard, { backgroundColor: cardBg, borderColor, shadowColor: c.shadow }]}>
           {filtered.length === 0 ? (
             <Text style={[styles.emptyText, { color: c.mutedText }]}>
               {teachers.length === 0
@@ -409,8 +431,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 36, gap: 16 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: { gap: 4 },
-  title: { fontSize: 28, fontWeight: "800", letterSpacing: -0.8 },
-  subtitle: { fontSize: 14, fontWeight: "500" },
+  title: { ...Typography.display },
+  subtitle: { ...Typography.bodySm },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -420,27 +442,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     gap: 10,
   },
-  searchInput: { flex: 1, fontSize: 15, fontWeight: "400" },
+  searchInput: { ...Typography.body, flex: 1 },
   pillRow: { flexDirection: "row", gap: 8, paddingVertical: 2 },
   pill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 999,
   },
-  pillText: { fontSize: 14, fontWeight: "600" },
+  pillText: { ...Typography.bodyMedium },
   listCard: {
     borderRadius: 24,
     borderWidth: 1,
     overflow: "hidden",
-    shadowColor: "#A79B89",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 1,
   },
   emptyText: {
-    fontSize: 15,
-    fontWeight: "500",
+    ...Typography.bodyMedium,
     paddingHorizontal: 24,
     paddingVertical: 22,
   },
@@ -458,15 +478,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { color: "#FFF", fontSize: 20, fontWeight: "800" },
+  avatarText: { ...Typography.h2, color: OnAvatar },
   rowMain: { flex: 1, gap: 2 },
-  teacherName: { fontSize: 16, fontWeight: "600" },
-  teacherSub: { fontSize: 13, fontWeight: "500" },
+  teacherName: { ...Typography.bodyMedium },
+  teacherSub: { ...Typography.bodySm },
   tierBadge: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
   },
-  tierText: { fontSize: 12, fontWeight: "800", letterSpacing: 0.4 },
+  tierText: { ...Typography.label },
   statusDot: { width: 11, height: 11, borderRadius: 6 },
 });

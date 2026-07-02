@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,7 +18,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Radius, Spacing, Typography } from "../../../constants/fonts";
 import { useAppTheme } from "../../../context/theme";
+import { ErrorState } from "../../../components/ui";
 import { usePullToRefresh } from "../../../hooks/usePullToRefresh";
+import {
+  getLessonPlanRefreshVersion,
+  subscribeToLessonPlanRefresh,
+} from "../../../lib/lesson-plan-refresh";
 import { supabase } from "../../../lib/supabase";
 import { getSubjectFallbackColor } from "../../../lib/subject-fallback-color";
 
@@ -468,7 +473,7 @@ function normalizeSubjectRow(row: any): SubjectDetail | null {
 }
 
 export default function SubjectDetailScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const params = useLocalSearchParams<{ subjectId?: string | string[]; openChapterId?: string | string[] }>();
   const subjectId = useMemo(() => {
     const raw = params.subjectId;
@@ -482,6 +487,7 @@ export default function SubjectDetailScreen() {
   }, [params.openChapterId]);
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [subject, setSubject] = useState<SubjectDetail | null>(null);
   const [academicYear, setAcademicYear] = useState<string | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -507,6 +513,20 @@ export default function SubjectDetailScreen() {
   const [structureEditSequence, setStructureEditSequence] = useState("");
   const [savingStructureEdit, setSavingStructureEdit] = useState(false);
 
+  // Focus-refetch bookkeeping: which subject we last loaded successfully, when,
+  // and up to which lesson-plan refresh event. Lets useFocusEffect skip the
+  // full reload unless something actually changed (or data is stale/missing).
+  const loadedSubjectIdRef = useRef<string | null>(null);
+  const lastLoadedAtRef = useRef(0);
+  const loadedRefreshVersionRef = useRef(0);
+  const pendingRefreshVersionRef = useRef(getLessonPlanRefreshVersion());
+
+  useEffect(() => {
+    return subscribeToLessonPlanRefresh((version) => {
+      pendingRefreshVersionRef.current = version;
+    });
+  }, []);
+
   const loadSubjectDetail = useCallback(async () => {
     if (!subjectId) {
       setLoading(false);
@@ -514,6 +534,9 @@ export default function SubjectDetailScreen() {
     }
 
     setLoading(true);
+    setLoadError(null);
+    // Any refresh event emitted before this load starts is covered by it.
+    const refreshVersionAtLoad = pendingRefreshVersionRef.current;
     try {
       const {
         data: { user },
@@ -561,6 +584,9 @@ export default function SubjectDetailScreen() {
         setOpenChapters(new Set());
         setWrittenWorks([]);
         setPerformanceTasks([]);
+        loadedSubjectIdRef.current = subjectId;
+        lastLoadedAtRef.current = Date.now();
+        loadedRefreshVersionRef.current = refreshVersionAtLoad;
         return;
       }
 
@@ -668,7 +694,12 @@ export default function SubjectDetailScreen() {
       setStructureEditTitle("");
       setStructureEditSequence("");
       setShowSubjectMenu(false);
-    } catch {
+      loadedSubjectIdRef.current = subjectId;
+      lastLoadedAtRef.current = Date.now();
+      loadedRefreshVersionRef.current = refreshVersionAtLoad;
+    } catch (err: any) {
+      // Honest failure: surface an error state instead of a silent empty page.
+      setLoadError(err?.message ?? "Something went wrong.");
       setSubject(null);
       setInstitutions([]);
       setAcademicYear(null);
@@ -682,15 +713,25 @@ export default function SubjectDetailScreen() {
       setStructureEditorMode(null);
       setStructureEditTitle("");
       setShowSubjectMenu(false);
+      loadedSubjectIdRef.current = null;
     } finally {
       setLoading(false);
     }
   }, [openChapterId, subjectId]);
 
+  // Refetch on focus only when it can matter: no data yet (or a failed load),
+  // a lesson-plan refresh event fired since the last load, or the last load is
+  // older than 60s. Pull-to-refresh below still always forces a reload.
   useFocusEffect(
     useCallback(() => {
-      loadSubjectDetail();
-    }, [loadSubjectDetail])
+      const dataMissing = loadedSubjectIdRef.current !== subjectId;
+      const refreshPending =
+        pendingRefreshVersionRef.current > loadedRefreshVersionRef.current;
+      const stale = Date.now() - lastLoadedAtRef.current > 60_000;
+      if (dataMissing || refreshPending || stale) {
+        loadSubjectDetail();
+      }
+    }, [loadSubjectDetail, subjectId])
   );
 
   const { refreshing, onRefresh } = usePullToRefresh(loadSubjectDetail);
@@ -704,11 +745,11 @@ export default function SubjectDetailScreen() {
     setEditImageUri(null);
   }, [subject]);
 
-  const pageBg = useMemo(() => (scheme === "dark" ? c.background : "#F5F6F7"), [c.background, scheme]);
-  const cardBg = useMemo(() => (scheme === "dark" ? c.card : "#FFFFFF"), [c.card, scheme]);
-  const lessonRowA = useMemo(() => (scheme === "dark" ? "#1B2A2A" : "#E7F0EC"), [scheme]);
-  const lessonRowB = useMemo(() => (scheme === "dark" ? "#223534" : "#DCE9E4"), [scheme]);
-  const unitHeaderBg = useMemo(() => (scheme === "dark" ? "#1E3C35" : "#D8ECE6"), [scheme]);
+  const pageBg = c.background;
+  const cardBg = c.card;
+  const lessonRowA = c.card;
+  const lessonRowB = c.surfaceAlt;
+  const unitHeaderBg = c.tintSoft;
   const subjectFallbackSeed = subject ? `${subject.subject_id}:${subject.code}` : null;
   const subjectFallbackColor = useMemo(
     () => getSubjectFallbackColor(subjectFallbackSeed),
@@ -1122,9 +1163,17 @@ export default function SubjectDetailScreen() {
     );
   }
 
+  if (loadError) {
+    return (
+      <View style={[styles.center, { backgroundColor: pageBg }]}>
+        <ErrorState title="Couldn't load this subject" onRetry={() => void loadSubjectDetail()} />
+      </View>
+    );
+  }
+
   if (!subject) {
     return (
-      <View style={[styles.center, { backgroundColor: pageBg }]}> 
+      <View style={[styles.center, { backgroundColor: pageBg }]}>
         <Text style={[styles.emptyText, { color: c.mutedText }]}>Subject not found.</Text>
       </View>
     );
@@ -1164,6 +1213,8 @@ export default function SubjectDetailScreen() {
             {showSubjectMenu ? (
               <View style={[styles.subjectMenu, { backgroundColor: cardBg, borderColor: c.border }]}>
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit subject"
                   style={styles.subjectMenuItem}
                   onPress={openEditForm}
                   disabled={savingEdit || deletingSubject}
@@ -1173,12 +1224,14 @@ export default function SubjectDetailScreen() {
                 </Pressable>
 
                 <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete subject"
                   style={styles.subjectMenuItem}
                   onPress={confirmDeleteSubject}
                   disabled={savingEdit || deletingSubject}
                 >
-                  <Ionicons name="trash-outline" size={16} color="#D64545" />
-                  <Text style={[styles.subjectMenuText, { color: "#D64545" }]}>Delete Subject</Text>
+                  <Ionicons name="trash-outline" size={16} color={c.danger} />
+                  <Text style={[styles.subjectMenuText, { color: c.danger }]}>Delete Subject</Text>
                 </Pressable>
               </View>
             ) : null}
@@ -1375,11 +1428,13 @@ export default function SubjectDetailScreen() {
 
         {chapters.length === 0 ? (
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add lesson"
             style={[styles.addLessonButton, { backgroundColor: c.tint }]}
             onPress={() => goToCreateLesson()}
           >
-            <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
-            <Text style={[styles.addLessonButtonText, { color: "#FFFFFF" }]}>Add Lesson</Text>
+            <Ionicons name="add-circle-outline" size={18} color={c.onTint} />
+            <Text style={[styles.addLessonButtonText, { color: c.onTint }]}>Add Lesson</Text>
           </Pressable>
         ) : null}
 
@@ -1389,7 +1444,7 @@ export default function SubjectDetailScreen() {
               <View key={group.key} style={styles.unitGroup}>
                 {group.unit_id ? (
                   <View style={[styles.unitHeader, { backgroundColor: unitHeaderBg }]}>
-                    <Text style={[styles.unitTitle, { color: c.text }]} numberOfLines={1}>
+                    <Text style={[styles.unitTitle, { color: c.tintDeep }]} numberOfLines={1}>
                       <Text style={styles.chapterStrong}>
                         Unit {group.unit_sequence_no ?? ""}
                       </Text>
@@ -1407,11 +1462,13 @@ export default function SubjectDetailScreen() {
                           setOpenUnitMenuId((current) => (current === group.unit_id ? null : group.unit_id));
                         }}
                       >
-                        <Ionicons name="ellipsis-horizontal" size={18} color={c.text} />
+                        <Ionicons name="ellipsis-horizontal" size={18} color={c.tintDeep} />
                       </Pressable>
                       {openUnitMenuId === group.unit_id ? (
                         <View style={[styles.inlineMenu, { backgroundColor: cardBg, borderColor: c.border }]}>
                           <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Edit unit"
                             style={styles.subjectMenuItem}
                             onPress={() => startUnitEdit(group.unit_id!, group.unit_title)}
                           >
@@ -1419,11 +1476,13 @@ export default function SubjectDetailScreen() {
                             <Text style={[styles.subjectMenuText, { color: c.text }]}>Edit Unit</Text>
                           </Pressable>
                           <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel="Delete unit"
                             style={styles.subjectMenuItem}
                             onPress={() => confirmDeleteUnit(group.unit_id!)}
                           >
-                            <Ionicons name="trash-outline" size={16} color="#D64545" />
-                            <Text style={[styles.subjectMenuText, { color: "#D64545" }]}>Delete Unit</Text>
+                            <Ionicons name="trash-outline" size={16} color={c.danger} />
+                            <Text style={[styles.subjectMenuText, { color: c.danger }]}>Delete Unit</Text>
                           </Pressable>
                         </View>
                       ) : null}
@@ -1441,6 +1500,9 @@ export default function SubjectDetailScreen() {
                       <View style={styles.chapterHeader}>
                         <View style={styles.chapterTitleWrap}>
                           <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Chapter ${chapter.sequence_no} - ${chapter.title}`}
+                            accessibilityState={{ expanded: isOpen }}
                             style={styles.chapterToggle}
                             onPress={() => toggleChapter(chapter.chapter_id)}
                           >
@@ -1487,6 +1549,8 @@ export default function SubjectDetailScreen() {
                           {openChapterMenuId === chapter.chapter_id ? (
                             <View style={[styles.inlineMenu, { backgroundColor: cardBg, borderColor: c.border }]}>
                               <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel="Add lesson to chapter"
                                 style={styles.subjectMenuItem}
                                 onPress={() =>
                                   goToCreateLesson({
@@ -1503,6 +1567,8 @@ export default function SubjectDetailScreen() {
                                 <Text style={[styles.subjectMenuText, { color: c.text }]}>Add Lesson</Text>
                               </Pressable>
                               <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel="Edit chapter"
                                 style={styles.subjectMenuItem}
                                 onPress={() =>
                                   startChapterEdit(chapter.chapter_id, chapter.title, chapter.sequence_no)
@@ -1512,11 +1578,13 @@ export default function SubjectDetailScreen() {
                                 <Text style={[styles.subjectMenuText, { color: c.text }]}>Edit Chapter</Text>
                               </Pressable>
                               <Pressable
+                                accessibilityRole="button"
+                                accessibilityLabel="Delete chapter"
                                 style={styles.subjectMenuItem}
                                 onPress={() => confirmDeleteChapter(chapter.chapter_id)}
                               >
-                                <Ionicons name="trash-outline" size={16} color="#D64545" />
-                                <Text style={[styles.subjectMenuText, { color: "#D64545" }]}>Delete Chapter</Text>
+                                <Ionicons name="trash-outline" size={16} color={c.danger} />
+                                <Text style={[styles.subjectMenuText, { color: c.danger }]}>Delete Chapter</Text>
                               </Pressable>
                             </View>
                           ) : null}
@@ -1529,6 +1597,8 @@ export default function SubjectDetailScreen() {
                             {chapter.lessons.map((lesson, lessonIndex) => (
                               <Pressable
                                 key={lesson.lesson_id}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Lesson ${lesson.sequence_no}: ${lesson.title}`}
                                 onPress={() => goToLessonDetail(lesson.lesson_id)}
                                 style={[
                                   styles.lessonRow,
@@ -1563,6 +1633,8 @@ export default function SubjectDetailScreen() {
                                         style={[styles.inlineMenu, { backgroundColor: cardBg, borderColor: c.border }]}
                                       >
                                         <Pressable
+                                          accessibilityRole="button"
+                                          accessibilityLabel="Edit lesson"
                                           style={styles.subjectMenuItem}
                                           onPress={() =>
                                             startLessonEdit(lesson.lesson_id, lesson.title, lesson.sequence_no)
@@ -1572,11 +1644,13 @@ export default function SubjectDetailScreen() {
                                           <Text style={[styles.subjectMenuText, { color: c.text }]}>Edit Lesson</Text>
                                         </Pressable>
                                         <Pressable
+                                          accessibilityRole="button"
+                                          accessibilityLabel="Delete lesson"
                                           style={styles.subjectMenuItem}
                                           onPress={() => confirmDeleteLesson(lesson.lesson_id)}
                                         >
-                                          <Ionicons name="trash-outline" size={16} color="#D64545" />
-                                          <Text style={[styles.subjectMenuText, { color: "#D64545" }]}>
+                                          <Ionicons name="trash-outline" size={16} color={c.danger} />
+                                          <Text style={[styles.subjectMenuText, { color: c.danger }]}>
                                             Delete Lesson
                                           </Text>
                                         </Pressable>
@@ -1634,6 +1708,8 @@ export default function SubjectDetailScreen() {
               writtenWorks.map((item) => (
                 <Pressable
                   key={item.plan_entry_id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Written work ${item.title}`}
                   onPress={() => goToWrittenWorkDetail(item.plan_entry_id)}
                   style={[styles.planItem, { backgroundColor: c.background }]}
                 >
@@ -1666,10 +1742,12 @@ export default function SubjectDetailScreen() {
               performanceTasks.map((item) => (
                 <Pressable
                   key={item.plan_entry_id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Performance task ${item.title}`}
                   onPress={() => goToPerformanceTaskDetail(item.plan_entry_id)}
                   style={[
                     styles.planItemPink,
-                    { backgroundColor: scheme === "dark" ? "#4A2E33" : "#F0D7D8" },
+                    { backgroundColor: c.category.performanceTask.soft },
                   ]}
                 >
                   <Text style={[styles.planItemText, { color: c.text }]} numberOfLines={1}>{item.title}</Text>
@@ -1694,7 +1772,10 @@ export default function SubjectDetailScreen() {
         animationType="fade"
         onRequestClose={() => setSchoolPickerOpen(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setSchoolPickerOpen(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}
+          onPress={() => setSchoolPickerOpen(false)}
+        >
           <Pressable
             style={[styles.modalCard, { borderColor: c.border, backgroundColor: cardBg }]}
             onPress={() => {}}
@@ -2081,7 +2162,6 @@ const styles = StyleSheet.create({
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "center",
     padding: Spacing.lg,
   },

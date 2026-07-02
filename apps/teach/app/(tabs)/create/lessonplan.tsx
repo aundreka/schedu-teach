@@ -40,9 +40,9 @@ import { emitLessonPlanRefresh } from "../../../lib/lesson-plan-refresh";
 import { supabase } from "../../../lib/supabase";
 import PaywallModal from "../../../components/PaywallModal";
 import type { QuotaType } from "../../../components/PaywallModal";
+import { Badge, Chip, ListRow, SectionHeader, StepFlow, type StepDef } from "../../../components/ui";
 import * as Haptics from "expo-haptics";
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -201,7 +201,16 @@ type DuplicatedContentRow = {
   lesson_id: string | null;
 };
 
-type FormFieldErrorKey = "institution" | "subject" | "section" | "startDate" | "endDate";
+type FormFieldErrorKey =
+  | "institution"
+  | "subject"
+  | "section"
+  | "startDate"
+  | "endDate"
+  | "content"
+  | "schedule"
+  | "requirements"
+  | "examDates";
 
 const REQUIREMENT_LABEL: Record<RequirementKey, string> = {
   written_work: "Written Work",
@@ -623,36 +632,103 @@ function makeInstance(room: RoomType = "lecture", start = "8:00 AM", end = "10:0
   return { id: makeId(), room, start, end };
 }
 
-function getRoomBorderColor(room: RoomType) {
-  return room === "lecture" ? "#2D7BD8" : "#D9534F";
-}
-
 function AnimatedDayChip({
   active,
   label,
-  activeTextColor,
-  inactiveTextColor,
+  fullLabel,
   onPress,
 }: {
   active: boolean;
   label: string;
-  activeTextColor: string;
-  inactiveTextColor: string;
+  fullLabel: string;
   onPress: () => void;
 }) {
+  const { colors: c } = useAppTheme();
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
-    <Animated.View style={[styles.dayChip, active ? styles.dayChipActive : undefined, animStyle]}>
+    <Animated.View
+      style={[
+        styles.dayChip,
+        { backgroundColor: active ? c.tint : c.card, borderColor: active ? c.tint : c.border },
+        animStyle,
+      ]}
+    >
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={fullLabel}
+        accessibilityState={{ selected: active }}
         style={styles.dayChipInner}
         onPressIn={() => { scale.value = withTiming(0.91, { duration: 70 }); }}
         onPressOut={() => { scale.value = withSpring(1, { damping: 8, stiffness: 200 }); }}
         onPress={() => { Haptics.selectionAsync(); onPress(); }}
       >
-        <Text style={[styles.dayChipText, { color: active ? activeTextColor : inactiveTextColor }]}>{label}</Text>
+        <Text style={[styles.dayChipText, { color: active ? c.onTint : c.mutedText }]}>{label}</Text>
       </Pressable>
     </Animated.View>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  placeholder,
+  error,
+  onPress,
+  containerStyle,
+}: {
+  label?: string;
+  value: string;
+  placeholder: string;
+  error?: string;
+  onPress: () => void;
+  containerStyle?: object;
+}) {
+  const { colors: c } = useAppTheme();
+  return (
+    <View style={containerStyle}>
+      {label ? (
+        <Text style={[Typography.bodySm, styles.selectLabel, { color: error ? c.danger : c.mutedText }]}>
+          {label}
+        </Text>
+      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label ?? placeholder}
+        accessibilityValue={value ? { text: value } : undefined}
+        onPress={onPress}
+        style={[
+          styles.selectField,
+          { backgroundColor: c.surfaceAlt, borderColor: error ? c.danger : c.border },
+        ]}
+      >
+        <Text numberOfLines={1} style={[Typography.body, styles.selectValue, { color: value ? c.text : c.faintText }]}>
+          {value || placeholder}
+        </Text>
+        <Ionicons name="chevron-down" size={16} color={c.faintText} />
+      </Pressable>
+      {error ? <Text style={[Typography.caption, styles.fieldErrorText, { color: c.danger }]}>{error}</Text> : null}
+    </View>
+  );
+}
+
+function ConflictBanner({ message, actionLabel, onAction }: { message: string; actionLabel?: string; onAction?: () => void }) {
+  const { colors: c } = useAppTheme();
+  return (
+    <View
+      accessibilityRole="alert"
+      style={[styles.conflictBanner, { backgroundColor: c.dangerSoft }]}
+    >
+      <Ionicons name="alert-circle" size={18} color={c.danger} />
+      <View style={styles.conflictBannerBody}>
+        <Text style={[Typography.bodySm, { color: c.danger, fontWeight: "600" }]}>{message}</Text>
+        {actionLabel && onAction ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={actionLabel} onPress={onAction} hitSlop={8}>
+            <Text style={[Typography.bodySm, styles.conflictBannerLink, { color: c.danger }]}>{actionLabel}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
   );
 }
 
@@ -726,6 +802,13 @@ export default function LessonplanScreen() {
   const [pickerHour, setPickerHour] = useState(8);
   const [pickerMinute, setPickerMinute] = useState(0);
   const [pickerMeridiem, setPickerMeridiem] = useState<"AM" | "PM">("AM");
+
+  // Guided-funnel position; every input's state lives at the screen level so
+  // values survive moving back and forward between steps.
+  const [stepIndex, setStepIndex] = useState(0);
+  // Cross-plan schedule conflict discovered at save time; surfaced inline on
+  // the review step with a jump back to the schedule step.
+  const [serverConflict, setServerConflict] = useState<string | null>(null);
 
   const nowYear = new Date().getFullYear();
   const [datePickerYear, setDatePickerYear] = useState(nowYear);
@@ -1181,8 +1264,13 @@ export default function LessonplanScreen() {
   const { refreshing, onRefresh } = usePullToRefresh(loadBase);
   const animateIn = () => LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
+  const clearFieldError = (key: FormFieldErrorKey) => {
+    setFieldErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+  };
+
   const toggleDay = (day: WeekdayName) => {
     animateIn();
+    clearFieldError("schedule");
     setActiveDays((prev) => {
       const next = new Set(prev);
       if (next.has(day)) next.delete(day);
@@ -1212,6 +1300,7 @@ export default function LessonplanScreen() {
 
   const addInstance = (day: WeekdayName) => {
     animateIn();
+    clearFieldError("schedule");
     setDaySchedules((prev) => {
       const current = prev[day];
       return {
@@ -1225,6 +1314,7 @@ export default function LessonplanScreen() {
 
   const removeInstance = (day: WeekdayName, instanceId: string) => {
     animateIn();
+    clearFieldError("schedule");
     setDaySchedules((prev) => {
       const remaining = prev[day].instances.filter((item) => item.id !== instanceId);
       return {
@@ -1278,6 +1368,7 @@ export default function LessonplanScreen() {
     if (!timeTarget) return;
     const value = formatDisplayTime(pickerHour, pickerMinute, pickerMeridiem);
     setInstanceField(timeTarget.day, timeTarget.instanceId, timeTarget.field, value);
+    clearFieldError("schedule");
     setTimePickerOpen(false);
     setTimeTarget(null);
   };
@@ -1287,8 +1378,17 @@ export default function LessonplanScreen() {
     setRequirementCounts((prev) => ({ ...prev, [key]: sanitized }));
   };
 
+  const adjustRequirementCount = (key: RequirementKey, delta: number) => {
+    const current = Number(requirementCounts[key] || "0");
+    const next = Math.max(1, Math.min(99, (Number.isFinite(current) ? current : 0) + delta));
+    setRequirementCount(key, String(next));
+    clearFieldError("requirements");
+    if (key === "exam") clearFieldError("examDates");
+  };
+
   const toggleChapter = (chapterId: string) => {
     animateIn();
+    clearFieldError("content");
     const chapter = chapters.find((row) => row.chapter_id === chapterId);
     setSelectedChapterIds((prev) => {
       const next = new Set(prev);
@@ -1313,6 +1413,7 @@ export default function LessonplanScreen() {
 
   const toggleLesson = (chapterId: string, lessonId: string) => {
     animateIn();
+    clearFieldError("content");
     const chapter = chapters.find((row) => row.chapter_id === chapterId);
     if (!chapter) return;
 
@@ -1356,6 +1457,7 @@ export default function LessonplanScreen() {
 
   const addExamScheduleRow = () => {
     animateIn();
+    clearFieldError("examDates");
     setExamSchedules((prev) => {
       const next = [...prev, { id: makeId(), dateText: "" }];
       setRequirementCounts((counts) => ({ ...counts, exam: String(next.length) }));
@@ -1365,6 +1467,7 @@ export default function LessonplanScreen() {
 
   const removeExamScheduleRow = (id: string) => {
     animateIn();
+    clearFieldError("examDates");
     setExamSchedules((prev) => {
       if (prev.length <= 1) return prev;
       const next = prev.filter((row) => row.id !== id);
@@ -1407,6 +1510,7 @@ export default function LessonplanScreen() {
       }
     } else if (dateTarget.type === "exam") {
       setExamScheduleField(dateTarget.id, iso);
+      clearFieldError("examDates");
     } else {
       setSpecialDateField(dateTarget.id, "dateText", iso);
     }
@@ -1486,10 +1590,135 @@ export default function LessonplanScreen() {
 
   const hasSelectedSubjectContent = selectedLessonIds.size > 0;
 
+  // The same draft-overlap check that guards the save also gates the schedule
+  // step, so overlapping times surface while the teacher is still editing them.
+  const draftConflict = useMemo(
+    () => findDraftScheduleOverlap(collectDraftRecurringSlots({ activeDays, daySchedules })),
+    [activeDays, daySchedules]
+  );
+
+  const scheduleSummary = useMemo(() => {
+    const parts: string[] = [];
+    for (const day of DAY_OPTIONS) {
+      if (!activeDays.has(day.key)) continue;
+      for (const instance of daySchedules[day.key].instances) {
+        const start = (toSqlTime(instance.start) ?? "").slice(0, 5).replace(/^0/, "");
+        const end = (toSqlTime(instance.end) ?? "").slice(0, 5).replace(/^0/, "");
+        const range = start && end ? `${start}–${end}` : `${instance.start}–${instance.end}`;
+        parts.push(`${day.short} ${range}${instance.room === "laboratory" ? " (Lab)" : ""}`);
+      }
+    }
+    return parts.join(" · ");
+  }, [activeDays, daySchedules]);
+
+  // ---- Per-step validation gates ----------------------------------------
+  // Each gate reuses the field-keyed error mechanism: run the rules for the
+  // step, write them into fieldErrors (which drives the inline red borders
+  // and captions), and block advancing while any remain.
+
+  const validateWhenStep = useCallback(() => {
+    const all = validateRequiredFields();
+    const errors: Partial<Record<FormFieldErrorKey, string>> = {};
+    if (all.institution) errors.institution = all.institution;
+    if (all.startDate) errors.startDate = all.startDate;
+    if (all.endDate) errors.endDate = all.endDate;
+    return errors;
+  }, [validateRequiredFields]);
+
+  const validateSubjectStep = useCallback(() => {
+    const all = validateRequiredFields();
+    const errors: Partial<Record<FormFieldErrorKey, string>> = {};
+    if (all.subject) errors.subject = all.subject;
+    if (all.section) errors.section = all.section;
+    if (!hasSelectedSubjectContent) {
+      errors.content = "Select at least one lesson from the subject content picker.";
+    }
+    return errors;
+  }, [hasSelectedSubjectContent, validateRequiredFields]);
+
+  const validateScheduleStep = useCallback(() => {
+    const errors: Partial<Record<FormFieldErrorKey, string>> = {};
+    if (!hasValidSchedule) {
+      errors.schedule = "Set valid class times for each selected day, with end time after start time.";
+    }
+    return errors;
+  }, [hasValidSchedule]);
+
+  const validateRequirementsStep = useCallback(() => {
+    const errors: Partial<Record<FormFieldErrorKey, string>> = {};
+    if (!hasRequirementCounts) {
+      errors.requirements = "Fill in Written Work, Performance Task, and Exam counts.";
+    }
+
+    const normalizedStart = normalizeDateInput(startDate);
+    const normalizedEnd = normalizeDateInput(endDate);
+    const examDates = examSchedules.map((row) => normalizeDateInput(row.dateText));
+    if (examDates.some((date) => !/^\d{4}-\d{2}-\d{2}$/.test(date))) {
+      errors.examDates = "Pick a valid date for every exam.";
+    } else if (new Set(examDates).size !== examDates.length) {
+      errors.examDates = "Each exam date must be different.";
+    } else if (examDates.some((date) => date < normalizedStart || date > normalizedEnd)) {
+      errors.examDates = "Each exam date must be within the lesson plan duration.";
+    }
+    return errors;
+  }, [endDate, examSchedules, hasRequirementCounts, startDate]);
+
+  const STEP_ERROR_KEYS: FormFieldErrorKey[][] = [
+    ["institution", "startDate", "endDate"],
+    ["subject", "section", "content"],
+    ["schedule"],
+    ["requirements", "examDates"],
+  ];
+
+  const stepValidators = [validateWhenStep, validateSubjectStep, validateScheduleStep, validateRequirementsStep];
+
+  const steps: StepDef[] = useMemo(
+    () => [
+      { key: "when", title: "When and where?", subtitle: "Set the academic year, duration, and institution." },
+      { key: "subject", title: "Which subject?", subtitle: "Pick the subject, its content, and the section." },
+      { key: "schedule", title: "Your weekly schedule", subtitle: "Choose class days and the time of each meeting." },
+      { key: "requirements", title: "Requirements & exams", subtitle: "Set assessment counts, exam dates, and blocked dates." },
+      {
+        key: "review",
+        title: "Review & generate",
+        subtitle: replacePlanId
+          ? "This rebuilds the plan and removes the old version."
+          : "Double-check everything before generating the plan.",
+      },
+    ],
+    [replacePlanId]
+  );
+
+  const handleStepBack = () => {
+    if (stepIndex === 0) {
+      handleBack();
+      return;
+    }
+    setStepIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleStepNext = () => {
+    if (stepIndex < stepValidators.length) {
+      const errors = stepValidators[stepIndex]();
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        for (const key of STEP_ERROR_KEYS[stepIndex]) next[key] = undefined;
+        return { ...next, ...errors };
+      });
+      if (Object.keys(errors).length > 0) return;
+      // The draft-conflict banner is already visible inline on the schedule
+      // step; block advancing until the overlap is resolved.
+      if (stepIndex === 2 && draftConflict) return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setStepIndex((prev) => Math.min(steps.length - 1, prev + 1));
+  };
+
   const handleCreatePlan = async () => {
     if (createInFlightRef.current || saving) {
       return;
     }
+    setServerConflict(null);
     const nextFieldErrors = validateRequiredFields();
     setFieldErrors(nextFieldErrors);
     if (Object.keys(nextFieldErrors).length > 0) {
@@ -1517,9 +1746,9 @@ export default function LessonplanScreen() {
     }
 
     const draftRecurringSlots = collectDraftRecurringSlots({ activeDays, daySchedules });
-    const draftConflict = findDraftScheduleOverlap(draftRecurringSlots);
-    if (draftConflict) {
-      Alert.alert("Schedule conflict", draftConflict.message);
+    const draftScheduleConflict = findDraftScheduleOverlap(draftRecurringSlots);
+    if (draftScheduleConflict) {
+      Alert.alert("Schedule conflict", draftScheduleConflict.message);
       return;
     }
 
@@ -1652,7 +1881,7 @@ export default function LessonplanScreen() {
           nextPlanEnd: normalizedEnd,
         });
         if (existingConflict) {
-          Alert.alert("Schedule conflict", existingConflict.message);
+          setServerConflict(existingConflict.message);
           return;
         }
       }
@@ -2022,113 +2251,148 @@ export default function LessonplanScreen() {
     );
   }
 
-  const filledFieldBg = c.card;
-  const emptyFieldBg = c.card;
-  const filledText = c.text;
-  const emptyText = c.mutedText;
-  const errorColor = "#D9534F";
-  const dateErrorMessage = fieldErrors.startDate ?? fieldErrors.endDate;
+  // ---- Step renderers -----------------------------------------------------
 
-  return (
-    <View style={[styles.page, { backgroundColor: c.background }]}> 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.tint} />}
-      >
-        <Animated.View entering={FadeInDown.duration(260).springify()} style={styles.headingRow}>
-          <View style={styles.headingLeft}>
-            <Pressable onPress={handleBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
-              <Ionicons name="caret-back" size={15} color={c.text} />
-            </Pressable>
-            <Text style={[styles.pageTitle, { color: c.text }]}>{replacePlanId ? "Recreate Lessonplan" : "Create Lessonplan"}</Text>
-          </View>
-          <Pressable onPress={handleCreatePlan} disabled={saving} accessibilityRole="button" accessibilityLabel={replacePlanId ? "Recreate lesson plan" : "Create lesson plan"} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-            {saving ? <ActivityIndicator color={c.text} /> : <Ionicons name="checkmark" size={15} color={c.text} />}
-          </Pressable>
-        </Animated.View>
+  const renderWhenStep = () => (
+    <ScrollView
+      contentContainerStyle={styles.stepContent}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.tint} />}
+    >
+      <SelectField
+        label="Academic year"
+        value={formatAcademicYear(academicYearStart)}
+        placeholder="Pick academic year"
+        onPress={() => {
+          animateIn();
+          setYearPickerOpen(true);
+        }}
+      />
 
-        <Text style={styles.sectionTitle}>Overview</Text>
-
-        <View style={styles.row3}>
-          <Pressable
-            style={[styles.boxField, { backgroundColor: filledFieldBg }]}
-            onPress={() => {
-              animateIn();
-              setYearPickerOpen(true);
-            }}
-          >
-            <Text style={[styles.fieldText, { color: filledText }]}>{formatAcademicYear(academicYearStart)}</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.dateRow}>
-          <Text style={styles.fromToText}>from</Text>
-          <Pressable style={[styles.datePill, { backgroundColor: startDate ? filledFieldBg : emptyFieldBg, borderColor: fieldErrors.startDate ? errorColor : "#D8DDE3" }]} onPress={() => {
+      <View style={styles.dateRow}>
+        <SelectField
+          label="Start date"
+          value={startDate ? formatIsoDisplay(startDate) : ""}
+          placeholder="Pick date"
+          error={fieldErrors.startDate}
+          onPress={() => {
             animateIn();
             openDatePicker({ type: "duration", field: "start" }, startDate);
-          }}>
-            <Text style={[styles.dateInput, { color: startDate ? filledText : emptyText }]}>{startDate ? formatIsoDisplay(startDate) : "Pick date"}</Text>
-          </Pressable>
-          <Text style={styles.fromToText}>to</Text>
-          <Pressable style={[styles.datePill, { backgroundColor: endDate ? filledFieldBg : emptyFieldBg, borderColor: fieldErrors.endDate ? errorColor : "#D8DDE3" }]} onPress={() => {
+          }}
+          containerStyle={styles.dateField}
+        />
+        <SelectField
+          label="End date"
+          value={endDate ? formatIsoDisplay(endDate) : ""}
+          placeholder="Pick date"
+          error={fieldErrors.endDate}
+          onPress={() => {
             animateIn();
             openDatePicker({ type: "duration", field: "end" }, endDate);
-          }}>
-            <Text style={[styles.dateInput, { color: endDate ? filledText : emptyText }]}>{endDate ? formatIsoDisplay(endDate) : "Pick date"}</Text>
-          </Pressable>
-        </View>
-        {dateErrorMessage ? <Text style={[styles.fieldErrorText, { color: errorColor }]}>{dateErrorMessage}</Text> : null}
+          }}
+          containerStyle={styles.dateField}
+        />
+      </View>
 
-        <Pressable style={[styles.boxField, { backgroundColor: selectedSubject ? filledFieldBg : emptyFieldBg, borderColor: fieldErrors.subject ? errorColor : "#D8DDE3" }]} onPress={() => {
+      <SelectField
+        label="Institution"
+        value={selectedInstitution?.name ?? ""}
+        placeholder="Pick institution"
+        error={fieldErrors.institution}
+        onPress={() => {
+          animateIn();
+          setInstitutionMenuOpen((v) => !v);
+        }}
+      />
+      {institutionMenuOpen ? (
+        <View style={[styles.dropdown, { backgroundColor: c.card, borderColor: c.border }]}>
+          {institutions.map((institution) => (
+            <Pressable
+              key={institution.school_id}
+              accessibilityRole="button"
+              accessibilityLabel={institution.name}
+              style={[styles.dropdownItem, { borderBottomColor: c.hairline }]}
+              onPress={() => handlePickInstitution(institution.school_id)}
+            >
+              <Text style={[Typography.body, { color: c.text }]}>{institution.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+    </ScrollView>
+  );
+
+  const renderSubjectStep = () => (
+    <ScrollView
+      contentContainerStyle={styles.stepContent}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <SelectField
+        label="Subject"
+        value={selectedSubject ? `${selectedSubject.code} - ${selectedSubject.title}` : ""}
+        placeholder="Pick subject"
+        error={fieldErrors.subject}
+        onPress={() => {
           animateIn();
           setSubjectMenuOpen((v) => !v);
-        }}>
-          <Text style={[styles.fieldText, { color: selectedSubject ? filledText : emptyText }]} numberOfLines={1}>
-            {selectedSubject ? `${selectedSubject.code} - ${selectedSubject.title}` : "Subject"}
-          </Text>
-        </Pressable>
+        }}
+      />
+      {subjectMenuOpen ? (
+        <View style={[styles.dropdown, { backgroundColor: c.card, borderColor: c.border }]}>
+          {selectableSubjects.map((subject) => (
+            <Pressable
+              key={subject.subject_id}
+              accessibilityRole="button"
+              accessibilityLabel={`${subject.code} - ${subject.title}`}
+              style={[styles.dropdownItem, { borderBottomColor: c.hairline }]}
+              onPress={() => handlePickSubject(subject.subject_id)}
+            >
+              <Text style={[Typography.body, { color: c.text }]}>{subject.code} - {subject.title}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
 
-        {subjectMenuOpen ? (
-          <View style={styles.dropdown}>
-            {selectableSubjects.map((subject) => (
-              <Pressable key={subject.subject_id} style={styles.dropdownItem} onPress={() => handlePickSubject(subject.subject_id)}>
-                <Text style={styles.dropdownText}>{subject.code} - {subject.title}</Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
-
-        {selectedSubject ? (
-          <View style={[styles.subjectPreviewBox, { backgroundColor: filledFieldBg }]}> 
-            <View style={styles.subjectPreviewHeader}>
-              <Text style={styles.subjectPreviewTitle}>Subject Content - Table of Contents</Text>
-              <Pressable style={styles.pickContentBtn} accessibilityRole="button" accessibilityLabel="Edit subject content selection" onPress={() => {
-                animateIn();
-                setChapterModalOpen(true);
-              }}>
-                <Ionicons name="create-outline" size={14} color={c.mutedText} />
-              </Pressable>
-            </View>
+      {selectedSubject ? (
+        <View>
+          <SectionHeader
+            title="Subject content"
+            actionLabel="Edit"
+            onAction={() => {
+              animateIn();
+              setChapterModalOpen(true);
+            }}
+          />
+          <View
+            style={[
+              styles.subjectPreviewBox,
+              { backgroundColor: c.card, borderColor: fieldErrors.content ? c.danger : c.border },
+            ]}
+          >
             {selectedSubjectOutline.length > 0 ? (
               selectedSubjectOutline.map((unitGroup, unitIndex) => (
                 <View key={unitGroup.group.key} style={styles.previewUnitBlock}>
-                  <View style={styles.tocRow}>
-                    <Text style={styles.tocIndex}>{String(unitIndex + 1).padStart(2, "0")}</Text>
-                    <Text style={styles.tocText}>{unitGroup.group.title}</Text>
+                  <View style={[styles.tocRow, { borderBottomColor: c.hairline }]}>
+                    <Text style={[styles.tocIndex, { color: c.mutedText }]}>{String(unitIndex + 1).padStart(2, "0")}</Text>
+                    <Text style={[styles.tocText, { color: c.text }]}>{unitGroup.group.title}</Text>
                   </View>
                   {unitGroup.pickedChapters.map((row, chapterIndex) => (
                     <View key={row.chapter.chapter_id} style={styles.previewChapterBlock}>
-                      <View style={styles.tocRow}>
-                        <Text style={styles.tocIndex}>{`${unitIndex + 1}.${chapterIndex + 1}`}</Text>
-                        <Text style={styles.tocText}>
+                      <View style={[styles.tocRow, { borderBottomColor: c.hairline }]}>
+                        <Text style={[styles.tocIndex, { color: c.mutedText }]}>{`${unitIndex + 1}.${chapterIndex + 1}`}</Text>
+                        <Text style={[styles.tocText, { color: c.text }]}>
                           {`Chapter ${row.chapter.sequence_no}: ${row.chapter.title}`}
                         </Text>
                       </View>
                       {row.pickedLessons.map((lesson, lessonIndex) => (
                         <View key={lesson.lesson_id} style={styles.previewLessonBlock}>
-                          <View style={styles.tocRow}>
-                            <Text style={styles.tocIndex}>{`${unitIndex + 1}.${chapterIndex + 1}.${lessonIndex + 1}`}</Text>
-                            <Text style={styles.tocText}>{lesson.title}</Text>
+                          <View style={[styles.tocRow, { borderBottomColor: c.hairline }]}>
+                            <Text style={[styles.tocIndex, { color: c.mutedText }]}>
+                              {`${unitIndex + 1}.${chapterIndex + 1}.${lessonIndex + 1}`}
+                            </Text>
+                            <Text style={[styles.tocText, { color: c.text }]}>{lesson.title}</Text>
                           </View>
                         </View>
                       ))}
@@ -2137,294 +2401,473 @@ export default function LessonplanScreen() {
                 </View>
               ))
             ) : (
-              <Text style={styles.subjectPreviewText}>{subjectPreview}</Text>
+              <Text style={[Typography.body, { color: c.mutedText }]}>{subjectPreview}</Text>
             )}
           </View>
-        ) : null}
-
-        <View style={styles.row2}>
-          <Pressable style={[styles.boxField, { backgroundColor: selectedInstitution ? filledFieldBg : emptyFieldBg, borderColor: fieldErrors.institution ? errorColor : "#D8DDE3" }]} onPress={() => {
-            animateIn();
-            setInstitutionMenuOpen((v) => !v);
-          }}>
-            <Text style={[styles.fieldText, { color: selectedInstitution ? filledText : emptyText }]} numberOfLines={1}>
-              {selectedInstitution ? selectedInstitution.name : "Institution"}
-            </Text>
-          </Pressable>
-
-          <Pressable style={[styles.boxField, { backgroundColor: selectedSection ? filledFieldBg : emptyFieldBg, borderColor: fieldErrors.section ? errorColor : "#D8DDE3" }]} onPress={() => {
-            animateIn();
-            setSectionMenuOpen((v) => !v);
-          }}>
-            <Text style={[styles.fieldText, { color: selectedSection ? filledText : emptyText }]} numberOfLines={1}>
-              {selectedSection ? selectedSection.name : "Section"}
-            </Text>
-          </Pressable>
+          {fieldErrors.content ? (
+            <Text style={[Typography.caption, styles.fieldErrorText, { color: c.danger }]}>{fieldErrors.content}</Text>
+          ) : null}
         </View>
+      ) : null}
 
-        {institutionMenuOpen ? (
-          <View style={styles.dropdown}>
-            {institutions.map((institution) => (
-              <Pressable key={institution.school_id} style={styles.dropdownItem} onPress={() => handlePickInstitution(institution.school_id)}>
-                <Text style={styles.dropdownText}>{institution.name}</Text>
-              </Pressable>
-            ))}
-          </View>
-        ) : null}
+      <SelectField
+        label="Section"
+        value={selectedSection?.name ?? ""}
+        placeholder="Pick section"
+        error={fieldErrors.section}
+        onPress={() => {
+          animateIn();
+          setSectionMenuOpen((v) => !v);
+        }}
+      />
+      {sectionMenuOpen ? (
+        <View style={[styles.dropdown, { backgroundColor: c.card, borderColor: c.border }]}>
+          {selectableSections.map((section) => (
+            <Pressable
+              key={section.section_id}
+              accessibilityRole="button"
+              accessibilityLabel={section.name}
+              style={[styles.dropdownItem, { borderBottomColor: c.hairline }]}
+              onPress={() => {
+                setSelectedSectionId(section.section_id);
+                setFieldErrors((prev) => ({ ...prev, section: undefined }));
+                setSectionMenuOpen(false);
+              }}
+            >
+              <Text style={[Typography.body, { color: c.text }]}>{section.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+    </ScrollView>
+  );
 
-        {sectionMenuOpen ? (
-          <View style={styles.dropdown}>
-            {selectableSections.map((section) => (
+  const renderScheduleStep = () => (
+    <ScrollView
+      contentContainerStyle={styles.stepContent}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.dayChipRow}>
+        {DAY_OPTIONS.map((day) => (
+          <AnimatedDayChip
+            key={day.key}
+            active={activeDays.has(day.key)}
+            label={day.short}
+            fullLabel={day.label}
+            onPress={() => toggleDay(day.key)}
+          />
+        ))}
+      </View>
+
+      {fieldErrors.schedule ? (
+        <Text style={[Typography.caption, styles.fieldErrorText, { color: c.danger }]}>{fieldErrors.schedule}</Text>
+      ) : null}
+
+      {draftConflict ? <ConflictBanner message={draftConflict.message} /> : null}
+
+      {DAY_OPTIONS.filter((day) => activeDays.has(day.key)).map((day) => {
+        const row = daySchedules[day.key];
+
+        return (
+          <View key={day.key} style={[styles.scheduleCard, { backgroundColor: c.card, borderColor: c.border }]}>
+            <View style={styles.scheduleCardHeader}>
+              <Text style={[Typography.bodyMedium, { color: c.text }]}>{day.label}</Text>
               <Pressable
-                key={section.section_id}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setSelectedSectionId(section.section_id);
-                  setFieldErrors((prev) => ({ ...prev, section: undefined }));
-                  setSectionMenuOpen(false);
-                }}
+                accessibilityRole="button"
+                accessibilityLabel={`Add time slot to ${day.label}`}
+                style={styles.iconAction}
+                onPress={() => addInstance(day.key)}
               >
-                <Text style={styles.dropdownText}>{section.name}</Text>
+                <Ionicons name="add" size={20} color={c.tint} />
               </Pressable>
-            ))}
-          </View>
-        ) : null}
+            </View>
 
-        <View style={styles.scheduleBar}>
-          <Text style={styles.scheduleBarText}>Schedule</Text>
-        </View>
-
-        <View style={styles.dayChipRow}>
-          {DAY_OPTIONS.map((day) => {
-            const active = activeDays.has(day.key);
-            return (
-              <AnimatedDayChip
-                key={day.key}
-                active={active}
-                label={day.short}
-                activeTextColor={c.card}
-                inactiveTextColor={c.mutedText}
-                onPress={() => toggleDay(day.key)}
-              />
-            );
-          })}
-        </View>
-
-        {DAY_OPTIONS.filter((day) => activeDays.has(day.key)).map((day) => {
-          const row = daySchedules[day.key];
-
-          return (
-            <View key={day.key} style={styles.scheduleCard}>
-              <View style={styles.scheduleCardHeader}>
-                <Text style={styles.dayLabel}>{day.label}</Text>
-                <Pressable style={styles.iconAction} onPress={() => addInstance(day.key)}>
-                  <Text style={styles.plusText}>+</Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.slotStack}>
-                {row.instances.map((instance, index) => {
-                  const borderColor = getRoomBorderColor(instance.room);
-                  return (
-                    <View key={instance.id} style={[styles.instanceWrap, { borderColor }]}> 
-                      <View style={styles.instanceHeaderRow}>
-                        <Text style={styles.instanceLabel}>Slot {index + 1}</Text>
-                        <View style={styles.instanceHeaderRight}>
-                          <View style={styles.instanceRoomSwitch}>
-                            <Pressable
-                              accessibilityRole="button"
-                              accessibilityLabel="Set room to lecture"
-                              style={({ pressed }) => [
-                                styles.roomIconChip,
-                                instance.room === "lecture" ? styles.roomIconChipActive : undefined,
-                                instance.room === "lecture" ? styles.roomChipLecture : undefined,
-                                pressed ? styles.pressScale : undefined,
-                              ]}
-                              onPress={() => setInstanceRoom(day.key, instance.id, "lecture")}
-                            >
-                              <Ionicons name="school-outline" size={14} color={instance.room === "lecture" ? "#5E6B7A" : c.mutedText} />
-                              {instance.room === "lecture" ? <Text style={styles.roomChipTextActive}>Lecture</Text> : null}
-                            </Pressable>
-                            <Pressable
-                              accessibilityRole="button"
-                              accessibilityLabel="Set room to laboratory"
-                              style={({ pressed }) => [
-                                styles.roomIconChip,
-                                instance.room === "laboratory" ? styles.roomIconChipActive : undefined,
-                                instance.room === "laboratory" ? styles.roomChipLaboratory : undefined,
-                                pressed ? styles.pressScale : undefined,
-                              ]}
-                              onPress={() => setInstanceRoom(day.key, instance.id, "laboratory")}
-                            >
-                              <Ionicons name="flask-outline" size={14} color={instance.room === "laboratory" ? "#5E6B7A" : c.mutedText} />
-                              {instance.room === "laboratory" ? <Text style={styles.roomChipTextActive}>Laboratory</Text> : null}
-                            </Pressable>
-                          </View>
-                          <View style={styles.instanceActionRow}>
-                            <Pressable style={styles.removeBtn} accessibilityRole="button" accessibilityLabel="Duplicate slot" onPress={() => duplicateInstance(day.key, instance.id)}>
-                              <Ionicons name="copy-outline" size={14} color="#8A8A8A" />
-                            </Pressable>
-                            {row.instances.length > 1 ? (
-                              <Pressable style={styles.removeBtn} accessibilityRole="button" accessibilityLabel="Remove slot" onPress={() => removeInstance(day.key, instance.id)}>
-                                <Ionicons name="close" size={16} color="#8A8A8A" />
-                              </Pressable>
-                            ) : null}
-                          </View>
-                        </View>
-                      </View>
-
-                      <View style={styles.timeRowCentered}>
-                        <Pressable style={[styles.timeInputButton, { borderColor }]} onPress={() => openTimePicker({ day: day.key, instanceId: instance.id, field: "start" })}>
-                          <Text style={styles.timeInputText}>{instance.start}</Text>
+            <View style={styles.slotStack}>
+              {row.instances.length === 0 ? (
+                <Text style={[Typography.caption, { color: c.faintText }]}>
+                  No class time yet. Tap + to add one.
+                </Text>
+              ) : null}
+              {row.instances.map((instance, index) => {
+                const roomAccent =
+                  instance.room === "lecture" ? c.category.lesson.base : c.category.performanceTask.base;
+                return (
+                  <View key={instance.id} style={[styles.instanceWrap, { backgroundColor: c.card, borderColor: roomAccent }]}>
+                    <View style={styles.instanceHeaderRow}>
+                      <Text style={[Typography.caption, styles.instanceLabel, { color: c.mutedText }]}>
+                        Slot {index + 1}
+                      </Text>
+                      <View style={styles.instanceActionRow}>
+                        <Pressable
+                          style={[styles.removeBtn, { borderColor: c.border }]}
+                          accessibilityRole="button"
+                          accessibilityLabel="Duplicate slot"
+                          onPress={() => duplicateInstance(day.key, instance.id)}
+                        >
+                          <Ionicons name="copy-outline" size={14} color={c.mutedText} />
                         </Pressable>
-                        <Text style={styles.toText}>to</Text>
-                        <Pressable style={[styles.timeInputButton, { borderColor }]} onPress={() => openTimePicker({ day: day.key, instanceId: instance.id, field: "end" })}>
-                          <Text style={styles.timeInputText}>{instance.end}</Text>
-                        </Pressable>
+                        {row.instances.length > 1 ? (
+                          <Pressable
+                            style={[styles.removeBtn, { borderColor: c.border }]}
+                            accessibilityRole="button"
+                            accessibilityLabel="Remove slot"
+                            onPress={() => removeInstance(day.key, instance.id)}
+                          >
+                            <Ionicons name="close" size={16} color={c.mutedText} />
+                          </Pressable>
+                        ) : null}
                       </View>
                     </View>
-                  );
-                })}
-              </View>
-            </View>
-          );
-        })}
 
-        <View style={styles.divider} />
+                    <View style={styles.instanceRoomSwitch}>
+                      <Chip
+                        label="Lecture"
+                        icon="school-outline"
+                        category="lesson"
+                        selected={instance.room === "lecture"}
+                        onPress={() => setInstanceRoom(day.key, instance.id, "lecture")}
+                      />
+                      <Chip
+                        label="Laboratory"
+                        icon="flask-outline"
+                        category="performanceTask"
+                        selected={instance.room === "laboratory"}
+                        onPress={() => setInstanceRoom(day.key, instance.id, "laboratory")}
+                      />
+                    </View>
 
-        <Text style={styles.sectionTitle}>Minimum Requirements</Text>
-        <View style={styles.row3}>
-          {(Object.keys(REQUIREMENT_LABEL) as RequirementKey[]).map((key) => {
-            const countFilled = Boolean(requirementCounts[key]);
-            return (
-              <View key={key} style={styles.requirementPill}>
-                <Text style={styles.requirementText}>{REQUIREMENT_LABEL[key]}</Text>
-                <TextInput
-                  value={requirementCounts[key]}
-                  onChangeText={(value) => setRequirementCount(key, value)}
-                  keyboardType="number-pad"
-                  placeholder="0"
-                  placeholderTextColor="#B0B0B0"
-                  style={[
-                    styles.requirementCountInput,
-                    { backgroundColor: countFilled ? filledFieldBg : emptyFieldBg, color: countFilled ? filledText : emptyText },
-                  ]}
-                />
-              </View>
-            );
-          })}
-        </View>
-
-        {examSchedules.length > 0 ? (
-          <View style={styles.examScheduleWrap}>
-            <View style={styles.examScheduleHeader}>
-              <Text style={styles.sectionTitle}>Exam Dates</Text>
-              <Pressable style={styles.addExamDateBtn} onPress={addExamScheduleRow}>
-                <Ionicons name="add" size={14} color="#4B5563" />
-                <Text style={styles.addExamDateText}>Add Exam Date</Text>
-              </Pressable>
-            </View>
-            {examSchedules.map((row, index) => {
-              const examDefinition = getExamDefinition(index, examSchedules.length);
-              return (
-                <View key={row.id} style={styles.specialRow}>
-                  <View style={[styles.examLabelBox, { backgroundColor: filledFieldBg }]}>
-                    <Text style={[styles.examLabelText, { color: filledText }]}>{examDefinition.label}</Text>
+                    <View style={styles.timeRowCentered}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${day.label} slot ${index + 1} start time`}
+                        accessibilityValue={{ text: instance.start }}
+                        style={[styles.timeInputButton, { backgroundColor: c.surfaceAlt, borderColor: roomAccent }]}
+                        onPress={() => openTimePicker({ day: day.key, instanceId: instance.id, field: "start" })}
+                      >
+                        <Text style={[Typography.bodySm, { color: c.text }]}>{instance.start}</Text>
+                      </Pressable>
+                      <Text style={[Typography.caption, { color: c.mutedText }]}>to</Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${day.label} slot ${index + 1} end time`}
+                        accessibilityValue={{ text: instance.end }}
+                        style={[styles.timeInputButton, { backgroundColor: c.surfaceAlt, borderColor: roomAccent }]}
+                        onPress={() => openTimePicker({ day: day.key, instanceId: instance.id, field: "end" })}
+                      >
+                        <Text style={[Typography.bodySm, { color: c.text }]}>{instance.end}</Text>
+                      </Pressable>
+                    </View>
                   </View>
-                  <Pressable
-                    style={[styles.specialDatePill, { backgroundColor: row.dateText ? filledFieldBg : emptyFieldBg }]}
-                    onPress={() => openDatePicker({ type: "exam", id: row.id }, row.dateText)}
-                  >
-                    <Text style={[styles.dateInput, { color: row.dateText ? filledText : emptyText }]}>
-                      {row.dateText ? formatIsoDisplay(row.dateText) : "Pick date"}
-                    </Text>
-                  </Pressable>
-                  {examSchedules.length > 1 ? (
-                    <Pressable style={styles.iconAction} accessibilityRole="button" accessibilityLabel="Remove exam date" onPress={() => removeExamScheduleRow(row.id)}>
-                      <Ionicons name="close" size={16} color="#8A8A8A" />
-                    </Pressable>
-                  ) : (
-                    <View style={styles.iconAction} />
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        ) : null}
-
-        <View style={styles.divider} />
-
-        <Text style={styles.sectionTitle}>Special Dates</Text>
-        {specialDates.map((row, index) => (
-          <View key={row.id} style={styles.specialRow}>
-            <Pressable
-              style={[styles.specialDatePill, { backgroundColor: row.dateText ? filledFieldBg : emptyFieldBg }]}
-              onPress={() => openDatePicker({ type: "special", id: row.id }, row.dateText)}
-            >
-              <Text style={[styles.dateInput, { color: row.dateText ? filledText : emptyText }]}>{row.dateText ? formatIsoDisplay(row.dateText) : "Pick date"}</Text>
-            </Pressable>
-            <View style={[styles.specialReasonBox, { backgroundColor: row.reason.trim() ? filledFieldBg : emptyFieldBg }]}> 
-              <TextInput
-                value={row.reason}
-                onChangeText={(value) => setSpecialDateField(row.id, "reason", value)}
-                placeholder="Reason"
-                placeholderTextColor="#B0B0B0"
-                style={[styles.reasonInput, { color: row.reason.trim() ? filledText : emptyText }]}
-              />
+                );
+              })}
             </View>
-            <Pressable style={styles.iconAction} accessibilityRole="button" accessibilityLabel="Remove special date" onPress={() => removeSpecialDateRow(row.id)}>
-              <Ionicons name="close" size={16} color="#8A8A8A" />
+          </View>
+        );
+      })}
+    </ScrollView>
+  );
+
+  const renderRequirementsStep = () => (
+    <ScrollView
+      contentContainerStyle={styles.stepContent}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      <SectionHeader title="Minimum requirements" />
+      {requirementKeys.map((key) => (
+        <View key={key} style={[styles.stepperRow, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={[Typography.bodyMedium, styles.stepperLabel, { color: c.text }]}>
+            {REQUIREMENT_LABEL[key]}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Decrease ${REQUIREMENT_LABEL[key]} count`}
+            style={[styles.stepperBtn, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}
+            onPress={() => adjustRequirementCount(key, -1)}
+          >
+            <Ionicons name="remove" size={18} color={c.text} />
+          </Pressable>
+          <Text
+            accessibilityLiveRegion="polite"
+            accessibilityLabel={`${REQUIREMENT_LABEL[key]} count: ${requirementCounts[key] || "0"}`}
+            style={[Typography.h3, styles.stepperValue, { color: c.text }]}
+          >
+            {requirementCounts[key] || "0"}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Increase ${REQUIREMENT_LABEL[key]} count`}
+            style={[styles.stepperBtn, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}
+            onPress={() => adjustRequirementCount(key, 1)}
+          >
+            <Ionicons name="add" size={18} color={c.text} />
+          </Pressable>
+        </View>
+      ))}
+      {fieldErrors.requirements ? (
+        <Text style={[Typography.caption, styles.fieldErrorText, { color: c.danger }]}>{fieldErrors.requirements}</Text>
+      ) : null}
+
+      <SectionHeader title="Exam dates" actionLabel="Add exam date" onAction={addExamScheduleRow} />
+      {examSchedules.map((row, index) => {
+        const examDefinition = getExamDefinition(index, examSchedules.length);
+        return (
+          <View key={row.id} style={styles.specialRow}>
+            <View style={[styles.examLabelBox, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+              <Text style={[Typography.caption, styles.examLabelText, { color: c.text }]}>{examDefinition.label}</Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${examDefinition.label} date`}
+              accessibilityValue={row.dateText ? { text: formatIsoDisplay(row.dateText) } : undefined}
+              style={[
+                styles.specialDatePill,
+                { backgroundColor: c.surfaceAlt, borderColor: fieldErrors.examDates ? c.danger : c.border },
+              ]}
+              onPress={() => openDatePicker({ type: "exam", id: row.id }, row.dateText)}
+            >
+              <Text style={[Typography.caption, styles.pillText, { color: row.dateText ? c.text : c.faintText }]}>
+                {row.dateText ? formatIsoDisplay(row.dateText) : "Pick date"}
+              </Text>
             </Pressable>
-            {index === specialDates.length - 1 ? (
-              <Pressable style={styles.iconAction} onPress={addSpecialDateRow}>
-                <Text style={styles.plusText}>+</Text>
+            {examSchedules.length > 1 ? (
+              <Pressable
+                style={styles.iconAction}
+                accessibilityRole="button"
+                accessibilityLabel="Remove exam date"
+                onPress={() => removeExamScheduleRow(row.id)}
+              >
+                <Ionicons name="close" size={16} color={c.mutedText} />
               </Pressable>
             ) : (
               <View style={styles.iconAction} />
             )}
           </View>
-        ))}
-        {specialDates.length === 0 ? (
-          <Pressable style={styles.addSpecialDateBtn} onPress={addSpecialDateRow}>
-            <Ionicons name="add" size={14} color="#4B5563" />
-            <Text style={styles.addSpecialDateText}>Add Special Date</Text>
+        );
+      })}
+      {fieldErrors.examDates ? (
+        <Text style={[Typography.caption, styles.fieldErrorText, { color: c.danger }]}>{fieldErrors.examDates}</Text>
+      ) : null}
+
+      <SectionHeader title="Special dates" />
+      {specialDates.map((row, index) => (
+        <View key={row.id} style={styles.specialRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Special date"
+            accessibilityValue={row.dateText ? { text: formatIsoDisplay(row.dateText) } : undefined}
+            style={[styles.specialDatePill, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}
+            onPress={() => openDatePicker({ type: "special", id: row.id }, row.dateText)}
+          >
+            <Text style={[Typography.caption, styles.pillText, { color: row.dateText ? c.text : c.faintText }]}>
+              {row.dateText ? formatIsoDisplay(row.dateText) : "Pick date"}
+            </Text>
           </Pressable>
+          <View style={[styles.specialReasonBox, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
+            <TextInput
+              value={row.reason}
+              onChangeText={(value) => setSpecialDateField(row.id, "reason", value)}
+              placeholder="Reason"
+              placeholderTextColor={c.faintText}
+              accessibilityLabel="Special date reason"
+              style={[Typography.body, styles.reasonInput, { color: c.text }]}
+            />
+          </View>
+          <Pressable
+            style={styles.iconAction}
+            accessibilityRole="button"
+            accessibilityLabel="Remove special date"
+            onPress={() => removeSpecialDateRow(row.id)}
+          >
+            <Ionicons name="close" size={16} color={c.mutedText} />
+          </Pressable>
+          {index === specialDates.length - 1 ? (
+            <Pressable
+              style={styles.iconAction}
+              accessibilityRole="button"
+              accessibilityLabel="Add special date"
+              onPress={addSpecialDateRow}
+            >
+              <Ionicons name="add" size={20} color={c.tint} />
+            </Pressable>
+          ) : (
+            <View style={styles.iconAction} />
+          )}
+        </View>
+      ))}
+      {specialDates.length === 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Add special date"
+          style={[styles.addSpecialDateBtn, { backgroundColor: c.card, borderColor: c.border }]}
+          onPress={addSpecialDateRow}
+        >
+          <Ionicons name="add" size={14} color={c.mutedText} />
+          <Text style={[Typography.caption, styles.addSpecialDateText, { color: c.mutedText }]}>Add Special Date</Text>
+        </Pressable>
+      ) : null}
+    </ScrollView>
+  );
+
+  const renderReviewStep = () => (
+    <ScrollView
+      contentContainerStyle={styles.stepContent}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
+      {serverConflict ? (
+        <ConflictBanner
+          message={serverConflict}
+          actionLabel="Fix schedule in Step 3"
+          onAction={() => setStepIndex(2)}
+        />
+      ) : null}
+
+      <ListRow
+        icon="calendar-outline"
+        title="Dates"
+        subtitle={`${formatIsoDisplay(startDate)} – ${formatIsoDisplay(endDate)} · AY ${formatAcademicYear(academicYearStart)}`}
+        onPress={() => setStepIndex(0)}
+        accessibilityLabel="Edit dates"
+      />
+      <ListRow
+        icon="business-outline"
+        title="Institution"
+        subtitle={selectedInstitution?.name ?? "Not set"}
+        onPress={() => setStepIndex(0)}
+        accessibilityLabel="Edit institution"
+      />
+      <ListRow
+        icon="book-outline"
+        title="Subject"
+        subtitle={selectedSubject ? `${selectedSubject.code} - ${selectedSubject.title}` : "Not set"}
+        onPress={() => setStepIndex(1)}
+        accessibilityLabel="Edit subject"
+      />
+      <ListRow
+        icon="people-outline"
+        title="Section"
+        subtitle={selectedSection?.name ?? "Not set"}
+        onPress={() => setStepIndex(1)}
+        accessibilityLabel="Edit section"
+      />
+      <ListRow
+        icon="list-outline"
+        title="Content"
+        subtitle={`${selectedLessonIds.size} lesson${selectedLessonIds.size === 1 ? "" : "s"} across ${selectedChapterIds.size} chapter${selectedChapterIds.size === 1 ? "" : "s"}`}
+        onPress={() => setStepIndex(1)}
+        accessibilityLabel="Edit subject content"
+      />
+      <ListRow
+        icon="time-outline"
+        title="Weekly schedule"
+        subtitle={scheduleSummary || "Not set"}
+        onPress={() => setStepIndex(2)}
+        accessibilityLabel="Edit weekly schedule"
+      />
+      <ListRow
+        icon="ribbon-outline"
+        title="Exam dates"
+        subtitle={
+          examSchedules
+            .map((row) => (row.dateText ? formatIsoDisplay(row.dateText) : "Not set"))
+            .join(" · ") || "Not set"
+        }
+        onPress={() => setStepIndex(3)}
+        accessibilityLabel="Edit exam dates"
+        divider={false}
+      />
+
+      <SectionHeader title="Requirements" />
+      <View style={styles.badgeRow}>
+        <Badge category="writtenWork" label={`${requirementCounts.written_work || "0"} Written Work`} />
+        <Badge category="performanceTask" label={`${requirementCounts.performance_task || "0"} Performance Task`} />
+        <Badge category="exam" label={`${requirementCounts.exam || "0"} Exam${Number(requirementCounts.exam || "0") === 1 ? "" : "s"}`} />
+        {specialDates.length > 0 ? (
+          <Badge category="buffer" label={`${specialDates.length} Special Date${specialDates.length === 1 ? "" : "s"}`} />
         ) : null}
-      </ScrollView>
+      </View>
+    </ScrollView>
+  );
+
+  const stepRenderers = [
+    renderWhenStep,
+    renderSubjectStep,
+    renderScheduleStep,
+    renderRequirementsStep,
+    renderReviewStep,
+  ];
+  const isReviewStep = stepIndex === steps.length - 1;
+
+  return (
+    <View style={[styles.page, { backgroundColor: c.background }]}>
+      <StepFlow
+        steps={steps}
+        index={stepIndex}
+        onBack={handleStepBack}
+        backLabelOnFirst="Cancel"
+        nextLabel={isReviewStep ? "Generate plan" : "Continue"}
+        onNext={isReviewStep ? handleCreatePlan : handleStepNext}
+        nextLoading={isReviewStep && saving}
+      >
+        {stepRenderers[stepIndex]()}
+      </StepFlow>
 
       <Modal visible={chapterModalOpen} transparent animationType="fade" onRequestClose={() => setChapterModalOpen(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setChapterModalOpen(false)}>
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Select Units, Chapters, and Lessons</Text>
+        <Pressable style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]} onPress={() => setChapterModalOpen(false)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: c.card, borderColor: c.border }]} onPress={() => {}}>
+            <Text style={[Typography.h2, styles.modalTitle, { color: c.text }]}>Select Units, Chapters, and Lessons</Text>
             <ScrollView style={styles.modalScroll}>
               {unitGroups.length === 0 ? (
-                <Text style={styles.modalEmpty}>No units/chapters found for this subject.</Text>
+                <Text style={[Typography.body, { color: c.mutedText }]}>No units/chapters found for this subject.</Text>
               ) : (
                 unitGroups.map((group) => (
                   <View key={group.key} style={styles.modalGroup}>
-                    <Text style={styles.modalGroupTitle}>{group.title}</Text>
+                    <Text style={[Typography.body, styles.modalGroupTitle, { color: c.text }]}>{group.title}</Text>
                     {group.chapters.map((chapter) => {
                       const selectedChapter = selectedChapterIds.has(chapter.chapter_id);
                       return (
                         <View key={chapter.chapter_id} style={styles.chapterWithLessons}>
-                          <Pressable style={styles.modalChapterRow} onPress={() => toggleChapter(chapter.chapter_id)}>
-                            <View style={[styles.selectionBox, selectedChapter ? styles.selectionBoxActive : undefined]}>
-                              {selectedChapter ? <Ionicons name="checkmark" size={12} color="#FFFFFF" /> : null}
+                          <Pressable
+                            accessibilityRole="checkbox"
+                            accessibilityState={{ checked: selectedChapter }}
+                            accessibilityLabel={`Chapter ${chapter.sequence_no}: ${chapter.title}`}
+                            style={styles.modalChapterRow}
+                            onPress={() => toggleChapter(chapter.chapter_id)}
+                          >
+                            <View
+                              style={[
+                                styles.selectionBox,
+                                { borderColor: selectedChapter ? c.tint : c.border, backgroundColor: selectedChapter ? c.tint : c.card },
+                              ]}
+                            >
+                              {selectedChapter ? <Ionicons name="checkmark" size={12} color={c.onTint} /> : null}
                             </View>
-                            <Text style={styles.modalChapterText}>Chapter {chapter.sequence_no}: {chapter.title}</Text>
+                            <Text style={[Typography.body, styles.modalChapterText, { color: c.text }]}>
+                              Chapter {chapter.sequence_no}: {chapter.title}
+                            </Text>
                           </Pressable>
                           {chapter.lessons.map((lesson) => {
                             const selectedLesson = selectedLessonIds.has(lesson.lesson_id);
                             return (
                               <Pressable
                                 key={lesson.lesson_id}
+                                accessibilityRole="checkbox"
+                                accessibilityState={{ checked: selectedLesson }}
+                                accessibilityLabel={`Lesson ${lesson.sequence_no}: ${lesson.title}`}
                                 style={styles.modalLessonRow}
                                 onPress={() => toggleLesson(chapter.chapter_id, lesson.lesson_id)}
                               >
-                                <View style={[styles.selectionBoxSmall, selectedLesson ? styles.selectionBoxActive : undefined]}>
-                                  {selectedLesson ? <Ionicons name="checkmark" size={11} color="#FFFFFF" /> : null}
+                                <View
+                                  style={[
+                                    styles.selectionBoxSmall,
+                                    { borderColor: selectedLesson ? c.tint : c.border, backgroundColor: selectedLesson ? c.tint : c.card },
+                                  ]}
+                                >
+                                  {selectedLesson ? <Ionicons name="checkmark" size={11} color={c.onTint} /> : null}
                                 </View>
-                                <Text style={styles.modalLessonText}>
+                                <Text style={[Typography.caption, styles.modalLessonText, { color: c.mutedText }]}>
                                   Lesson {lesson.sequence_no}: {lesson.title}
                                 </Text>
                               </Pressable>
@@ -2437,8 +2880,13 @@ export default function LessonplanScreen() {
                 ))
               )}
             </ScrollView>
-            <Pressable style={styles.modalDone} onPress={() => setChapterModalOpen(false)}>
-              <Text style={styles.modalDoneText}>Done</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Done selecting content"
+              style={[styles.modalDone, { backgroundColor: c.tint }]}
+              onPress={() => setChapterModalOpen(false)}
+            >
+              <Text style={[Typography.h3, { color: c.onTint }]}>Done</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -2454,21 +2902,21 @@ export default function LessonplanScreen() {
         }}
       >
         <Pressable
-          style={styles.modalBackdrop}
+          style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}
           onPress={() => {
             setTimePickerOpen(false);
             setTimeTarget(null);
           }}
         >
-          <Pressable style={styles.timeModalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Select Time</Text>
+          <Pressable style={[styles.timeModalCard, { backgroundColor: c.card }]} onPress={() => {}}>
+            <Text style={[Typography.h2, styles.modalTitle, { color: c.text }]}>Select Time</Text>
             <View style={styles.timePickerRow}>
               <View style={styles.timePickerCol}>
                 <Picker
                   selectedValue={pickerHour}
                   onValueChange={(v) => setPickerHour(Number(v))}
-                  style={styles.pickerText}
-                  itemStyle={styles.pickerItem}
+                  style={{ color: c.text }}
+                  itemStyle={[styles.pickerItem, { color: c.text }]}
                 >
                   {Array.from({ length: 12 }).map((_, i) => {
                     const hour = i + 1;
@@ -2480,8 +2928,8 @@ export default function LessonplanScreen() {
                 <Picker
                   selectedValue={pickerMinute}
                   onValueChange={(v) => setPickerMinute(Number(v))}
-                  style={styles.pickerText}
-                  itemStyle={styles.pickerItem}
+                  style={{ color: c.text }}
+                  itemStyle={[styles.pickerItem, { color: c.text }]}
                 >
                   {[0, 15, 30, 45].map((minute) => (
                     <Picker.Item key={minute} label={String(minute).padStart(2, "0")} value={minute} />
@@ -2492,16 +2940,21 @@ export default function LessonplanScreen() {
                 <Picker
                   selectedValue={pickerMeridiem}
                   onValueChange={(v) => setPickerMeridiem(v as "AM" | "PM")}
-                  style={styles.pickerText}
-                  itemStyle={styles.pickerItem}
+                  style={{ color: c.text }}
+                  itemStyle={[styles.pickerItem, { color: c.text }]}
                 >
                   <Picker.Item label="AM" value="AM" />
                   <Picker.Item label="PM" value="PM" />
                 </Picker>
               </View>
             </View>
-            <Pressable style={styles.modalDone} onPress={applyPickedTime}>
-              <Text style={styles.modalDoneText}>Set Time</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Set time"
+              style={[styles.modalDone, { backgroundColor: c.tint }]}
+              onPress={applyPickedTime}
+            >
+              <Text style={[Typography.h3, { color: c.onTint }]}>Set Time</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -2517,17 +2970,22 @@ export default function LessonplanScreen() {
         }}
       >
         <Pressable
-          style={styles.modalBackdrop}
+          style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}
           onPress={() => {
             setDatePickerOpen(false);
             setDateTarget(null);
           }}
         >
-          <Pressable style={styles.timeModalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Pick Date</Text>
+          <Pressable style={[styles.timeModalCard, { backgroundColor: c.card }]} onPress={() => {}}>
+            <Text style={[Typography.h2, styles.modalTitle, { color: c.text }]}>Pick Date</Text>
             <View style={styles.timePickerRow}>
               <View style={styles.timePickerCol}>
-                <Picker selectedValue={datePickerMonth} onValueChange={(v) => setDatePickerMonth(Number(v))} style={styles.pickerText} itemStyle={styles.pickerItem}>
+                <Picker
+                  selectedValue={datePickerMonth}
+                  onValueChange={(v) => setDatePickerMonth(Number(v))}
+                  style={{ color: c.text }}
+                  itemStyle={[styles.pickerItem, { color: c.text }]}
+                >
                   {MONTH_LABELS.map((month, idx) => (
                     <Picker.Item key={month} label={month} value={idx + 1} />
                   ))}
@@ -2537,8 +2995,8 @@ export default function LessonplanScreen() {
                 <Picker
                   selectedValue={datePickerDay}
                   onValueChange={(v) => setDatePickerDay(Number(v))}
-                  style={styles.pickerText}
-                  itemStyle={styles.pickerItem}
+                  style={{ color: c.text }}
+                  itemStyle={[styles.pickerItem, { color: c.text }]}
                 >
                   {Array.from({ length: getDaysInMonth(datePickerYear, datePickerMonth) }).map((_, i) => {
                     const day = i + 1;
@@ -2547,7 +3005,12 @@ export default function LessonplanScreen() {
                 </Picker>
               </View>
               <View style={styles.timePickerCol}>
-                <Picker selectedValue={datePickerYear} onValueChange={(v) => setDatePickerYear(Number(v))} style={styles.pickerText} itemStyle={styles.pickerItem}>
+                <Picker
+                  selectedValue={datePickerYear}
+                  onValueChange={(v) => setDatePickerYear(Number(v))}
+                  style={{ color: c.text }}
+                  itemStyle={[styles.pickerItem, { color: c.text }]}
+                >
                   {Array.from({ length: 16 }).map((_, i) => {
                     const year = nowYear - 5 + i;
                     return <Picker.Item key={year} label={String(year)} value={year} />;
@@ -2555,27 +3018,42 @@ export default function LessonplanScreen() {
                 </Picker>
               </View>
             </View>
-            <Pressable style={styles.modalDone} onPress={applyPickedDate}>
-              <Text style={styles.modalDoneText}>Set Date</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Set date"
+              style={[styles.modalDone, { backgroundColor: c.tint }]}
+              onPress={applyPickedDate}
+            >
+              <Text style={[Typography.h3, { color: c.onTint }]}>Set Date</Text>
             </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
 
       <Modal visible={yearPickerOpen} transparent animationType="fade" onRequestClose={() => setYearPickerOpen(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setYearPickerOpen(false)}>
-          <Pressable style={styles.timeModalCard} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Pick Academic Year Start</Text>
+        <Pressable style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]} onPress={() => setYearPickerOpen(false)}>
+          <Pressable style={[styles.timeModalCard, { backgroundColor: c.card }]} onPress={() => {}}>
+            <Text style={[Typography.h2, styles.modalTitle, { color: c.text }]}>Pick Academic Year Start</Text>
             <View style={styles.singlePickerWrap}>
-              <Picker selectedValue={academicYearStart} onValueChange={(v) => setAcademicYearStart(Number(v))} style={styles.pickerText} itemStyle={styles.pickerItem}>
+              <Picker
+                selectedValue={academicYearStart}
+                onValueChange={(v) => setAcademicYearStart(Number(v))}
+                style={{ color: c.text }}
+                itemStyle={[styles.pickerItem, { color: c.text }]}
+              >
                 {Array.from({ length: 16 }).map((_, i) => {
                   const year = nowYear - 5 + i;
                   return <Picker.Item key={year} label={`${year} (${formatAcademicYear(year)})`} value={year} />;
                 })}
               </Picker>
             </View>
-            <Pressable style={styles.modalDone} onPress={() => setYearPickerOpen(false)}>
-              <Text style={styles.modalDoneText}>Set Year</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Set academic year"
+              style={[styles.modalDone, { backgroundColor: c.tint }]}
+              onPress={() => setYearPickerOpen(false)}
+            >
+              <Text style={[Typography.h3, { color: c.onTint }]}>Set Year</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -2594,177 +3072,66 @@ export default function LessonplanScreen() {
 const styles = StyleSheet.create({
   page: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  content: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: 80,
+  stepContent: {
     gap: Spacing.md,
+    paddingBottom: Spacing.xl,
   },
-  headingRow: {
+  selectLabel: { marginBottom: Spacing.xs, fontWeight: "500" },
+  selectField: {
+    minHeight: 48,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 2,
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
   },
-  headingLeft: { flexDirection: "row", alignItems: "center", gap: 3 },
-  pageTitle: { ...Typography.h1 },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: "#999999",
-    marginBottom: 2,
-  },
-  row3: { flexDirection: "row", gap: 8 },
-  row2: { flexDirection: "row", gap: 8 },
-  boxField: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: Radius.sm,
+  selectValue: { flex: 1 },
+  dateRow: { flexDirection: "row", gap: Spacing.sm },
+  dateField: { flex: 1 },
+  fieldErrorText: { marginTop: Spacing.xs },
+  dropdown: {
+    borderRadius: Radius.md,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: "#D8DDE3",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 10,
   },
-  fieldText: {
-    ...Typography.body,
-    textAlign: "center",
-    width: "100%",
-  },
-  nameInput: {
-    ...Typography.body,
-    minHeight: 48,
-    borderRadius: Radius.sm,
-    borderWidth: 1,
-    borderColor: "#D8DDE3",
-    paddingHorizontal: 12,
-    textAlign: "center",
-  },
-  dateRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  fromToText: {
-    ...Typography.caption,
-    color: "#7E7E7E",
-    width: 30,
-    textAlign: "center",
-  },
-  datePill: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: "#D8DDE3",
-    borderRadius: Radius.round,
-    minHeight: 42,
-    justifyContent: "center",
-    paddingHorizontal: 14,
-  },
-  dateInput: {
-    ...Typography.caption,
-    textAlign: "center",
-    paddingVertical: 0,
-  },
-  fieldErrorText: {
-    ...Typography.caption,
-    marginTop: -6,
+  dropdownItem: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   subjectPreviewBox: {
-    borderRadius: Radius.sm,
-    padding: 12,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
     gap: 6,
-  },
-  subjectPreviewTitle: {
-    ...Typography.caption,
-    color: "#5C5C5C",
-    fontWeight: "600",
-  },
-  subjectPreviewHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  pickContentBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#D8DDE3",
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  subjectPreviewText: {
-    ...Typography.body,
-    color: "#1F2937",
-    lineHeight: 20,
   },
   tocRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: Spacing.sm,
     minHeight: 30,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#ECECEC",
   },
   tocIndex: {
     ...Typography.caption,
-    color: "#6B7280",
     width: 26,
     textAlign: "right",
     fontWeight: "600",
   },
   tocText: {
     ...Typography.body,
-    color: "#1F2937",
     flex: 1,
   },
-  previewUnitBlock: {
-    gap: 4,
-  },
-  previewChapterBlock: {
-    marginLeft: 8,
-    gap: 4,
-  },
-  previewLessonBlock: {
-    marginLeft: 8,
-    gap: 4,
-  },
-  dropdown: {
-    borderRadius: Radius.md,
-    overflow: "hidden",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D8DDE3",
-  },
-  dropdownItem: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E7EB",
-  },
-  dropdownText: { ...Typography.body, color: "#4B5563" },
-  scheduleBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 4,
-  },
-  scheduleBarText: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: "#999999",
-  },
-  dayChipRow: { flexDirection: "row", gap: 8 },
+  previewUnitBlock: { gap: 4 },
+  previewChapterBlock: { marginLeft: Spacing.sm, gap: 4 },
+  previewLessonBlock: { marginLeft: Spacing.sm, gap: 4 },
+  dayChipRow: { flexDirection: "row", gap: Spacing.sm },
   dayChip: {
     flex: 1,
     minHeight: 46,
     borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
-    backgroundColor: "#FFFFFF",
     overflow: "hidden",
   },
   dayChipInner: {
@@ -2773,41 +3140,40 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: 46,
   },
-  dayChipActive: { backgroundColor: "#6B7280", borderColor: "#6B7280" },
   dayChipText: { ...Typography.h3, fontWeight: "500" },
-  scheduleCard: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D8DDE3",
+  conflictBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.sm,
     borderRadius: Radius.md,
-    padding: 10,
-    gap: 8,
+    padding: Spacing.md,
+  },
+  conflictBannerBody: { flex: 1, gap: Spacing.xs },
+  conflictBannerLink: { fontWeight: "600", textDecorationLine: "underline" },
+  scheduleCard: {
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    padding: Spacing.md,
+    gap: Spacing.sm,
   },
   scheduleCardHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  dayLabel: { ...Typography.body, color: "#7A7A7A", fontWeight: "600" },
-  slotStack: { gap: 8 },
+  slotStack: { gap: Spacing.sm },
   instanceWrap: {
     borderWidth: 2,
     borderRadius: Radius.sm,
-    backgroundColor: "#FFFFFF",
-    padding: 8,
-    gap: 8,
+    padding: Spacing.sm,
+    gap: Spacing.sm,
   },
   instanceHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  instanceLabel: { ...Typography.caption, color: "#5F5F5F", fontWeight: "600" },
-  instanceHeaderRight: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  instanceLabel: { fontWeight: "600" },
   instanceActionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -2817,245 +3183,148 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
-  roomIconChip: {
-    minHeight: 28,
-    minWidth: 28,
-    borderRadius: Radius.round,
-    borderWidth: 1,
-    borderColor: "#D8DDE3",
-    paddingHorizontal: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 5,
-    backgroundColor: "#FFFFFF",
-  },
-  roomIconChipActive: {
-    minWidth: 108,
-    paddingHorizontal: 10,
-  },
-  roomChipLecture: { borderColor: "#C5CCD6", backgroundColor: "#F7FAFC" },
-  roomChipLaboratory: { borderColor: "#C5CCD6", backgroundColor: "#F7FAFC" },
-  roomChipTextActive: {
-    ...Typography.caption,
-    color: "#6B7280",
-    fontWeight: "600",
-  },
   timeRowCentered: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: Spacing.sm,
   },
   timeInputButton: {
     minHeight: 36,
     minWidth: 105,
     borderWidth: 1,
     borderRadius: Radius.round,
-    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.md,
   },
-  timeInputText: { ...Typography.caption, color: "#1F2937", textAlign: "center" },
-  toText: { ...Typography.caption, color: "#666666" },
   removeBtn: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
     alignItems: "center",
     justifyContent: "center",
   },
   iconAction: { width: 24, height: 24, alignItems: "center", justifyContent: "center" },
-  plusText: { ...Typography.h2, color: "#6B7280", fontWeight: "600" },
-  divider: {
-    height: 1,
-    backgroundColor: "#E5E7EB",
-    marginTop: 4,
-    marginBottom: 6,
-  },
-  requirementPill: {
-    flex: 1,
-    minHeight: 74,
-    borderRadius: Radius.sm,
-    alignItems: "stretch",
-    justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D8DDE3",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  requirementText: {
-    ...Typography.caption,
-    fontWeight: "500",
-    textAlign: "center",
-    color: "#4B5563",
-  },
-  requirementCountInput: {
-    ...Typography.body,
-    textAlign: "center",
-    minHeight: 32,
-    borderRadius: Radius.round,
-    borderWidth: 1,
-    borderColor: "#D8DDE3",
-  },
-  examScheduleWrap: {
-    gap: 8,
-    marginTop: 10,
-  },
-  examScheduleHeader: {
+  stepperRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    minHeight: 56,
+  },
+  stepperLabel: { flex: 1 },
+  stepperBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: Radius.round,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepperValue: {
+    minWidth: 32,
+    textAlign: "center",
   },
   examLabelBox: {
-    width: "42%",
+    width: "36%",
     minHeight: 44,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
     borderRadius: Radius.round,
     justifyContent: "center",
     paddingHorizontal: 10,
   },
   examLabelText: {
-    ...Typography.caption,
     textAlign: "center",
     fontWeight: "600",
   },
-  addExamDateBtn: {
-    minHeight: 34,
-    borderRadius: Radius.round,
-    borderWidth: 1,
-    borderColor: "#D8DDE3",
-    backgroundColor: "#FFFFFF",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-  },
-  addExamDateText: {
-    ...Typography.caption,
-    color: "#4B5563",
-    fontWeight: "600",
-  },
-  extraBox: {
-    minHeight: 170,
-    borderRadius: Radius.sm,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    ...Typography.body,
-    textAlignVertical: "top",
-    fontStyle: "italic",
-    fontWeight: "400",
-  },
-  specialRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  specialRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   specialDatePill: {
-    width: "42%",
+    flex: 1,
     minHeight: 44,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
     borderRadius: Radius.round,
     justifyContent: "center",
     paddingHorizontal: 10,
   },
+  pillText: { textAlign: "center", paddingVertical: 0 },
   specialReasonBox: {
     flex: 1,
     minHeight: 44,
     borderRadius: Radius.sm,
+    borderWidth: 1,
     justifyContent: "center",
-    paddingHorizontal: 12,
+    paddingHorizontal: Spacing.md,
   },
-  reasonInput: {
-    ...Typography.h2,
-    textAlign: "center",
-    fontWeight: "400",
-  },
+  reasonInput: { paddingVertical: 0 },
   addSpecialDateBtn: {
     minHeight: 40,
     borderRadius: Radius.sm,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
-    backgroundColor: "#FFFFFF",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
   },
-  addSpecialDateText: {
-    ...Typography.caption,
-    color: "#4B5563",
-    fontWeight: "600",
+  addSpecialDateText: { fontWeight: "600" },
+  badgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.sm,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
-    padding: 20,
+    padding: Spacing.xl,
   },
   modalCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: Radius.lg,
     maxHeight: "80%",
     padding: 14,
     borderWidth: 1,
-    borderColor: "#D8DDE3",
   },
-  modalTitle: { ...Typography.h2, color: "#111827", marginBottom: 8 },
+  modalTitle: { marginBottom: Spacing.sm },
   modalScroll: { maxHeight: 420 },
-  modalEmpty: { ...Typography.body, color: "#777" },
-  modalGroup: { marginBottom: 12, gap: 8 },
-  modalGroupTitle: { ...Typography.body, color: "#454545", fontWeight: "600" },
+  modalGroup: { marginBottom: Spacing.md, gap: Spacing.sm },
+  modalGroupTitle: { fontWeight: "600" },
   chapterWithLessons: { gap: 4 },
-  modalChapterRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  modalChapterText: { ...Typography.body, color: "#5D5D5D", flex: 1 },
-  modalLessonRow: { flexDirection: "row", alignItems: "center", gap: 8, marginLeft: 24 },
-  modalLessonText: { ...Typography.caption, color: "#5D5D5D", flex: 1 },
+  modalChapterRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
+  modalChapterText: { flex: 1 },
+  modalLessonRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginLeft: Spacing.xxl },
+  modalLessonText: { flex: 1 },
   selectionBox: {
     width: 18,
     height: 18,
     borderRadius: 6,
     borderWidth: 1.5,
-    borderColor: "#C3CBD6",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
   },
   selectionBoxSmall: {
     width: 16,
     height: 16,
     borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: "#C3CBD6",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
-  },
-  selectionBoxActive: { borderColor: "#6B7280", backgroundColor: "#6B7280" },
-  pressScale: {
-    transform: [{ scale: 0.96 }],
   },
   modalDone: {
-    marginTop: 8,
+    marginTop: Spacing.sm,
     minHeight: 42,
     borderRadius: Radius.md,
-    backgroundColor: "#6B7280",
     alignItems: "center",
     justifyContent: "center",
   },
-  modalDoneText: { ...Typography.h3, color: "#fff" },
   timeModalCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: Radius.lg,
     padding: 14,
   },
-  timePickerRow: { flexDirection: "row", gap: 8 },
+  timePickerRow: { flexDirection: "row", gap: Spacing.sm },
   timePickerCol: { flex: 1, minHeight: 160, justifyContent: "center" },
   singlePickerWrap: { minHeight: 180, justifyContent: "center" },
-  pickerText: { color: "#111827" },
-  pickerItem: { color: "#111827", fontSize: 18 },
+  pickerItem: { fontSize: 18 },
 });

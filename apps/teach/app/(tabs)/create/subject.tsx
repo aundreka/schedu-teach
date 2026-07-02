@@ -16,21 +16,35 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system/legacy";
 import * as Localization from "expo-localization";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAppTheme } from "../../../context/theme";
 import { useSubscriptionContext } from "../../../context/subscription";
 import { usePullToRefresh } from "../../../hooks/usePullToRefresh";
-import { formatEdgeFunctionError } from "../../../lib/edge-function-errors";
 import { supabase } from "../../../lib/supabase";
+import {
+  extractPdfTextFromStoragePath,
+  guessMimeType,
+  ocrImage,
+  uploadUriAsset,
+} from "../../../lib/extraction";
+import { Radius, Spacing, Typography } from "../../../constants/fonts";
+import {
+  Button,
+  Card,
+  Input,
+  ListRow,
+  ProgressBar,
+  StepFlow,
+  type StepDef,
+} from "../../../components/ui";
 import PaywallModal from "../../../components/PaywallModal";
 import wordnetIndex from "../../../generated/wordnet-index.json";
 import * as Haptics from "expo-haptics";
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -50,14 +64,6 @@ type PickedFile = {
 };
 
 type SyllabusMode = "text" | "image" | "file" | null;
-
-const TYPE_SCALE = {
-  h1: 24,
-  h2: 18,
-  h3: 16,
-  body: 14,
-  caption: 12,
-} as const;
 
 type OutlineUnit = {
   tempId: string;
@@ -165,10 +171,6 @@ function correctWordWithWordnet(token: string) {
   return applyOriginalCase(token, bestWord);
 }
 
-function sanitizeFileName(name: string) {
-  return name.replace(/[^\w.\-]+/g, "_");
-}
-
 function guessExtension(mimeType?: string | null) {
   if (mimeType === "image/png") return "png";
   if (mimeType === "image/webp") return "webp";
@@ -176,165 +178,8 @@ function guessExtension(mimeType?: string | null) {
   return "jpg";
 }
 
-function guessMimeType(name: string, fallback?: string | null) {
-  const lower = name.toLowerCase();
-  if (lower.endsWith(".png")) return "image/png";
-  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
-  if (lower.endsWith(".webp")) return "image/webp";
-  if (lower.endsWith(".pdf")) return "application/pdf";
-  return fallback || "application/octet-stream";
-}
-
 function formatAcademicYear(startYear: number) {
   return `${startYear}-${startYear + 1}`;
-}
-
-async function readUriAsArrayBuffer(uri: string) {
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: "base64" });
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
-}
-
-async function uploadUriAsset(params: {
-  uri: string;
-  userId: string;
-  fileName: string;
-  mimeType: string;
-  folder: string;
-}) {
-  const { uri, userId, fileName, mimeType, folder } = params;
-  const safeName = sanitizeFileName(fileName);
-  const path = `users/${userId}/subjects/${folder}_${Date.now()}_${safeName}`;
-  const body = await readUriAsArrayBuffer(uri);
-  const { error } = await supabase.storage.from("uploads").upload(path, body, {
-    contentType: mimeType,
-    upsert: true,
-  });
-  if (error) throw error;
-  return path;
-}
-
-async function extractPdfTextFromStoragePath(storagePath: string) {
-  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-  if (sessionErr) throw sessionErr;
-  const session = sessionData?.session;
-  if (!session?.access_token) throw new Error("You must be signed in.");
-
-  const { data, error, response } = await supabase.functions.invoke("extract-text", {
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: { storagePath },
-  });
-
-  if (error) {
-    throw new Error(await formatEdgeFunctionError("extract-text", error, response));
-  }
-
-  return String(data?.text ?? "");
-}
-
-async function ocrImage(uri: string): Promise<string> {
-  try {
-    const mod = await import("react-native-mlkit-ocr");
-    const result = await mod.default.detectFromUri(uri);
-    if (typeof result === "string") return result;
-
-    type OcrSegment = {
-      text: string;
-      x: number;
-      y: number;
-      h: number;
-    };
-
-    const segments: OcrSegment[] = [];
-    const fallbackPieces: string[] = [];
-
-    for (const block of result ?? []) {
-      if (block?.lines?.length) {
-        for (const line of block.lines) {
-          if (!line?.text) continue;
-          fallbackPieces.push(String(line.text).trim());
-          const frame = (line as any)?.frame ?? {};
-          segments.push({
-            text: String(line.text).trim(),
-            x: Number(frame?.x ?? 0),
-            y: Number(frame?.y ?? 0),
-            h: Number(frame?.height ?? 0),
-          });
-        }
-        continue;
-      }
-
-      if (block?.text) {
-        fallbackPieces.push(String(block.text).trim());
-        const frame = (block as any)?.frame ?? {};
-        segments.push({
-          text: String(block.text).trim(),
-          x: Number(frame?.x ?? 0),
-          y: Number(frame?.y ?? 0),
-          h: Number(frame?.height ?? 0),
-        });
-      }
-    }
-
-    if (segments.length === 0) return "";
-
-    const fallbackText = fallbackPieces.filter(Boolean).join("\n").trim();
-    const positionedSegments = segments.filter(
-      (segment) => Number.isFinite(segment.x) && Number.isFinite(segment.y) && (segment.x !== 0 || segment.y !== 0)
-    );
-    const distinctY = new Set(positionedSegments.map((segment) => Math.round(segment.y))).size;
-    const canReliablySort = positionedSegments.length >= 4 && distinctY >= 3;
-    if (!canReliablySort) {
-      return fallbackText;
-    }
-
-    const avgHeight =
-      segments.reduce((sum, segment) => sum + (segment.h > 0 ? segment.h : 18), 0) / segments.length;
-    const rowTolerance = Math.max(10, Math.min(28, avgHeight * 0.65));
-
-    segments.sort((a, b) => {
-      if (Math.abs(a.y - b.y) > rowTolerance) return a.y - b.y;
-      return a.x - b.x;
-    });
-
-    const rows: OcrSegment[][] = [];
-    for (const segment of segments) {
-      const lastRow = rows[rows.length - 1];
-      if (!lastRow) {
-        rows.push([segment]);
-        continue;
-      }
-
-      const rowY = lastRow.reduce((sum, item) => sum + item.y, 0) / lastRow.length;
-      if (Math.abs(segment.y - rowY) <= rowTolerance) {
-        lastRow.push(segment);
-      } else {
-        rows.push([segment]);
-      }
-    }
-
-    const orderedLines = rows
-      .map((row) =>
-        row
-          .sort((a, b) => a.x - b.x)
-          .map((segment) => segment.text)
-          .filter(Boolean)
-          .join(" ")
-          .replace(/[ ]{2,}/g, " ")
-          .trim()
-      )
-      .filter((line) => line.length > 0);
-
-    return orderedLines.join("\n").trim();
-  } catch {
-    throw new Error(
-      "Image OCR needs a Dev Build (not Expo Go). Install react-native-mlkit-ocr and rebuild your app."
-    );
-  }
 }
 
 function normalizeSyllabusText(rawText: string) {
@@ -1230,9 +1075,34 @@ function AnimatedToolBtn({
   );
 }
 
+const SUBJECT_STEPS: StepDef[] = [
+  {
+    key: "details",
+    title: "What are you teaching?",
+    subtitle: "The basics — you can edit everything later.",
+  },
+  {
+    key: "syllabus",
+    title: "Add your syllabus",
+    subtitle: "We'll turn it into chapters and lessons automatically.",
+  },
+  {
+    key: "review",
+    title: "Review & create",
+    subtitle: "Tap a row to jump back and change it.",
+  },
+];
+
+type SubjectFieldErrors = {
+  title?: string;
+  code?: string;
+  institution?: string;
+};
+
 export default function SubjectScreen() {
   const { colors: c } = useAppTheme();
   const sub = useSubscriptionContext();
+  const insets = useSafeAreaInsets();
   const regionCode = Localization.getLocales()[0]?.regionCode ?? null;
   const nowYear = new Date().getFullYear();
 
@@ -1242,6 +1112,9 @@ export default function SubjectScreen() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
+
+  const [stepIndex, setStepIndex] = useState(0);
+  const [fieldErrors, setFieldErrors] = useState<SubjectFieldErrors>({});
 
   const [overview, setOverview] = useState("");
   const [title, setTitle] = useState("");
@@ -1257,6 +1130,20 @@ export default function SubjectScreen() {
   const [syllabusText, setSyllabusText] = useState("");
   const [syllabusImage, setSyllabusImage] = useState<PickedFile | null>(null);
   const [syllabusFile, setSyllabusFile] = useState<PickedFile | null>(null);
+
+  // Extraction runs on step 2's Continue; results are cached so the final
+  // save never re-uploads or re-extracts what we already have.
+  const [extracting, setExtracting] = useState(false);
+  const [extractStage, setExtractStage] = useState("");
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractedText, setExtractedText] = useState<string | null>(null);
+  const [syllabusStoragePath, setSyllabusStoragePath] = useState<string | null>(null);
+
+  const resetExtractionCache = () => {
+    setExtractedText(null);
+    setSyllabusStoragePath(null);
+    setExtractError(null);
+  };
 
   const academicYear = useMemo(() => {
     if (!schoolYearStart) return "";
@@ -1371,6 +1258,7 @@ export default function SubjectScreen() {
       mimeType: asset.mimeType || "image/jpeg",
     });
     setSyllabusFile(null);
+    resetExtractionCache();
   };
 
   const pickSyllabusFile = async () => {
@@ -1389,6 +1277,122 @@ export default function SubjectScreen() {
       mimeType: file.mimeType || "application/octet-stream",
     });
     setSyllabusImage(null);
+    resetExtractionCache();
+  };
+
+  const selectSyllabusTextMode = () => {
+    setSyllabusMode("text");
+    setSyllabusImage(null);
+    setSyllabusFile(null);
+    resetExtractionCache();
+  };
+
+  const validateDetailsStep = () => {
+    const errors: SubjectFieldErrors = {};
+    if (!title.trim()) errors.title = "Subject title is required.";
+    if (!subjectCode.trim()) errors.code = "Subject code is required.";
+    if (!selectedSchoolId) errors.institution = "Choose an academic institution.";
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const skipSyllabusStep = () => {
+    setSyllabusMode(null);
+    setSyllabusText("");
+    setSyllabusImage(null);
+    setSyllabusFile(null);
+    resetExtractionCache();
+    setStepIndex(2);
+  };
+
+  const handleSyllabusContinue = async () => {
+    setExtractError(null);
+
+    if (syllabusMode === "text") {
+      if (!syllabusText.trim()) {
+        setExtractError("Add curriculum text, or choose an image or PDF instead.");
+        return;
+      }
+      setStepIndex(2);
+      return;
+    }
+
+    if (syllabusMode === "image" && syllabusImage) {
+      if (extractedText !== null && syllabusStoragePath) {
+        setStepIndex(2);
+        return;
+      }
+      if (!userId) {
+        setExtractError("Session error. Please sign in again.");
+        return;
+      }
+      setExtracting(true);
+      try {
+        setExtractStage("Uploading image…");
+        const storagePath =
+          syllabusStoragePath ??
+          (await uploadUriAsset({
+            uri: syllabusImage.uri,
+            userId,
+            fileName: syllabusImage.name,
+            mimeType: syllabusImage.mimeType,
+            folder: "syllabus",
+            scope: "subjects",
+          }));
+        setSyllabusStoragePath(storagePath);
+        const text = await ocrImage(syllabusImage.uri, setExtractStage);
+        setExtractedText(text);
+        setStepIndex(2);
+      } catch (err: any) {
+        setExtractError(err?.message ?? "Could not read the image. Please try again.");
+      } finally {
+        setExtracting(false);
+        setExtractStage("");
+      }
+      return;
+    }
+
+    if (syllabusMode === "file" && syllabusFile) {
+      if (extractedText !== null && syllabusStoragePath) {
+        setStepIndex(2);
+        return;
+      }
+      if (!userId) {
+        setExtractError("Session error. Please sign in again.");
+        return;
+      }
+      setExtracting(true);
+      try {
+        setExtractStage("Uploading file…");
+        const mimeType = syllabusFile.mimeType || guessMimeType(syllabusFile.name, "application/pdf");
+        const storagePath =
+          syllabusStoragePath ??
+          (await uploadUriAsset({
+            uri: syllabusFile.uri,
+            userId,
+            fileName: syllabusFile.name,
+            mimeType,
+            folder: "syllabus",
+            scope: "subjects",
+          }));
+        setSyllabusStoragePath(storagePath);
+        const text =
+          mimeType === "application/pdf"
+            ? await extractPdfTextFromStoragePath(storagePath, setExtractStage)
+            : "";
+        setExtractedText(text);
+        setStepIndex(2);
+      } catch (err: any) {
+        setExtractError(err?.message ?? "Could not read the file. Please try again.");
+      } finally {
+        setExtracting(false);
+        setExtractStage("");
+      }
+      return;
+    }
+
+    // Nothing selected — same as skipping.
+    setStepIndex(2);
   };
 
   const handleSave = async () => {
@@ -1448,6 +1452,7 @@ export default function SubjectScreen() {
           fileName: coverName,
           mimeType: inferredMime,
           folder: "cover",
+          scope: "subjects",
         });
       }
 
@@ -1463,31 +1468,38 @@ export default function SubjectScreen() {
       }
 
       if (syllabusMode === "image" && syllabusImage) {
-        syllabusValue = await uploadUriAsset({
-          uri: syllabusImage.uri,
-          userId,
-          fileName: syllabusImage.name,
-          mimeType: syllabusImage.mimeType,
-          folder: "syllabus",
-        });
+        // Reuse the upload + OCR from step 2 when available.
+        syllabusValue =
+          syllabusStoragePath ??
+          (await uploadUriAsset({
+            uri: syllabusImage.uri,
+            userId,
+            fileName: syllabusImage.name,
+            mimeType: syllabusImage.mimeType,
+            folder: "syllabus",
+            scope: "subjects",
+          }));
         syllabusKind = "image";
         syllabusMimeType = syllabusImage.mimeType || "image/jpeg";
-        detectedOutlineText = await ocrImage(syllabusImage.uri);
+        detectedOutlineText = extractedText ?? (await ocrImage(syllabusImage.uri));
       }
 
       if (syllabusMode === "file" && syllabusFile) {
         const mimeType = syllabusFile.mimeType || guessMimeType(syllabusFile.name, "application/pdf");
-        syllabusValue = await uploadUriAsset({
-          uri: syllabusFile.uri,
-          userId,
-          fileName: syllabusFile.name,
-          mimeType,
-          folder: "syllabus",
-        });
+        syllabusValue =
+          syllabusStoragePath ??
+          (await uploadUriAsset({
+            uri: syllabusFile.uri,
+            userId,
+            fileName: syllabusFile.name,
+            mimeType,
+            folder: "syllabus",
+            scope: "subjects",
+          }));
         syllabusKind = "file";
         syllabusMimeType = mimeType;
         if (mimeType === "application/pdf") {
-          detectedOutlineText = await extractPdfTextFromStoragePath(syllabusValue);
+          detectedOutlineText = extractedText ?? (await extractPdfTextFromStoragePath(syllabusValue));
         }
       }
 
@@ -1569,6 +1581,9 @@ export default function SubjectScreen() {
       setSyllabusText("");
       setSyllabusImage(null);
       setSyllabusFile(null);
+      setStepIndex(0);
+      setFieldErrors({});
+      resetExtractionCache();
       if (institutions.length > 0) {
         setSelectedSchoolId(institutions[0].school_id);
       } else {
@@ -1600,245 +1615,358 @@ export default function SubjectScreen() {
     );
   }
 
+  const syllabusStatus = (() => {
+    if (syllabusMode === "text" && syllabusText.trim()) {
+      return `${syllabusText.trim().length.toLocaleString()} characters typed`;
+    }
+    if (extractedText !== null) {
+      return extractedText.trim()
+        ? `${extractedText.trim().length.toLocaleString()} characters extracted`
+        : "No text detected";
+    }
+    if (syllabusMode === "image" && syllabusImage) return syllabusImage.name;
+    if (syllabusMode === "file" && syllabusFile) return syllabusFile.name;
+    return "Skipped";
+  })();
+
+  const stageProgress =
+    extractStage === "Uploading image…" || extractStage === "Uploading file…"
+      ? 0.25
+      : extractStage === "Reading text…"
+        ? 0.6
+        : extractStage === "Cleaning up…"
+          ? 0.9
+          : 0;
+
+  const handleNext = () => {
+    if (stepIndex === 0) {
+      if (validateDetailsStep()) setStepIndex(1);
+      return;
+    }
+    if (stepIndex === 1) {
+      void handleSyllabusContinue();
+      return;
+    }
+    void handleSave();
+  };
+
+  const handleStepBack = () => {
+    if (stepIndex === 0) {
+      router.back();
+      return;
+    }
+    setExtractError(null);
+    setStepIndex(stepIndex - 1);
+  };
+
+  const nextLabel =
+    stepIndex === 2 ? "Create subject" : stepIndex === 1 && extractError ? "Try again" : "Continue";
+  const nextLoading = stepIndex === 1 ? extracting : stepIndex === 2 ? saving : false;
+
+  const detailsStep = (
+    <ScrollView
+      contentContainerStyle={styles.stepScroll}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.tint} />}
+    >
+      <Input
+        label="Subject title"
+        value={title}
+        onChangeText={(value) => {
+          setTitle(value);
+          if (fieldErrors.title) setFieldErrors((current) => ({ ...current, title: undefined }));
+        }}
+        placeholder="e.g. General Science"
+        error={fieldErrors.title}
+        containerStyle={styles.fieldGap}
+      />
+
+      <View style={styles.fieldRow}>
+        <Input
+          label="Subject code"
+          value={subjectCode}
+          onChangeText={(value) => {
+            setSubjectCode(value);
+            if (fieldErrors.code) setFieldErrors((current) => ({ ...current, code: undefined }));
+          }}
+          placeholder="e.g. SCI 7"
+          autoCapitalize="characters"
+          error={fieldErrors.code}
+          containerStyle={styles.fieldFlex}
+        />
+        <Input
+          label="Year level"
+          value={year}
+          onChangeText={setYear}
+          placeholder="Optional"
+          containerStyle={styles.fieldFlex}
+        />
+      </View>
+
+      <View style={styles.fieldGap}>
+        <Text
+          style={[
+            Typography.bodySm,
+            styles.pickerLabel,
+            { color: fieldErrors.institution ? c.danger : c.mutedText },
+          ]}
+        >
+          Institution
+        </Text>
+        <Pressable
+          onPress={() => {
+            if (fieldErrors.institution) {
+              setFieldErrors((current) => ({ ...current, institution: undefined }));
+            }
+            openSchoolPicker();
+          }}
+          disabled={institutions.length === 0}
+          accessibilityRole="button"
+          accessibilityLabel={`Institution: ${selectedInstitution?.name ?? "none selected"}`}
+          style={[
+            styles.pickerField,
+            {
+              backgroundColor: c.surfaceAlt,
+              borderColor: fieldErrors.institution ? c.danger : c.border,
+              opacity: institutions.length === 0 ? 0.6 : 1,
+            },
+          ]}
+        >
+          <Text
+            numberOfLines={1}
+            style={[Typography.body, styles.pickerValue, { color: selectedInstitution ? c.text : c.faintText }]}
+          >
+            {selectedInstitution?.name ??
+              (institutions.length === 0 ? "No schools found" : "Choose institution")}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={c.mutedText} />
+        </Pressable>
+        {!!fieldErrors.institution && (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[Typography.caption, styles.fieldError, { color: c.danger }]}
+          >
+            {fieldErrors.institution}
+          </Text>
+        )}
+      </View>
+
+      <View style={styles.fieldGap}>
+        <Text style={[Typography.bodySm, styles.pickerLabel, { color: c.mutedText }]}>School year</Text>
+        <Pressable
+          onPress={openSchoolYearPicker}
+          accessibilityRole="button"
+          accessibilityLabel={`School year: ${schoolYearStart ? academicYear : "not set"}`}
+          style={[styles.pickerField, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}
+        >
+          <Text
+            style={[Typography.body, styles.pickerValue, { color: schoolYearStart ? c.text : c.faintText }]}
+          >
+            {schoolYearStart ? academicYear : "Optional"}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={c.mutedText} />
+        </Pressable>
+      </View>
+
+      <Input
+        label="Description"
+        value={overview}
+        onChangeText={setOverview}
+        placeholder="Brief description (optional)"
+        multiline
+        style={styles.multilineInput}
+        containerStyle={styles.fieldGap}
+      />
+
+      <Pressable
+        onPress={pickCoverImage}
+        accessibilityRole="button"
+        accessibilityLabel={coverImageUri ? "Change cover image" : "Add cover image"}
+        style={[styles.coverControl, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}
+      >
+        {coverImageUri ? (
+          <Image source={{ uri: coverImageUri }} style={styles.coverThumb} />
+        ) : (
+          <View style={[styles.coverThumb, styles.coverThumbEmpty, { backgroundColor: c.card, borderColor: c.border }]}>
+            <Ionicons name="image-outline" size={18} color={c.mutedText} />
+          </View>
+        )}
+        <Text style={[Typography.bodySm, styles.coverLabel, { color: c.mutedText }]}>
+          {coverImageUri ? "Change cover image" : "Add cover image (optional)"}
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color={c.faintText} />
+      </Pressable>
+    </ScrollView>
+  );
+
+  const syllabusStep = (
+    <View style={styles.syllabusStep}>
+      <Card variant="flat" padded={false} style={styles.dropZone}>
+        {syllabusMode === "text" ? (
+          <TextInput
+            value={syllabusText}
+            onChangeText={setSyllabusText}
+            placeholder="Type or paste your syllabus…"
+            placeholderTextColor={c.faintText}
+            multiline
+            textAlignVertical="top"
+            accessibilityLabel="Syllabus text"
+            style={[Typography.body, styles.dropZoneTextInput, { color: c.text }]}
+          />
+        ) : syllabusMode === "image" && syllabusImage ? (
+          <Image
+            source={{ uri: syllabusImage.uri }}
+            style={styles.dropZoneImage}
+            resizeMode="cover"
+            accessibilityLabel="Selected syllabus image"
+          />
+        ) : syllabusMode === "file" && syllabusFile ? (
+          <View style={styles.dropZoneCenter}>
+            <Ionicons name="document-outline" size={40} color={c.text} />
+            <Text numberOfLines={3} style={[Typography.bodySm, styles.dropZoneFileName, { color: c.text }]}>
+              {syllabusFile.name}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.dropZoneCenter}>
+            <Ionicons name="cloud-upload-outline" size={40} color={c.faintText} />
+            <Text style={[Typography.bodySm, styles.dropZoneHint, { color: c.mutedText }]}>
+              Type it, snap a photo, or attach a PDF
+            </Text>
+          </View>
+        )}
+      </Card>
+
+      <View style={styles.modeRow}>
+        <AnimatedToolBtn
+          active={syllabusMode === "text"}
+          cardBg={c.card}
+          activeBorder={c.tint}
+          inactiveBorder={c.border}
+          onPress={selectSyllabusTextMode}
+          accessibilityLabel="Type syllabus text"
+        >
+          <Text style={[styles.toolText, { color: syllabusMode === "text" ? c.tint : c.text }]}>T</Text>
+        </AnimatedToolBtn>
+
+        <AnimatedToolBtn
+          active={syllabusMode === "image"}
+          cardBg={c.card}
+          activeBorder={c.tint}
+          inactiveBorder={c.border}
+          onPress={pickSyllabusImage}
+          accessibilityLabel="Upload syllabus image"
+        >
+          <Ionicons name="image-outline" size={20} color={syllabusMode === "image" ? c.tint : c.text} />
+        </AnimatedToolBtn>
+
+        <AnimatedToolBtn
+          active={syllabusMode === "file"}
+          cardBg={c.card}
+          activeBorder={c.tint}
+          inactiveBorder={c.border}
+          onPress={pickSyllabusFile}
+          accessibilityLabel="Upload syllabus PDF"
+        >
+          <Ionicons name="document-outline" size={20} color={syllabusMode === "file" ? c.tint : c.text} />
+        </AnimatedToolBtn>
+      </View>
+
+      {extracting ? (
+        <View style={styles.extractionWrap}>
+          <ProgressBar value={stageProgress} accessibilityLabel="Syllabus extraction progress" />
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[Typography.caption, styles.extractionStage, { color: c.mutedText }]}
+          >
+            {extractStage || "Working…"}
+          </Text>
+        </View>
+      ) : null}
+
+      {extractError && !extracting ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[Typography.bodySm, styles.extractionError, { color: c.danger }]}
+        >
+          {extractError}
+        </Text>
+      ) : null}
+    </View>
+  );
+
+  const reviewStep = (
+    <ScrollView contentContainerStyle={styles.stepScroll} showsVerticalScrollIndicator={false}>
+      <Card padded={false} style={styles.reviewCard}>
+        <ListRow
+          icon="book-outline"
+          title="Title"
+          value={title.trim() || "—"}
+          onPress={() => setStepIndex(0)}
+          accessibilityLabel={`Title: ${title.trim() || "not set"}. Edit`}
+        />
+        <ListRow
+          icon="pricetag-outline"
+          title="Code"
+          value={subjectCode.trim() || "—"}
+          onPress={() => setStepIndex(0)}
+          accessibilityLabel={`Subject code: ${subjectCode.trim() || "not set"}. Edit`}
+        />
+        <ListRow
+          icon="school-outline"
+          title="Institution"
+          value={selectedInstitution?.name ?? "—"}
+          onPress={() => setStepIndex(0)}
+          accessibilityLabel={`Institution: ${selectedInstitution?.name ?? "not set"}. Edit`}
+        />
+        <ListRow
+          icon="calendar-outline"
+          title="Year"
+          value={[year.trim(), academicYear].filter(Boolean).join(" · ") || "—"}
+          onPress={() => setStepIndex(0)}
+          accessibilityLabel={`Year: ${[year.trim(), academicYear].filter(Boolean).join(", ") || "not set"}. Edit`}
+        />
+        <ListRow
+          icon="document-text-outline"
+          title="Syllabus"
+          value={syllabusStatus}
+          onPress={() => setStepIndex(1)}
+          divider={false}
+          accessibilityLabel={`Syllabus: ${syllabusStatus}. Edit`}
+        />
+      </Card>
+    </ScrollView>
+  );
+
   return (
-    <View style={[styles.page, { backgroundColor: c.background }]}>
+    <View style={[styles.page, { backgroundColor: c.background, paddingTop: insets.top }]}>
       <KeyboardAvoidingView
         style={styles.page}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.tint} />}
+        <StepFlow
+          steps={SUBJECT_STEPS}
+          index={stepIndex}
+          onBack={handleStepBack}
+          backLabelOnFirst="Cancel"
+          nextLabel={nextLabel}
+          onNext={handleNext}
+          nextLoading={nextLoading}
+          footerExtra={
+            stepIndex === 1 ? (
+              <Button
+                title="Skip for now"
+                variant="ghost"
+                onPress={skipSyllabusStep}
+                disabled={extracting}
+                accessibilityLabel="Skip adding a syllabus for now"
+              />
+            ) : undefined
+          }
         >
-          <Animated.View entering={FadeInDown.duration(260).springify()} style={styles.topRow}>
-            <Text style={[styles.screenTitle, { color: c.text }]}>Create Subject</Text>
-            <Pressable
-              onPress={handleSave}
-              disabled={saving}
-              accessibilityRole="button"
-              accessibilityLabel="Save subject"
-              style={({ pressed }) => [styles.checkBtn, { opacity: saving ? 0.6 : pressed ? 0.8 : 1 }]}
-            >
-              <Ionicons name={saving ? "time-outline" : "checkmark"} size={28} color={c.text} />
-            </Pressable>
-          </Animated.View>
-
-          <Text style={styles.overviewLabel}>Overview</Text>
-
-          <Pressable
-            onPress={pickCoverImage}
-            accessibilityRole="button"
-            accessibilityLabel="Choose cover image"
-            style={[
-              styles.coverCard,
-              {
-                backgroundColor: c.card,
-                borderColor: c.border,
-              },
-            ]}
-          >
-            {coverImageUri ? (
-              <Image source={{ uri: coverImageUri }} style={styles.coverImage} />
-            ) : (
-              <Ionicons name="image-outline" size={56} color={c.mutedText} />
-            )}
-            <View
-              style={[
-                styles.coverBadge,
-                {
-                  backgroundColor: c.background,
-                  borderColor: c.border,
-                },
-              ]}
-            >
-              <Ionicons name="ellipse-outline" size={14} color={c.mutedText} />
-            </View>
-          </Pressable>
-
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Title"
-            placeholderTextColor={c.mutedText}
-            style={[
-              styles.titleInput,
-              {
-                color: c.text,
-                borderColor: c.border,
-                backgroundColor: c.card,
-              },
-            ]}
-          />
-
-          <View style={styles.metaRow}>
-            <TextInput
-              value={subjectCode}
-              onChangeText={setSubjectCode}
-              placeholder="Subject Code"
-              placeholderTextColor={c.mutedText}
-              autoCapitalize="characters"
-              style={[
-                styles.metaInput,
-                {
-                  color: c.text,
-                  borderColor: c.border,
-                  backgroundColor: c.card,
-                },
-              ]}
-            />
-
-            <TextInput
-              value={year}
-              onChangeText={setYear}
-              placeholder="Year Level"
-              placeholderTextColor={c.mutedText}
-              style={[
-                styles.metaCompactInput,
-                {
-                  color: c.text,
-                  borderColor: c.border,
-                  backgroundColor: c.card,
-                },
-              ]}
-            />
-            <Pressable
-              onPress={openSchoolPicker}
-              disabled={institutions.length === 0}
-              style={[
-                styles.schoolPickerWrap,
-                {
-                  borderColor: c.border,
-                  backgroundColor: c.card,
-                  opacity: institutions.length === 0 ? 0.7 : 1,
-                },
-              ]}
-            >
-              <Text
-                numberOfLines={1}
-                style={[styles.schoolPickerText, { color: selectedInstitution ? c.text : c.mutedText }]}
-              >
-                {selectedInstitution?.name ?? "No schools found"}
-              </Text>
-              <Ionicons name="chevron-down" size={18} color={c.mutedText} />
-            </Pressable>
-          </View>
-
-          <View style={styles.metaRow}>
-            <Pressable
-              onPress={openSchoolYearPicker}
-              style={[
-                styles.institutionPicker,
-                {
-                  borderColor: c.border,
-                  backgroundColor: c.card,
-                },
-              ]}
-            >
-              <Text style={[styles.institutionText, { color: schoolYearStart ? c.text : c.mutedText }]}>
-                {schoolYearStart ? academicYear : "Pick School Year"}
-              </Text>
-            </Pressable>
-          </View>
-
-          <TextInput
-            value={overview}
-            onChangeText={setOverview}
-            placeholder="Brief description (optional)"
-            placeholderTextColor={c.mutedText}
-            multiline
-            style={[
-              styles.overviewInput,
-              {
-                color: c.text,
-                borderColor: c.border,
-                backgroundColor: c.card,
-              },
-            ]}
-          />
-
-          <View style={[styles.divider, { backgroundColor: c.border }]} />
-          <Text style={styles.syllabusLabel}>Upload Syllabus</Text>
-
-          <View style={styles.syllabusRow}>
-            <View
-              style={[
-                styles.syllabusPreview,
-                {
-                  borderColor: c.border,
-                  backgroundColor: c.card,
-                },
-              ]}
-            >
-              {syllabusMode === "text" ? (
-                <TextInput
-                  value={syllabusText}
-                  onChangeText={setSyllabusText}
-                  placeholder="Type syllabus notes..."
-                  placeholderTextColor={c.mutedText}
-                  multiline
-                  style={[styles.syllabusTextInput, { color: c.text }]}
-                />
-              ) : null}
-
-              {syllabusMode === "image" && syllabusImage ? (
-                <Image source={{ uri: syllabusImage.uri }} style={styles.syllabusImage} />
-              ) : null}
-
-              {syllabusMode === "file" && syllabusFile ? (
-                <View style={styles.fileWrap}>
-                  <Ionicons name="document-outline" size={24} color={c.text} />
-                  <Text numberOfLines={3} style={[styles.fileName, { color: c.text }]}>
-                    {syllabusFile.name}
-                  </Text>
-                </View>
-              ) : null}
-
-              {!syllabusMode ? (
-                <View style={styles.fileWrap}>
-                  <Ionicons name="cloud-upload-outline" size={20} color={c.mutedText} />
-                  <Text style={[styles.filePlaceholder, { color: c.mutedText }]}>
-                    Select text, image, or file
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-
-            <View style={styles.syllabusTools}>
-              <AnimatedToolBtn
-                active={syllabusMode === "text"}
-                cardBg={c.card}
-                activeBorder={c.text}
-                inactiveBorder={c.border}
-                onPress={() => { setSyllabusMode("text"); setSyllabusImage(null); setSyllabusFile(null); }}
-              >
-                <Text style={[styles.toolText, { color: c.text }]}>T</Text>
-              </AnimatedToolBtn>
-
-              <AnimatedToolBtn
-                active={syllabusMode === "image"}
-                cardBg={c.card}
-                activeBorder={c.text}
-                inactiveBorder={c.border}
-                onPress={pickSyllabusImage}
-                accessibilityLabel="Upload syllabus image"
-              >
-                <Ionicons name="image-outline" size={20} color={c.text} />
-              </AnimatedToolBtn>
-
-              <AnimatedToolBtn
-                active={syllabusMode === "file"}
-                cardBg={c.card}
-                activeBorder={c.text}
-                inactiveBorder={c.border}
-                onPress={pickSyllabusFile}
-                accessibilityLabel="Upload syllabus file"
-              >
-                <Ionicons name="document-outline" size={20} color={c.text} />
-              </AnimatedToolBtn>
-            </View>
-          </View>
-        </ScrollView>
+          {stepIndex === 0 ? detailsStep : stepIndex === 1 ? syllabusStep : reviewStep}
+        </StepFlow>
       </KeyboardAvoidingView>
 
       <Modal
@@ -1847,31 +1975,40 @@ export default function SubjectScreen() {
         animationType="fade"
         onRequestClose={() => setSchoolPickerOpen(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setSchoolPickerOpen(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}
+          onPress={() => setSchoolPickerOpen(false)}
+        >
           <Pressable
             style={[styles.dateModalCard, { borderColor: c.border, backgroundColor: c.card }]}
             onPress={() => {}}
           >
-            <Text style={[styles.modalTitle, { color: c.text }]}>Pick Institution</Text>
+            <Text style={[Typography.h3, styles.modalTitle, { color: c.text }]}>Pick Institution</Text>
             <View style={styles.schoolList}>
               {institutions.map((school) => {
                 const selected = school.school_id === selectedSchoolId;
                 return (
                   <Pressable
                     key={school.school_id}
+                    accessibilityRole="button"
+                    accessibilityLabel={school.name}
+                    accessibilityState={{ selected }}
                     onPress={() => {
                       setSelectedSchoolId(school.school_id);
+                      setFieldErrors((current) => ({ ...current, institution: undefined }));
                       setSchoolPickerOpen(false);
                     }}
                     style={[
                       styles.schoolOption,
                       {
                         borderColor: selected ? c.tint : c.border,
-                        backgroundColor: selected ? c.background : c.card,
+                        backgroundColor: selected ? c.tintSoft : c.card,
                       },
                     ]}
                   >
-                    <Text style={[styles.schoolOptionText, { color: c.text }]}>{school.name}</Text>
+                    <Text style={[Typography.body, styles.schoolOptionText, { color: c.text }]}>
+                      {school.name}
+                    </Text>
                     {selected ? <Ionicons name="checkmark" size={18} color={c.tint} /> : null}
                   </Pressable>
                 );
@@ -1887,12 +2024,15 @@ export default function SubjectScreen() {
         animationType="fade"
         onRequestClose={() => setSchoolYearPickerOpen(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setSchoolYearPickerOpen(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}
+          onPress={() => setSchoolYearPickerOpen(false)}
+        >
           <Pressable
             style={[styles.dateModalCard, { borderColor: c.border, backgroundColor: c.card }]}
             onPress={() => {}}
           >
-            <Text style={[styles.modalTitle, { color: c.text }]}>Pick School Year</Text>
+            <Text style={[Typography.h3, styles.modalTitle, { color: c.text }]}>Pick School Year</Text>
             <View style={styles.yearPickerCol}>
               <Picker
                 selectedValue={schoolYearPickerYear}
@@ -1911,10 +2051,12 @@ export default function SubjectScreen() {
               </Picker>
             </View>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Set school year"
               style={[styles.modalDoneButton, { backgroundColor: c.tint }]}
               onPress={applyPickedSchoolYear}
             >
-              <Text style={styles.modalDoneButtonText}>Set Year</Text>
+              <Text style={[Typography.bodyMedium, { color: c.onTint }]}>Set Year</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -1933,210 +2075,86 @@ export default function SubjectScreen() {
 const styles = StyleSheet.create({
   page: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  content: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 28 },
-  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
-  screenTitle: { fontSize: TYPE_SCALE.h1, fontWeight: "700", letterSpacing: -0.2 },
-  checkBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  overviewLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", color: "#999999", marginBottom: 8 },
-  coverCard: {
-    height: 120,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-    position: "relative",
-  },
-  coverImage: {
-    width: "100%",
-    height: "100%",
-  },
-  coverBadge: {
-    position: "absolute",
-    left: 12,
-    bottom: 12,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  titleInput: {
-    marginTop: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    textAlign: "center",
-    fontSize: TYPE_SCALE.h1,
-    fontWeight: "600",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  metaRow: {
-    marginTop: 6,
-    flexDirection: "row",
-    gap: 8,
-  },
-  metaInput: {
-    flex: 1,
-    borderRadius: 8,
-    borderWidth: 1,
-    fontSize: TYPE_SCALE.body,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-  },
-  metaCompactInput: {
-    flex: 0.9,
-    borderRadius: 8,
-    borderWidth: 1,
-    fontSize: TYPE_SCALE.body,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-  },
-  institutionPicker: {
-    flex: 1,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    justifyContent: "center",
-  },
-  institutionText: {
-    fontSize: TYPE_SCALE.body,
-  },
-  schoolPickerWrap: {
-    flex: 1.15,
-    borderRadius: 8,
-    borderWidth: 1,
-    minHeight: 44,
-    paddingHorizontal: 12,
+  stepScroll: { paddingBottom: Spacing.xxl },
+  fieldGap: { marginBottom: Spacing.lg },
+  fieldRow: { flexDirection: "row", gap: Spacing.md },
+  fieldFlex: { flex: 1, marginBottom: Spacing.lg },
+  pickerLabel: { marginBottom: Spacing.xs, fontWeight: "500" },
+  pickerField: {
+    minHeight: 48,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    paddingHorizontal: Spacing.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
+    gap: Spacing.sm,
   },
-  schoolPickerText: {
-    flex: 1,
-    fontSize: TYPE_SCALE.body,
+  pickerValue: { flex: 1 },
+  fieldError: { marginTop: Spacing.xs },
+  multilineInput: { minHeight: 84, textAlignVertical: "top" },
+  coverControl: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    borderRadius: Radius.md,
+    padding: Spacing.sm,
   },
-  overviewInput: {
-    marginTop: 6,
-    minHeight: 74,
-    borderRadius: 8,
-    borderWidth: 1,
-    fontSize: TYPE_SCALE.body,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    textAlignVertical: "top",
-  },
-  divider: {
-    height: 1,
-    marginTop: 16,
-    marginBottom: 12,
-  },
-  syllabusLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", color: "#999999", marginBottom: 8 },
-  syllabusRow: { flexDirection: "row", gap: 12 },
-  syllabusPreview: {
-    flex: 1,
-    minHeight: 144,
-    borderWidth: 1,
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  syllabusTools: { gap: 10 },
-  toolBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  toolBtnInner: {
-    flex: 1,
+  coverThumb: { width: 44, height: 44, borderRadius: Radius.sm },
+  coverThumbEmpty: {
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  toolText: {
-    fontSize: 24,
-    fontWeight: "700",
-  },
-  syllabusTextInput: {
-    minHeight: 144,
-    fontSize: TYPE_SCALE.body,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    textAlignVertical: "top",
-  },
-  syllabusImage: { width: "100%", height: "100%" },
-  fileWrap: {
+  coverLabel: { flex: 1, fontWeight: "500" },
+  syllabusStep: { flex: 1 },
+  dropZone: { minHeight: 240, maxHeight: 400, flexShrink: 1, overflow: "hidden" },
+  dropZoneTextInput: { flex: 1, minHeight: 240, padding: Spacing.lg },
+  dropZoneImage: { width: "100%", height: "100%", minHeight: 240 },
+  dropZoneCenter: {
     flex: 1,
+    minHeight: 240,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 12,
-    gap: 8,
+    gap: Spacing.sm,
+    padding: Spacing.lg,
   },
-  fileName: {
-    textAlign: "center",
-    fontSize: TYPE_SCALE.caption,
-  },
-  filePlaceholder: {
-    textAlign: "center",
-    fontSize: TYPE_SCALE.caption,
-  },
+  dropZoneFileName: { textAlign: "center" },
+  dropZoneHint: { textAlign: "center" },
+  modeRow: { flexDirection: "row", justifyContent: "center", gap: Spacing.md, marginTop: Spacing.lg },
+  toolBtn: { width: 52, height: 52, borderRadius: Radius.md, borderWidth: 1.5, overflow: "hidden" },
+  toolBtnInner: { flex: 1, alignItems: "center", justifyContent: "center" },
+  toolText: { fontSize: 22, fontWeight: "700" },
+  extractionWrap: { marginTop: Spacing.lg, gap: Spacing.sm },
+  extractionStage: { textAlign: "center" },
+  extractionError: { marginTop: Spacing.lg, textAlign: "center" },
+  reviewCard: { paddingHorizontal: Spacing.lg },
+  modalBackdrop: { flex: 1, justifyContent: "center", padding: Spacing.lg },
   dateModalCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    gap: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radius.lg,
+    padding: Spacing.lg,
+    gap: Spacing.md,
   },
-  yearPickerCol: {
-    minHeight: 180,
-    justifyContent: "center",
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    justifyContent: "center",
-    padding: 18,
-  },
-  modalTitle: {
-    fontSize: TYPE_SCALE.h2,
-    fontWeight: "700",
-    marginBottom: 6,
-  },
-  schoolList: {
-    gap: 8,
-  },
+  yearPickerCol: { minHeight: 180, justifyContent: "center" },
+  modalTitle: { marginBottom: Spacing.xs },
+  schoolList: { gap: Spacing.sm },
   schoolOption: {
     minHeight: 46,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
+    gap: Spacing.sm,
   },
-  schoolOptionText: {
-    flex: 1,
-    fontSize: TYPE_SCALE.body,
-  },
+  schoolOptionText: { flex: 1 },
   modalDoneButton: {
     alignSelf: "flex-end",
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  modalDoneButtonText: {
-    color: "#FFFFFF",
-    fontSize: TYPE_SCALE.body,
-    fontWeight: "700",
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm + 2,
   },
 });

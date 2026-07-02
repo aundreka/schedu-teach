@@ -79,6 +79,8 @@ function OptionCard({
           Haptics.selectionAsync();
           onPress();
         }}
+        accessibilityRole="button"
+        accessibilityLabel={`Create ${option.label.toLowerCase()}: ${option.sublabel}`}
       >
         <View style={[styles.iconWrap, { backgroundColor: colorSet.border }]}>
           <Ionicons name={option.icon} size={22} color={colorSet.fg} />
@@ -91,7 +93,7 @@ function OptionCard({
 }
 
 export default function CreateScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const [open, setOpen] = useState(true);
 
   useFocusEffect(
@@ -110,28 +112,18 @@ export default function CreateScreen() {
     router.push(route);
   }, []);
 
-  const isDark = scheme === "dark";
+  // Option colors come from the shared session-category ramp (same family as
+  // the calendar and the tab-bar create sheet); dark variants are built in.
+  const tone = (t: { soft: string; onSoft: string; border: string }) => ({
+    bg: t.soft,
+    border: t.border,
+    fg: t.onSoft,
+  });
   const optionColors: Record<string, { bg: string; border: string; fg: string }> = {
-    lessonplan: {
-      bg: isDark ? "#2F3D45" : "#DDECF4",
-      border: isDark ? "#435560" : "#CCDCE4",
-      fg: isDark ? "#C7D9E2" : "#3B5563",
-    },
-    subject: {
-      bg: isDark ? "#413850" : "#F4E3F5",
-      border: isDark ? "#5A4D6E" : "#E4D1E5",
-      fg: isDark ? "#DDD1EB" : "#59446A",
-    },
-    lesson: {
-      bg: isDark ? "#2D4634" : "#DFF2DE",
-      border: isDark ? "#3E6049" : "#CFE2CD",
-      fg: isDark ? "#C9E7D1" : "#3F6449",
-    },
-    activities: {
-      bg: isDark ? "#4D4630" : "#F8EDC8",
-      border: isDark ? "#685E41" : "#E8DDAF",
-      fg: isDark ? "#ECE0BA" : "#6A5B34",
-    },
+    lessonplan: tone(c.category.lesson),
+    subject: tone(c.category.performanceTask),
+    lesson: tone(c.category.writtenWork),
+    activities: tone(c.category.exam),
   };
 
   return (

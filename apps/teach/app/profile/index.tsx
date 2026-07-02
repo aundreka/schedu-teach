@@ -17,6 +17,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAppTheme } from "../../context/theme";
+import { AvatarPalette, OnAvatar } from "../../constants/colors";
 import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { supabase } from "../../lib/supabase";
 import { Button, EmptyState, ErrorState } from "../../components/ui";
@@ -50,16 +51,7 @@ type PickedImage = {
 };
 const DEFAULT_SCHOOL_TYPE: SchoolType = "university";
 
-const AVATAR_COLORS = [
-  "#22C55E",
-  "#0EA5E9",
-  "#F97316",
-  "#EF4444",
-  "#A855F7",
-  "#EAB308",
-  "#14B8A6",
-  "#64748B",
-] as const;
+const AVATAR_COLORS = AvatarPalette;
 
 const SCHOOL_TYPE_LABEL: Record<SchoolType, string> = {
   university: "University",
@@ -467,7 +459,7 @@ export default function Profile() {
         <View style={[styles.profileCard, { backgroundColor: c.card, borderColor: c.border }]}>
           <View style={styles.profileTopRow}>
             <View style={[styles.profileAvatar, { backgroundColor: c.tint }]}>
-              <Text style={styles.profileAvatarText}>{profileInitials}</Text>
+              <Text style={[styles.profileAvatarText, { color: c.onTint }]}>{profileInitials}</Text>
             </View>
             <View style={styles.profileInfo}>
               <Text style={[styles.profileName, { color: c.text }]} numberOfLines={1}>
@@ -531,6 +523,7 @@ export default function Profile() {
               onChangeText={setSearchQuery}
               placeholder="Search institutions"
               placeholderTextColor={c.mutedText}
+              accessibilityLabel="Search institutions"
               style={[styles.searchInput, { color: c.text }]}
             />
             {searchQuery ? (
@@ -547,6 +540,9 @@ export default function Profile() {
 
         <Pressable
           onPress={() => setShowFilterModal(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Filter: ${activeFilterLabel}`}
+          accessibilityHint="Opens filter options"
           style={({ pressed }) => [
             styles.filterRow,
             { opacity: pressed ? 0.8 : 1 },
@@ -634,7 +630,12 @@ export default function Profile() {
       </ScrollView>
 
       <Modal visible={showFilterModal} transparent animationType="fade" onRequestClose={() => setShowFilterModal(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowFilterModal(false)}>
+        <Pressable
+          style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}
+          onPress={() => setShowFilterModal(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Close filter options"
+        >
           <Pressable
             onPress={() => {}}
             style={[styles.filterModalCard, { backgroundColor: c.card, borderColor: c.border }]}
@@ -650,11 +651,14 @@ export default function Profile() {
                       setActiveFilter(opt.value);
                       setShowFilterModal(false);
                     }}
+                    accessibilityRole="button"
+                    accessibilityLabel={selected ? `${opt.label}, selected` : opt.label}
+                    accessibilityState={{ selected }}
                     style={[
                       styles.filterOption,
                       {
                         borderColor: selected ? c.tint : c.border,
-                        backgroundColor: selected ? `${c.tint}22` : c.card,
+                        backgroundColor: selected ? c.tintSoft : c.card,
                       },
                     ]}
                   >
@@ -678,8 +682,8 @@ export default function Profile() {
           resetInstitutionForm();
         }}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: c.card, borderColor: c.border }]}> 
+        <View style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}>
+          <View style={[styles.modalCard, { backgroundColor: c.card, borderColor: c.border }]}>
             <Text style={[styles.modalTitle, { color: c.text }]}>Add Institution</Text>
 
             <TextInput
@@ -687,6 +691,7 @@ export default function Profile() {
               onChangeText={setInstitutionName}
               placeholder="Institution name"
               placeholderTextColor={c.mutedText}
+              accessibilityLabel="Institution name"
               style={[
                 styles.input,
                 { color: c.text, borderColor: c.border, backgroundColor: c.background },
@@ -706,7 +711,7 @@ export default function Profile() {
                     { backgroundColor: color, borderColor: avatarColor === color ? c.text : c.border },
                   ]}
                 >
-                  {avatarColor === color ? <Ionicons name="checkmark" size={12} color="#FFFFFF" /> : null}
+                  {avatarColor === color ? <Ionicons name="checkmark" size={12} color={OnAvatar} /> : null}
                 </Pressable>
               ))}
             </View>
@@ -714,6 +719,8 @@ export default function Profile() {
             <Text style={[styles.inputLabel, { color: c.mutedText }]}>Image</Text>
             <Pressable
               onPress={pickAvatarImage}
+              accessibilityRole="button"
+              accessibilityLabel={pickedAvatar ? `Avatar image: ${pickedAvatar.name}` : "Upload avatar image"}
               style={({ pressed }) => [
                 styles.uploadBtn,
                 { borderColor: c.border, backgroundColor: c.background, opacity: pressed ? 0.9 : 1 },
@@ -731,6 +738,8 @@ export default function Profile() {
                   setShowInstitutionModal(false);
                   resetInstitutionForm();
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
                 style={[styles.modalBtn, { borderColor: c.border }]}
               >
                 <Text style={[styles.modalBtnText, { color: c.text }]}>Cancel</Text>
@@ -738,9 +747,14 @@ export default function Profile() {
               <Pressable
                 onPress={handleAddInstitution}
                 disabled={saving}
+                accessibilityRole="button"
+                accessibilityLabel="Save institution"
+                accessibilityState={{ disabled: saving, busy: saving }}
                 style={[styles.modalBtnPrimary, { backgroundColor: c.tint }]}
               >
-                <Text style={styles.modalBtnPrimaryText}>{saving ? "Saving..." : "Save"}</Text>
+                <Text style={[styles.modalBtnPrimaryText, { color: c.onTint }]}>
+                  {saving ? "Saving..." : "Save"}
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -776,7 +790,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  profileAvatarText: { color: "#FFFFFF", fontSize: 24, fontWeight: "800" },
+  profileAvatarText: { fontSize: 24, fontWeight: "800" },
   profileInfo: { flex: 1 },
   profileName: { fontSize: 20, fontWeight: "800" },
   profileHandle: { fontSize: 13, marginTop: 1 },
@@ -858,7 +872,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarInitials: { color: "#FFFFFF", fontSize: 34, fontWeight: "800" },
+  avatarInitials: { color: OnAvatar, fontSize: 34, fontWeight: "800" },
   defaultDot: {
     position: "absolute",
     right: 4,
@@ -899,7 +913,6 @@ const styles = StyleSheet.create({
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
     padding: 18,
   },
@@ -975,5 +988,5 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 12,
   },
-  modalBtnPrimaryText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  modalBtnPrimaryText: { fontSize: 14, fontWeight: "700" },
 });

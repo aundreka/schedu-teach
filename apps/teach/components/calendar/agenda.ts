@@ -118,13 +118,16 @@ function planSubtitle(year: string | null, section: string): string {
   return [normalizeYear(year), section].filter(Boolean).join(" - ");
 }
 
+// Intentional literal hexes: stable per-subject identity hues assigned to a
+// plan and stored on its blocks as data (`DayBlock.color`). They are brand-like
+// accents deliberately independent of the light/dark theme tokens.
 const SUBJECT_PALETTE = ["#EA6EA4", "#5A92D2", "#7A93B1", "#66A29A", "#E0B341", "#A985D6"] as const;
 
 export function subjectColor(code: string, year: string | null): string {
   const c = (code ?? "").toUpperCase().trim();
-  if (c.startsWith("MAT")) return "#EA6EA4";
-  if (c.startsWith("SCI8")) return "#5A92D2";
-  if (c.startsWith("SCI9")) return "#7A93B1";
+  if (c.startsWith("MAT")) return SUBJECT_PALETTE[0];
+  if (c.startsWith("SCI8")) return SUBJECT_PALETTE[1];
+  if (c.startsWith("SCI9")) return SUBJECT_PALETTE[2];
   const seed = `${c}|${(year ?? "").toLowerCase()}`;
   let h = 2166136261;
   for (let i = 0; i < seed.length; i += 1) {
@@ -556,132 +559,3 @@ export async function deleteBlock(blockId: string): Promise<void> {
   const { error } = await supabase.from("blocks").delete().eq("block_id", blockId);
   if (error) throw error;
 }
-
-// ---------------------------------------------------------------------------
-// Sample agenda — mirrors the daily mock, used when the teacher has no plans.
-// ---------------------------------------------------------------------------
-
-export const DEMO_AGENDA_DATE = "2026-10-30"; // Friday, October 30
-
-function demoLesson(
-  lessonId: string,
-  title: string,
-  sequenceNo: number,
-  unitId: string,
-  unitTitle: string,
-  unitSequenceNo: number,
-  chapterId: string,
-  chapterTitle: string,
-  chapterSequenceNo: number,
-): PlanLesson {
-  return {
-    lessonId,
-    title,
-    sequenceNo,
-    unitId,
-    unitTitle,
-    unitSequenceNo,
-    chapterId,
-    chapterTitle,
-    chapterSequenceNo,
-  };
-}
-
-export const DEMO_AGENDA_PLANS: PlanWithLessons[] = [
-  {
-    lessonPlanId: "__demo_sci8",
-    subjectId: "__demo_sci8",
-    subjectTitle: "SCIENCE",
-    subjectCode: "SCI8",
-    subjectYear: "8",
-    sectionName: "Tesla",
-    subtitle: "Grade 8 - Tesla",
-    color: "#5A92D2",
-    lessons: [
-      demoLesson("d8-1", "Introduction to Science", 1, "u-bio", "Biology", 1, "c-foundations", "Chapter 1: Foundations", 1),
-      demoLesson("d8-2", "The Human Body", 1, "u-bio", "Biology", 1, "c-body", "Chapter 2: Human Body", 2),
-      demoLesson("d8-3", "Digestive System", 2, "u-bio", "Biology", 1, "c-body", "Chapter 2: Human Body", 2),
-      demoLesson("d8-4", "Skeletal System", 3, "u-bio", "Biology", 1, "c-body", "Chapter 2: Human Body", 2),
-      demoLesson("d8-5", "Muscular System", 4, "u-bio", "Biology", 1, "c-body", "Chapter 2: Human Body", 2),
-    ],
-  },
-  {
-    lessonPlanId: "__demo_math10",
-    subjectId: "__demo_math10",
-    subjectTitle: "MATHEMATICS",
-    subjectCode: "MAT10",
-    subjectYear: "10",
-    sectionName: "Newton",
-    subtitle: "Grade 10 - Newton",
-    color: "#EA6EA4",
-    lessons: [
-      demoLesson("dm-1", "Linear Equations", 1, "u-alg", "Algebra", 1, "c-linear", "Chapter 1: Linear Functions", 1),
-      demoLesson("dm-2", "Quadratic Functions", 1, "u-alg", "Algebra", 1, "c-quad", "Chapter 2: Quadratic Functions", 2),
-      demoLesson("dm-3", "Polynomials", 1, "u-alg", "Algebra", 1, "c-poly", "Chapter 3: Polynomials", 3),
-    ],
-  },
-];
-
-function demoEntry(
-  partial: Omit<DayBlock, "groupId" | "manual" | "scopeLessonIds" | "isSuspended" | "lockReason"> & {
-    scopeLessonIds?: string[];
-  },
-): DayBlock {
-  return {
-    groupId: partial.blockId,
-    manual: false,
-    scopeLessonIds: partial.scopeLessonIds ?? [],
-    isSuspended: false,
-    lockReason: null,
-    ...partial,
-  };
-}
-
-export const DEMO_AGENDA: DayAgenda = {
-  dateISO: DEMO_AGENDA_DATE,
-  plans: DEMO_AGENDA_PLANS,
-  entries: [
-    demoEntry({
-      blockId: "demo-b1", label: "L2", title: "The Human Body",
-      category: "lesson", subcategory: "lecture", lessonId: "d8-2", scopeLessonIds: ["d8-2"],
-      startTime: "07:00:00", endTime: "08:00:00",
-      lessonPlanId: "__demo_sci8", subjectId: "__demo_sci8",
-      subjectTitle: "SCIENCE", subjectCode: "SCI8", subtitle: "Grade 8 - Tesla", color: "#5A92D2",
-    }),
-    demoEntry({
-      blockId: "demo-b2", label: "SW2", title: "Lesson 1 & 2",
-      category: "written_work", subcategory: "seatwork", lessonId: null,
-      startTime: "08:00:00", endTime: "09:00:00",
-      lessonPlanId: "__demo_sci9_curie", subjectId: "__demo_sci9_curie",
-      subjectTitle: "SCIENCE", subjectCode: "SCI9", subtitle: "Grade 9 - Curie", color: "#7A93B1",
-    }),
-    demoEntry({
-      blockId: "demo-b3", label: "Q1", title: "Lesson 1 & 2",
-      category: "written_work", subcategory: "quiz", lessonId: null,
-      startTime: "10:00:00", endTime: "11:00:00",
-      lessonPlanId: "__demo_sci9_bohr", subjectId: "__demo_sci9_bohr",
-      subjectTitle: "SCIENCE", subjectCode: "SCI9", subtitle: "Grade 9 - Bohr", color: "#5A92D2",
-    }),
-    demoEntry({
-      blockId: "demo-b4", label: "SW3", title: "Lesson 5",
-      category: "written_work", subcategory: "seatwork", lessonId: null, scopeLessonIds: ["dm-1"],
-      startTime: "12:00:00", endTime: "13:00:00",
-      lessonPlanId: "__demo_math10", subjectId: "__demo_math10",
-      subjectTitle: "MATHEMATICS", subjectCode: "MAT10", subtitle: "Grade 10 - Newton", color: "#EA6EA4",
-    }),
-    demoEntry({
-      blockId: "demo-b5", label: "L3", title: "Polynomials",
-      category: "lesson", subcategory: "lecture", lessonId: "dm-3", scopeLessonIds: ["dm-3"],
-      startTime: "13:00:00", endTime: "14:00:00",
-      lessonPlanId: "__demo_math10", subjectId: "__demo_math10",
-      subjectTitle: "MATHEMATICS", subjectCode: "MAT10", subtitle: "Grade 10 - Newton", color: "#EA6EA4",
-    }),
-    demoEntry({
-      blockId: "demo-b6", label: "L1", title: "Introduction",
-      category: "lesson", subcategory: "lecture", lessonId: null,
-      startTime: "15:00:00", endTime: "16:00:00",
-      lessonPlanId: "__demo_eng7", subjectId: "__demo_eng7",
-      subjectTitle: "ENGLISH", subjectCode: "ENG7", subtitle: "Grade 7 - Darwin", color: "#E0B341",
-    }),
-  ],
-};

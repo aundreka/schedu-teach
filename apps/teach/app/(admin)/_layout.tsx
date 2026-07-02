@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from "react-native";
 import { Tabs, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { FontSizes } from "../../constants/fonts";
 import { useAppTheme } from "../../context/theme";
 import { supabase } from "../../lib/supabase";
 
@@ -68,7 +69,7 @@ export default function AdminLayout() {
           paddingTop: 6,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: FontSizes.label,
         },
       }}
     >

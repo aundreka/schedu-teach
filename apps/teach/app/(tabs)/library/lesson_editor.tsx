@@ -28,6 +28,11 @@ import {
 } from "../../../lib/lesson-editor";
 import { supabase } from "../../../lib/supabase";
 
+// The editor WebView renders the tiptap document on a white "paper" sheet in
+// BOTH color schemes (see tiptapDocumentHtml). The shell behind it must match
+// so loading/short documents don't flash a mismatched color.
+const PAPER_BG = "#FFFFFF";
+
 function parseWebMessage(event: WebViewMessageEvent) {
   try {
     return JSON.parse(event.nativeEvent.data) as WebMessage;
@@ -59,7 +64,7 @@ const DEFAULT_TOOLBAR_STATE: ToolbarState = {
 };
 
 export default function LessonEditorScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const params = useLocalSearchParams<{ lessonId?: string | string[]; subjectId?: string | string[] }>();
   const lessonId = useMemo(() => readParam(params.lessonId), [params.lessonId]);
   const subjectIdParam = useMemo(() => readParam(params.subjectId), [params.subjectId]);
@@ -137,9 +142,8 @@ export default function LessonEditorScreen() {
   }, [loadLesson]);
 
   const { refreshing, onRefresh } = usePullToRefresh(loadLesson);
-  const shellBg = useMemo(() => (scheme === "dark" ? "#0E1218" : "#FFFFFF"), [scheme]);
-  const editorBg = useMemo(() => (scheme === "dark" ? "#11161D" : "#FFFFFF"), [scheme]);
-  const pageBg = useMemo(() => (scheme === "dark" ? c.background : "#F5F6F7"), [c.background, scheme]);
+  const shellBg = c.card;
+  const pageBg = c.background;
   const resolvedSubjectId = (lesson?.subject_id ?? subjectIdParam) || "";
   const editorSource = useMemo(
     () => ({ html: tiptapDocumentHtml({ editable: true, initialHtml: loadedEditorHtml }) }),
@@ -179,8 +183,8 @@ export default function LessonEditorScreen() {
     }
   };
 
-  const activeBg = scheme === "dark" ? "#1F2A37" : "#E8EEF9";
-  const activeAccent = scheme === "dark" ? "#8FB4FF" : "#1D4ED8";
+  const activeBg = c.tintSoft;
+  const activeAccent = c.tintDeep;
   const resolveToolButtonStyle = (active: boolean) => [styles.toolBtn, active ? { backgroundColor: activeBg } : null];
   const resolveToolTextColor = (active: boolean) => (active ? activeAccent : c.text);
 
@@ -262,19 +266,40 @@ export default function LessonEditorScreen() {
           </View>
 
           <View style={[styles.toolbar, { borderTopColor: c.border }]}>
-            <Pressable style={resolveToolButtonStyle(toolbarState.bold)} onPress={() => sendCommand({ type: "bold" })}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Bold"
+              accessibilityState={{ selected: toolbarState.bold }}
+              style={resolveToolButtonStyle(toolbarState.bold)}
+              onPress={() => sendCommand({ type: "bold" })}
+            >
               <Text style={[styles.toolText, styles.boldTool, { color: resolveToolTextColor(toolbarState.bold) }]}>B</Text>
             </Pressable>
-            <Pressable style={resolveToolButtonStyle(toolbarState.italic)} onPress={() => sendCommand({ type: "italic" })}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Italic"
+              accessibilityState={{ selected: toolbarState.italic }}
+              style={resolveToolButtonStyle(toolbarState.italic)}
+              onPress={() => sendCommand({ type: "italic" })}
+            >
               <Text style={[styles.toolText, styles.italicTool, { color: resolveToolTextColor(toolbarState.italic) }]}>I</Text>
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Underline"
+              accessibilityState={{ selected: toolbarState.underline }}
               style={resolveToolButtonStyle(toolbarState.underline)}
               onPress={() => sendCommand({ type: "underline" })}
             >
               <Text style={[styles.toolText, styles.underlineTool, { color: resolveToolTextColor(toolbarState.underline) }]}>U</Text>
             </Pressable>
-            <Pressable style={resolveToolButtonStyle(toolbarState.strike)} onPress={() => sendCommand({ type: "strike" })}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Strikethrough"
+              accessibilityState={{ selected: toolbarState.strike }}
+              style={resolveToolButtonStyle(toolbarState.strike)}
+              onPress={() => sendCommand({ type: "strike" })}
+            >
               <Text style={[styles.toolText, styles.strikeTool, { color: resolveToolTextColor(toolbarState.strike) }]}>S</Text>
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Bullet list" style={resolveToolButtonStyle(toolbarState.bullet)} onPress={() => sendCommand({ type: "bullet" })}>
@@ -323,19 +348,21 @@ export default function LessonEditorScreen() {
                 value={linkUrl}
                 onChangeText={setLinkUrl}
                 placeholder="https://example.com"
-                placeholderTextColor={scheme === "dark" ? "#7B8798" : "#9CA3AF"}
-                style={[styles.trayInput, { color: c.text, borderColor: c.border, backgroundColor: editorBg }]}
+                placeholderTextColor={c.faintText}
+                style={[styles.trayInput, { color: c.text, borderColor: c.border, backgroundColor: c.background }]}
                 autoCapitalize="none"
               />
               <Pressable
-                style={[styles.trayButton, { backgroundColor: c.text }]}
+                accessibilityRole="button"
+                accessibilityLabel="Apply link"
+                style={[styles.trayButton, { backgroundColor: c.tint }]}
                 onPress={() => {
                   sendCommand({ type: "link", url: linkUrl.trim() });
                   setLinkUrl("");
                   setShowLinkEditor(false);
                 }}
               >
-                <Text style={[styles.trayButtonText, { color: editorBg }]}>Apply</Text>
+                <Text style={[styles.trayButtonText, { color: c.onTint }]}>Apply</Text>
               </Pressable>
             </View>
           ) : null}
@@ -345,7 +372,7 @@ export default function LessonEditorScreen() {
           style={[
             styles.editorShell,
             {
-              backgroundColor: editorBg,
+              backgroundColor: PAPER_BG,
               borderColor: c.border,
               height: editorHeight,
             },

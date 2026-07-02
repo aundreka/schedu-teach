@@ -15,18 +15,31 @@ import {
   View,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
-import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Radius, Spacing, Typography } from "../../../constants/fonts";
 import { useAppTheme } from "../../../context/theme";
 import { usePullToRefresh } from "../../../hooks/usePullToRefresh";
-import { formatEdgeFunctionError } from "../../../lib/edge-function-errors";
 import { supabase } from "../../../lib/supabase";
+import {
+  extractPdfTextFromStoragePath,
+  guessMimeType,
+  ocrImage,
+  uploadUriAsset,
+} from "../../../lib/extraction";
+import {
+  Button,
+  Card,
+  Input,
+  ListRow,
+  ProgressBar,
+  StepFlow,
+  type StepDef,
+} from "../../../components/ui";
 import * as Haptics from "expo-haptics";
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -59,172 +72,6 @@ type UploadMode = "text" | "image" | "file" | null;
 function getParamValue(value?: string | string[]) {
   if (!value) return "";
   return Array.isArray(value) ? String(value[0] ?? "") : String(value);
-}
-
-function sanitizeFileName(name: string) {
-  return name.replace(/[^\w.\-]+/g, "_");
-}
-
-function guessMimeType(name: string, fallback?: string | null) {
-  const lower = name.toLowerCase();
-  if (lower.endsWith(".png")) return "image/png";
-  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
-  if (lower.endsWith(".webp")) return "image/webp";
-  if (lower.endsWith(".pdf")) return "application/pdf";
-  if (lower.endsWith(".doc")) return "application/msword";
-  if (lower.endsWith(".docx")) {
-    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  }
-  if (lower.endsWith(".txt")) return "text/plain";
-  return fallback || "application/octet-stream";
-}
-
-async function readUriAsArrayBuffer(uri: string) {
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: "base64" });
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
-}
-
-async function uploadUriAsset(params: {
-  uri: string;
-  userId: string;
-  fileName: string;
-  mimeType: string;
-  folder: string;
-}) {
-  const { uri, userId, fileName, mimeType, folder } = params;
-  const safeName = sanitizeFileName(fileName);
-  const path = `users/${userId}/lessons/${folder}_${Date.now()}_${safeName}`;
-  const body = await readUriAsArrayBuffer(uri);
-  const { error } = await supabase.storage.from("uploads").upload(path, body, {
-    contentType: mimeType,
-    upsert: true,
-  });
-  if (error) throw error;
-  return path;
-}
-
-async function extractPdfTextFromStoragePath(storagePath: string) {
-  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-  if (sessionErr) throw sessionErr;
-  const session = sessionData?.session;
-  if (!session?.access_token) throw new Error("You must be signed in.");
-
-  const { data, error, response } = await supabase.functions.invoke("extract-text", {
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
-    body: { storagePath },
-  });
-
-  if (error) {
-    throw new Error(await formatEdgeFunctionError("extract-text", error, response));
-  }
-
-  return String(data?.text ?? "");
-}
-
-async function ocrImage(uri: string): Promise<string> {
-  try {
-    const mod = await import("react-native-mlkit-ocr");
-    const result = await mod.default.detectFromUri(uri);
-    if (typeof result === "string") return result;
-
-    type OcrSegment = {
-      text: string;
-      x: number;
-      y: number;
-      h: number;
-    };
-
-    const segments: OcrSegment[] = [];
-    const fallbackPieces: string[] = [];
-
-    for (const block of result ?? []) {
-      if (block?.lines?.length) {
-        for (const line of block.lines) {
-          if (!line?.text) continue;
-          fallbackPieces.push(String(line.text).trim());
-          const frame = (line as any)?.frame ?? {};
-          segments.push({
-            text: String(line.text).trim(),
-            x: Number(frame?.x ?? 0),
-            y: Number(frame?.y ?? 0),
-            h: Number(frame?.height ?? 0),
-          });
-        }
-        continue;
-      }
-
-      if (block?.text) {
-        fallbackPieces.push(String(block.text).trim());
-        const frame = (block as any)?.frame ?? {};
-        segments.push({
-          text: String(block.text).trim(),
-          x: Number(frame?.x ?? 0),
-          y: Number(frame?.y ?? 0),
-          h: Number(frame?.height ?? 0),
-        });
-      }
-    }
-
-    if (segments.length === 0) return "";
-
-    const fallbackText = fallbackPieces.filter(Boolean).join("\n").trim();
-    const positionedSegments = segments.filter(
-      (segment) => Number.isFinite(segment.x) && Number.isFinite(segment.y) && (segment.x !== 0 || segment.y !== 0)
-    );
-    const distinctY = new Set(positionedSegments.map((segment) => Math.round(segment.y))).size;
-    const canReliablySort = positionedSegments.length >= 4 && distinctY >= 3;
-    if (!canReliablySort) {
-      return fallbackText;
-    }
-
-    const avgHeight =
-      segments.reduce((sum, segment) => sum + (segment.h > 0 ? segment.h : 18), 0) / segments.length;
-    const rowTolerance = Math.max(10, Math.min(28, avgHeight * 0.65));
-
-    segments.sort((a, b) => {
-      if (Math.abs(a.y - b.y) > rowTolerance) return a.y - b.y;
-      return a.x - b.x;
-    });
-
-    const rows: OcrSegment[][] = [];
-    for (const segment of segments) {
-      const lastRow = rows[rows.length - 1];
-      if (!lastRow) {
-        rows.push([segment]);
-        continue;
-      }
-
-      const rowY = lastRow.reduce((sum, item) => sum + item.y, 0) / lastRow.length;
-      if (Math.abs(segment.y - rowY) <= rowTolerance) {
-        lastRow.push(segment);
-      } else {
-        rows.push([segment]);
-      }
-    }
-
-    const orderedLines = rows
-      .map((row) =>
-        row
-          .sort((a, b) => a.x - b.x)
-          .map((segment) => segment.text)
-          .filter(Boolean)
-          .join(" ")
-          .replace(/[ ]{2,}/g, " ")
-          .trim()
-      )
-      .filter((line) => line.length > 0);
-
-    return orderedLines.join("\n").trim();
-  } catch {
-    throw new Error(
-      "Image OCR needs a Dev Build (not Expo Go). Install react-native-mlkit-ocr and rebuild your app."
-    );
-  }
 }
 
 const LESSON_SECTION_HEADINGS = new Set([
@@ -490,8 +337,32 @@ function AnimatedUploadBtn({
   );
 }
 
+const LESSON_STEPS: StepDef[] = [
+  {
+    key: "placement",
+    title: "Where does this lesson go?",
+    subtitle: "Pick the subject and where the lesson sits.",
+  },
+  {
+    key: "content",
+    title: "Add the lesson content",
+    subtitle: "Type it, snap a photo, or attach a file.",
+  },
+  {
+    key: "review",
+    title: "Review & add",
+    subtitle: "Tap a row to jump back and change it.",
+  },
+];
+
+type LessonFieldErrors = {
+  subject?: string;
+  lessonNumber?: string;
+};
+
 export default function CreateLessonScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     subjectId?: string | string[];
     chapterId?: string | string[];
@@ -519,6 +390,25 @@ export default function CreateLessonScreen() {
   const [fileAsset, setFileAsset] = useState<PickedAsset | null>(null);
   const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
   const selectedSubjectIdRef = useRef("");
+
+  const [stepIndex, setStepIndex] = useState(0);
+  const [fieldErrors, setFieldErrors] = useState<LessonFieldErrors>({});
+
+  // Extraction runs on step 2's Continue; results are cached so the final
+  // save never re-uploads or re-extracts what we already have.
+  const [extracting, setExtracting] = useState(false);
+  const [extractStage, setExtractStage] = useState("");
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractedText, setExtractedText] = useState<string | null>(null);
+  const [imageStoragePath, setImageStoragePath] = useState<string | null>(null);
+  const [fileStoragePath, setFileStoragePath] = useState<string | null>(null);
+
+  const resetExtractionCache = () => {
+    setExtractedText(null);
+    setImageStoragePath(null);
+    setFileStoragePath(null);
+    setExtractError(null);
+  };
 
   useEffect(() => {
     selectedSubjectIdRef.current = selectedSubjectId;
@@ -651,15 +541,6 @@ export default function CreateLessonScreen() {
     return chapters.find((item) => item.sequence_no === normalizedChapterNumber) ?? null;
   }, [chapters, normalizedChapterNumber]);
 
-  const subjectFieldText = selectedSubject ? `${selectedSubject.code} - ${selectedSubject.title}` : "Subject";
-  const canSave = Boolean(selectedSubject && normalizedLessonNumber && !saving);
-
-  const previewPlaceholder = useMemo(() => {
-    if (uploadMode === "text") return "Paste or type lesson content here.";
-    if (uploadMode === "image") return "Choose an image to attach to this lesson.";
-    if (uploadMode === "file") return "Choose a document to attach to this lesson.";
-    return "Select text, image, or file for this lesson.";
-  }, [uploadMode]);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -672,6 +553,7 @@ export default function CreateLessonScreen() {
   const handlePickSubject = async (subjectId: string) => {
     setSelectedSubjectId(subjectId);
     setSubjectPickerOpen(false);
+    setFieldErrors((current) => ({ ...current, subject: undefined }));
     setChapterNumber("");
     setLessonNumber("");
 
@@ -705,6 +587,7 @@ export default function CreateLessonScreen() {
     });
     setFileAsset(null);
     setUploadMode("image");
+    resetExtractionCache();
   };
 
   const handlePickFile = async () => {
@@ -728,6 +611,112 @@ export default function CreateLessonScreen() {
     });
     setImageAsset(null);
     setUploadMode("file");
+    resetExtractionCache();
+  };
+
+  const selectTextMode = () => {
+    setUploadMode("text");
+    setImageAsset(null);
+    setFileAsset(null);
+    resetExtractionCache();
+  };
+
+  const validatePlacementStep = () => {
+    const errors: LessonFieldErrors = {};
+    if (!selectedSubject) errors.subject = "Choose a subject.";
+    if (!normalizedLessonNumber) errors.lessonNumber = "Enter a lesson number.";
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const skipContentStep = () => {
+    setUploadMode(null);
+    setLessonText("");
+    setImageAsset(null);
+    setFileAsset(null);
+    resetExtractionCache();
+    setStepIndex(2);
+  };
+
+  const handleContentContinue = async () => {
+    setExtractError(null);
+
+    if (uploadMode === "image" && imageAsset) {
+      if (extractedText !== null && imageStoragePath) {
+        setStepIndex(2);
+        return;
+      }
+      if (!userId) {
+        setExtractError("Session error. Please sign in again.");
+        return;
+      }
+      setExtracting(true);
+      try {
+        setExtractStage("Uploading image…");
+        const storagePath =
+          imageStoragePath ??
+          (await uploadUriAsset({
+            uri: imageAsset.uri,
+            userId,
+            fileName: imageAsset.name,
+            mimeType: imageAsset.mimeType,
+            folder: "image",
+            scope: "lessons",
+          }));
+        setImageStoragePath(storagePath);
+        const text = formatExtractedLessonText(await ocrImage(imageAsset.uri, setExtractStage));
+        setExtractedText(text);
+        setStepIndex(2);
+      } catch (err: any) {
+        setExtractError(err?.message ?? "Could not read the image. Please try again.");
+      } finally {
+        setExtracting(false);
+        setExtractStage("");
+      }
+      return;
+    }
+
+    if (uploadMode === "file" && fileAsset) {
+      if (extractedText !== null && fileStoragePath) {
+        setStepIndex(2);
+        return;
+      }
+      if (!userId) {
+        setExtractError("Session error. Please sign in again.");
+        return;
+      }
+      setExtracting(true);
+      try {
+        setExtractStage("Uploading file…");
+        const mimeType = fileAsset.mimeType || guessMimeType(fileAsset.name, "application/octet-stream");
+        const storagePath =
+          fileStoragePath ??
+          (await uploadUriAsset({
+            uri: fileAsset.uri,
+            userId,
+            fileName: fileAsset.name,
+            mimeType,
+            folder: "file",
+            scope: "lessons",
+          }));
+        setFileStoragePath(storagePath);
+        const text =
+          mimeType === "application/pdf"
+            ? formatExtractedLessonText(await extractPdfTextFromStoragePath(storagePath, setExtractStage))
+            : "";
+        setExtractedText(text);
+        setStepIndex(2);
+      } catch (err: any) {
+        setExtractError(err?.message ?? "Could not read the file. Please try again.");
+      } finally {
+        setExtracting(false);
+        setExtractStage("");
+      }
+      return;
+    }
+
+    // Typed text (or nothing selected) needs no extraction.
+    setStepIndex(2);
   };
 
   const handleSave = async () => {
@@ -746,34 +735,42 @@ export default function CreateLessonScreen() {
 
     setSaving(true);
     try {
-      let imageStoragePath: string | null = null;
-      let fileStoragePath: string | null = null;
+      let lessonImagePath: string | null = null;
+      let lessonFilePath: string | null = null;
       let extractedLessonText = "";
 
       if (uploadMode === "image" && imageAsset) {
-        imageStoragePath = await uploadUriAsset({
-          uri: imageAsset.uri,
-          userId,
-          fileName: imageAsset.name,
-          mimeType: imageAsset.mimeType,
-          folder: "image",
-        });
-        extractedLessonText = formatExtractedLessonText(await ocrImage(imageAsset.uri));
+        // Reuse the upload + OCR from step 2 when available.
+        lessonImagePath =
+          imageStoragePath ??
+          (await uploadUriAsset({
+            uri: imageAsset.uri,
+            userId,
+            fileName: imageAsset.name,
+            mimeType: imageAsset.mimeType,
+            folder: "image",
+            scope: "lessons",
+          }));
+        extractedLessonText =
+          extractedText ?? formatExtractedLessonText(await ocrImage(imageAsset.uri));
       }
 
       if (uploadMode === "file" && fileAsset) {
         const mimeType = fileAsset.mimeType || guessMimeType(fileAsset.name, "application/octet-stream");
-        fileStoragePath = await uploadUriAsset({
-          uri: fileAsset.uri,
-          userId,
-          fileName: fileAsset.name,
-          mimeType,
-          folder: "file",
-        });
+        lessonFilePath =
+          fileStoragePath ??
+          (await uploadUriAsset({
+            uri: fileAsset.uri,
+            userId,
+            fileName: fileAsset.name,
+            mimeType,
+            folder: "file",
+            scope: "lessons",
+          }));
         if (mimeType === "application/pdf") {
-          extractedLessonText = formatExtractedLessonText(
-            await extractPdfTextFromStoragePath(fileStoragePath)
-          );
+          extractedLessonText =
+            extractedText ??
+            formatExtractedLessonText(await extractPdfTextFromStoragePath(lessonFilePath));
         }
       }
 
@@ -848,8 +845,8 @@ export default function CreateLessonScreen() {
       const normalizedTitle = title.trim() || `Lesson ${normalizedLessonNumber}`;
       const content = buildLessonContent({
         text: lessonText.trim() || extractedLessonText,
-        imageStoragePath,
-        fileStoragePath,
+        imageStoragePath: lessonImagePath,
+        fileStoragePath: lessonFilePath,
         formatting,
       });
 
@@ -887,343 +884,407 @@ export default function CreateLessonScreen() {
     );
   }
 
-  const fieldBg = scheme === "dark" ? "#161D26" : "#F8F8F8";
-  const dividerColor = scheme === "dark" ? c.border : "#E3E3E3";
-  const iconButtonBg = scheme === "dark" ? "#171B21" : "#FBFBFB";
-  const activeIconButtonBg = scheme === "dark" ? "#203126" : "#EAF7EE";
-  const activeIconColor = scheme === "dark" ? "#D9F2E1" : "#1D6A3A";
-  const inactiveTextColor = scheme === "dark" ? "#9AA3AF" : "#B4B4B4";
-  const surfaceTextColor = selectedSubject ? c.text : inactiveTextColor;
+  const contentStatus = (() => {
+    if (uploadMode === "text" && lessonText.trim()) {
+      return `${lessonText.trim().length.toLocaleString()} characters typed`;
+    }
+    if (extractedText !== null) {
+      return extractedText.trim()
+        ? `${extractedText.trim().length.toLocaleString()} characters extracted`
+        : "No text detected";
+    }
+    if (uploadMode === "image" && imageAsset) return imageAsset.name;
+    if (uploadMode === "file" && fileAsset) return fileAsset.name;
+    return "Skipped";
+  })();
+
+  const chapterSummary = matchingChapter
+    ? `Ch. ${matchingChapter.sequence_no} · ${matchingChapter.title}`
+    : normalizedChapterNumber
+      ? `Chapter ${normalizedChapterNumber} (new)`
+      : "General (auto)";
+
+  const stageProgress =
+    extractStage === "Uploading image…" || extractStage === "Uploading file…"
+      ? 0.25
+      : extractStage === "Reading text…"
+        ? 0.6
+        : extractStage === "Cleaning up…"
+          ? 0.9
+          : 0;
+
+  const handleNext = () => {
+    if (stepIndex === 0) {
+      if (validatePlacementStep()) setStepIndex(1);
+      return;
+    }
+    if (stepIndex === 1) {
+      void handleContentContinue();
+      return;
+    }
+    void handleSave();
+  };
+
+  const handleStepBack = () => {
+    if (stepIndex === 0) {
+      handleBack();
+      return;
+    }
+    setExtractError(null);
+    setStepIndex(stepIndex - 1);
+  };
+
+  const nextLabel =
+    stepIndex === 2 ? "Create lesson" : stepIndex === 1 && extractError ? "Try again" : "Continue";
+  const nextLoading = stepIndex === 1 ? extracting : stepIndex === 2 ? saving : false;
+
+  const placementStep = (
+    <ScrollView
+      contentContainerStyle={styles.stepScroll}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.tint} />}
+    >
+      <View style={styles.fieldGap}>
+        <Text
+          style={[
+            Typography.bodySm,
+            styles.pickerLabel,
+            { color: fieldErrors.subject ? c.danger : c.mutedText },
+          ]}
+        >
+          Subject
+        </Text>
+        <Pressable
+          onPress={() => setSubjectPickerOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel={`Subject: ${
+            selectedSubject ? `${selectedSubject.code} - ${selectedSubject.title}` : "none selected"
+          }`}
+          style={[
+            styles.pickerField,
+            {
+              backgroundColor: c.surfaceAlt,
+              borderColor: fieldErrors.subject ? c.danger : c.border,
+            },
+          ]}
+        >
+          <Text
+            numberOfLines={1}
+            style={[Typography.body, styles.pickerValue, { color: selectedSubject ? c.text : c.faintText }]}
+          >
+            {selectedSubject ? `${selectedSubject.code} - ${selectedSubject.title}` : "Choose subject"}
+          </Text>
+          <Ionicons name="chevron-down" size={16} color={c.mutedText} />
+        </Pressable>
+        {!!fieldErrors.subject && (
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[Typography.caption, styles.fieldError, { color: c.danger }]}
+          >
+            {fieldErrors.subject}
+          </Text>
+        )}
+      </View>
+
+      <View style={styles.fieldRow}>
+        <Input
+          label="Chapter number"
+          value={chapterNumber}
+          onChangeText={(value) => setChapterNumber(value.replace(/[^0-9]/g, ""))}
+          placeholder="Optional"
+          keyboardType="number-pad"
+          helper={matchingChapter ? matchingChapter.title : undefined}
+          containerStyle={styles.fieldFlex}
+        />
+        <Input
+          label="Lesson number"
+          value={lessonNumber}
+          onChangeText={(value) => {
+            setLessonNumber(value.replace(/[^0-9]/g, ""));
+            if (fieldErrors.lessonNumber) {
+              setFieldErrors((current) => ({ ...current, lessonNumber: undefined }));
+            }
+          }}
+          placeholder="e.g. 1"
+          keyboardType="number-pad"
+          error={fieldErrors.lessonNumber}
+          containerStyle={styles.fieldFlex}
+        />
+      </View>
+
+      <Input
+        label="Title"
+        value={title}
+        onChangeText={setTitle}
+        placeholder="Optional — defaults to the lesson number"
+        containerStyle={styles.fieldGap}
+      />
+    </ScrollView>
+  );
+
+  const contentStep = (
+    <View style={styles.contentStep}>
+      <Card variant="flat" padded={false} style={styles.dropZone}>
+        {uploadMode === "text" ? (
+          <TextInput
+            value={lessonText}
+            onChangeText={setLessonText}
+            placeholder="Paste or type lesson content here."
+            placeholderTextColor={c.faintText}
+            multiline
+            textAlignVertical="top"
+            accessibilityLabel="Lesson content text"
+            style={[Typography.body, styles.dropZoneTextInput, { color: c.text }]}
+          />
+        ) : uploadMode === "image" && imageAsset ? (
+          <Image
+            source={{ uri: imageAsset.uri }}
+            style={styles.dropZoneImage}
+            resizeMode="cover"
+            accessibilityLabel="Selected lesson image"
+          />
+        ) : uploadMode === "file" && fileAsset ? (
+          <View style={styles.dropZoneCenter}>
+            <Ionicons name="document-outline" size={40} color={c.text} />
+            <Text numberOfLines={3} style={[Typography.bodySm, styles.dropZoneFileName, { color: c.text }]}>
+              {fileAsset.name}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.dropZoneCenter}>
+            <Ionicons name="cloud-upload-outline" size={40} color={c.faintText} />
+            <Text style={[Typography.bodySm, styles.dropZoneHint, { color: c.mutedText }]}>
+              Select text, image, or file for this lesson.
+            </Text>
+          </View>
+        )}
+      </Card>
+
+      <View style={styles.modeRow}>
+        <AnimatedUploadBtn
+          active={uploadMode === "text"}
+          activeBg={c.tintSoft}
+          inactiveBg={c.surfaceAlt}
+          onPress={selectTextMode}
+          accessibilityLabel="Type lesson text"
+        >
+          <Text style={[styles.uploadActionText, { color: uploadMode === "text" ? c.tintDeep : c.text }]}>
+            T
+          </Text>
+        </AnimatedUploadBtn>
+
+        <AnimatedUploadBtn
+          active={uploadMode === "image"}
+          activeBg={c.tintSoft}
+          inactiveBg={c.surfaceAlt}
+          onPress={handlePickImage}
+          accessibilityLabel="Attach image"
+        >
+          <Ionicons name="image-outline" size={24} color={uploadMode === "image" ? c.tintDeep : c.text} />
+        </AnimatedUploadBtn>
+
+        <AnimatedUploadBtn
+          active={uploadMode === "file"}
+          activeBg={c.tintSoft}
+          inactiveBg={c.surfaceAlt}
+          onPress={handlePickFile}
+          accessibilityLabel="Attach file"
+        >
+          <Ionicons name="document-outline" size={24} color={uploadMode === "file" ? c.tintDeep : c.text} />
+        </AnimatedUploadBtn>
+      </View>
+
+      {extracting ? (
+        <View style={styles.extractionWrap}>
+          <ProgressBar value={stageProgress} accessibilityLabel="Lesson content extraction progress" />
+          <Text
+            accessibilityLiveRegion="polite"
+            style={[Typography.caption, styles.extractionStage, { color: c.mutedText }]}
+          >
+            {extractStage || "Working…"}
+          </Text>
+        </View>
+      ) : null}
+
+      {extractError && !extracting ? (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={[Typography.bodySm, styles.extractionError, { color: c.danger }]}
+        >
+          {extractError}
+        </Text>
+      ) : null}
+    </View>
+  );
+
+  const reviewStep = (
+    <ScrollView contentContainerStyle={styles.stepScroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <Card padded={false} style={styles.reviewCard}>
+        <ListRow
+          icon="book-outline"
+          title="Subject"
+          value={selectedSubject ? `${selectedSubject.code} - ${selectedSubject.title}` : "—"}
+          onPress={() => setStepIndex(0)}
+          accessibilityLabel={`Subject: ${
+            selectedSubject ? `${selectedSubject.code} - ${selectedSubject.title}` : "not set"
+          }. Edit`}
+        />
+        <ListRow
+          icon="albums-outline"
+          title="Chapter"
+          value={chapterSummary}
+          onPress={() => setStepIndex(0)}
+          accessibilityLabel={`Chapter: ${chapterSummary}. Edit`}
+        />
+        <ListRow
+          icon="list-outline"
+          title="Lesson number"
+          value={normalizedLessonNumber ? String(normalizedLessonNumber) : "—"}
+          onPress={() => setStepIndex(0)}
+          accessibilityLabel={`Lesson number: ${normalizedLessonNumber ?? "not set"}. Edit`}
+        />
+        <ListRow
+          icon="text-outline"
+          title="Title"
+          value={title.trim() || (normalizedLessonNumber ? `Lesson ${normalizedLessonNumber}` : "—")}
+          onPress={() => setStepIndex(0)}
+          accessibilityLabel={`Title: ${title.trim() || "auto"}. Edit`}
+        />
+        <ListRow
+          icon="document-text-outline"
+          title="Content"
+          value={contentStatus}
+          onPress={() => setStepIndex(1)}
+          divider={false}
+          accessibilityLabel={`Content: ${contentStatus}. Edit`}
+        />
+      </Card>
+
+      <Input
+        label="Formatting (optional)"
+        value={formatting}
+        onChangeText={setFormatting}
+        placeholder="(No bullet points, precise descriptions, summarized descriptions, etc.)"
+        multiline
+        style={styles.multilineInput}
+        containerStyle={styles.formattingField}
+      />
+    </ScrollView>
+  );
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.page, { backgroundColor: c.background }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.tint} />}
+    <View style={[styles.page, { backgroundColor: c.background, paddingTop: insets.top }]}>
+      <KeyboardAvoidingView
+        style={styles.page}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Animated.View entering={FadeInDown.duration(260).springify()} style={styles.headingRow}>
-          <View style={styles.headingLeft}>
-            <Pressable onPress={handleBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Go back">
-              <Ionicons name="caret-back" size={15} color={c.text} />
-            </Pressable>
-            <Text style={[styles.pageTitle, { color: c.text }]}>Create Lesson</Text>
-          </View>
-          <Pressable
-            onPress={handleSave}
-            disabled={!canSave}
-            accessibilityRole="button"
-            accessibilityLabel="Save lesson"
-            style={({ pressed }) => ({ opacity: pressed ? 0.7 : canSave ? 1 : 0.35 })}
-          >
-            {saving ? <ActivityIndicator size="small" color={c.text} /> : <Ionicons name="checkmark" size={17} color={c.text} />}
-          </Pressable>
-        </Animated.View>
-
-        <Text style={styles.sectionLabel}>Overview</Text>
-
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Title (can be blank)"
-          placeholderTextColor={inactiveTextColor}
-          style={[styles.titleInput, { backgroundColor: fieldBg, color: c.text }]}
-        />
-
-        <View style={styles.overviewRow}>
-          <Pressable
-            style={[styles.overviewField, { backgroundColor: fieldBg }]}
-            onPress={() => setSubjectPickerOpen(true)}
-          >
-            <Text style={[styles.overviewFieldText, { color: surfaceTextColor }]} numberOfLines={1}>
-              {subjectFieldText}
-            </Text>
-          </Pressable>
-
-          <TextInput
-            value={chapterNumber}
-            onChangeText={(value) => setChapterNumber(value.replace(/[^0-9]/g, ""))}
-            placeholder="Chapter"
-            placeholderTextColor={inactiveTextColor}
-            keyboardType="number-pad"
-            style={[styles.overviewInput, { backgroundColor: fieldBg, color: c.text }]}
-          />
-
-          <TextInput
-            value={lessonNumber}
-            onChangeText={(value) => setLessonNumber(value.replace(/[^0-9]/g, ""))}
-            placeholder="Lesson"
-            placeholderTextColor={inactiveTextColor}
-            keyboardType="number-pad"
-            style={[styles.overviewInput, { backgroundColor: fieldBg, color: c.text }]}
-          />
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-        <Text style={styles.sectionLabel}>Upload Lesson</Text>
-
-        <View style={styles.uploadRow}>
-          <View style={[styles.previewCard, { backgroundColor: fieldBg, borderColor: dividerColor }]}>
-            {uploadMode === "text" ? (
-              <TextInput
-                value={lessonText}
-                onChangeText={setLessonText}
-                placeholder={previewPlaceholder}
-                placeholderTextColor={inactiveTextColor}
-                multiline
-                textAlignVertical="top"
-                style={[styles.previewTextArea, { color: c.text }]}
+        <StepFlow
+          steps={LESSON_STEPS}
+          index={stepIndex}
+          onBack={handleStepBack}
+          backLabelOnFirst="Cancel"
+          nextLabel={nextLabel}
+          onNext={handleNext}
+          nextLoading={nextLoading}
+          footerExtra={
+            stepIndex === 1 ? (
+              <Button
+                title="Skip for now"
+                variant="ghost"
+                onPress={skipContentStep}
+                disabled={extracting}
+                accessibilityLabel="Skip adding lesson content for now"
               />
-            ) : uploadMode === "image" ? (
-              imageAsset ? (
-                <Image source={{ uri: imageAsset.uri }} style={styles.previewImage} resizeMode="cover" />
-              ) : (
-                <View style={styles.previewPlaceholderWrap}>
-                  <Ionicons name="image-outline" size={28} color={inactiveTextColor} />
-                  <Text style={[styles.previewPlaceholderText, { color: inactiveTextColor }]}>
-                    {previewPlaceholder}
-                  </Text>
-                </View>
-              )
-            ) : uploadMode === "file" ? (
-              fileAsset ? (
-                <View style={styles.previewFileWrap}>
-                  <Ionicons name="document-outline" size={34} color={c.text} />
-                  <Text style={[styles.previewFileName, { color: c.text }]} numberOfLines={3}>
-                    {fileAsset.name}
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.previewPlaceholderWrap}>
-                  <Ionicons name="document-outline" size={28} color={inactiveTextColor} />
-                  <Text style={[styles.previewPlaceholderText, { color: inactiveTextColor }]}>
-                    {previewPlaceholder}
-                  </Text>
-                </View>
-              )
-            ) : (
-              <View style={styles.previewPlaceholderWrap}>
-                <Text style={[styles.previewLargeGlyph, { color: inactiveTextColor }]}>T</Text>
-                <Text style={[styles.previewPlaceholderText, { color: inactiveTextColor }]}>
-                  {previewPlaceholder}
-                </Text>
-              </View>
-            )}
-          </View>
+            ) : undefined
+          }
+        >
+          {stepIndex === 0 ? placementStep : stepIndex === 1 ? contentStep : reviewStep}
+        </StepFlow>
+      </KeyboardAvoidingView>
 
-          <View style={styles.uploadActions}>
-            <AnimatedUploadBtn
-              active={uploadMode === "text"}
-              activeBg={activeIconButtonBg}
-              inactiveBg={iconButtonBg}
-              onPress={() => { setUploadMode("text"); setImageAsset(null); setFileAsset(null); }}
-            >
-              <Text style={[styles.uploadActionText, { color: uploadMode === "text" ? activeIconColor : c.text }]}>T</Text>
-            </AnimatedUploadBtn>
-
-            <AnimatedUploadBtn
-              active={uploadMode === "image"}
-              activeBg={activeIconButtonBg}
-              inactiveBg={iconButtonBg}
-              onPress={handlePickImage}
-              accessibilityLabel="Attach image"
-            >
-              <Ionicons name="image-outline" size={24} color={uploadMode === "image" ? activeIconColor : c.text} />
-            </AnimatedUploadBtn>
-
-            <AnimatedUploadBtn
-              active={uploadMode === "file"}
-              activeBg={activeIconButtonBg}
-              inactiveBg={iconButtonBg}
-              onPress={handlePickFile}
-              accessibilityLabel="Attach file"
-            >
-              <Ionicons name="document-outline" size={24} color={uploadMode === "file" ? activeIconColor : c.text} />
-            </AnimatedUploadBtn>
-          </View>
-        </View>
-
-        <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-
-        <Text style={styles.sectionLabel}>Formatting (optional)</Text>
-
-        <TextInput
-          value={formatting}
-          onChangeText={setFormatting}
-          placeholder="(No bullet points, precise descriptions, summarized descriptions, etc.)"
-          placeholderTextColor={inactiveTextColor}
-          multiline
-          textAlignVertical="top"
-          style={[styles.formattingInput, { backgroundColor: fieldBg, color: c.text }]}
-        />
-      </ScrollView>
-
-      <Modal visible={subjectPickerOpen} transparent animationType="fade" onRequestClose={() => setSubjectPickerOpen(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setSubjectPickerOpen(false)}>
+      <Modal
+        visible={subjectPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSubjectPickerOpen(false)}
+      >
+        <Pressable
+          style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}
+          onPress={() => setSubjectPickerOpen(false)}
+        >
           <Pressable
             style={[styles.modalCard, { backgroundColor: c.card, borderColor: c.border }]}
             onPress={(event) => event.stopPropagation()}
           >
-            <Text style={[styles.modalTitle, { color: c.text }]}>Select Subject</Text>
+            <Text style={[Typography.h3, styles.modalTitle, { color: c.text }]}>Select Subject</Text>
             <ScrollView showsVerticalScrollIndicator={false}>
               {subjects.length > 0 ? (
                 subjects.map((subject) => (
                   <Pressable
                     key={subject.subject_id}
-                    style={[styles.modalItem, { borderBottomColor: c.border }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${subject.code} - ${subject.title}`}
+                    style={[styles.modalItem, { borderBottomColor: c.hairline }]}
                     onPress={() => handlePickSubject(subject.subject_id)}
                   >
-                    <Text style={[styles.modalItemText, { color: c.text }]}>{`${subject.code} - ${subject.title}`}</Text>
+                    <Text style={[Typography.body, { color: c.text }]}>
+                      {`${subject.code} - ${subject.title}`}
+                    </Text>
                   </Pressable>
                 ))
               ) : (
-                <Text style={[styles.emptyPickerText, { color: c.mutedText }]}>No subjects found.</Text>
+                <Text style={[Typography.body, styles.emptyPickerText, { color: c.mutedText }]}>
+                  No subjects found.
+                </Text>
               )}
             </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
-
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  content: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xxxl,
-  },
-  headingRow: {
+  page: { flex: 1 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  stepScroll: { paddingBottom: Spacing.xxl },
+  fieldGap: { marginBottom: Spacing.lg },
+  fieldRow: { flexDirection: "row", gap: Spacing.md },
+  fieldFlex: { flex: 1, marginBottom: Spacing.lg },
+  pickerLabel: { marginBottom: Spacing.xs, fontWeight: "500" },
+  pickerField: {
+    minHeight: 48,
+    borderRadius: Radius.md,
+    borderWidth: 1.5,
+    paddingHorizontal: Spacing.md,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: Spacing.lg,
-  },
-  headingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: Spacing.sm,
   },
-  pageTitle: {
-    ...Typography.h2,
-  },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
-    color: "#999999",
-    marginBottom: Spacing.sm,
-  },
-  titleInput: {
-    minHeight: 44,
-    borderRadius: Radius.sm,
-    textAlign: "center",
-    paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
-    ...Typography.h1,
-    fontWeight: "600",
-  },
-  overviewRow: {
-    flexDirection: "row",
-    gap: Spacing.xs,
-  },
-  overviewField: {
+  pickerValue: { flex: 1 },
+  fieldError: { marginTop: Spacing.xs },
+  contentStep: { flex: 1 },
+  dropZone: { minHeight: 240, maxHeight: 400, flexShrink: 1, overflow: "hidden" },
+  dropZoneTextInput: { flex: 1, minHeight: 240, padding: Spacing.lg },
+  dropZoneImage: { width: "100%", height: "100%", minHeight: 240 },
+  dropZoneCenter: {
     flex: 1,
-    minHeight: 48,
-    borderRadius: Radius.sm,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: Spacing.sm,
-  },
-  overviewFieldText: {
-    ...Typography.body,
-    textAlign: "center",
-  },
-  overviewInput: {
-    flex: 1,
-    minHeight: 48,
-    borderRadius: Radius.sm,
-    textAlign: "center",
-    paddingHorizontal: Spacing.sm,
-    ...Typography.body,
-  },
-  divider: {
-    height: 1,
-    marginVertical: Spacing.lg,
-  },
-  uploadRow: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    gap: Spacing.lg,
-    minHeight: 220,
-  },
-  previewCard: {
-    flex: 1,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    overflow: "hidden",
-    minHeight: 220,
-  },
-  previewTextArea: {
-    flex: 1,
-    minHeight: 220,
-    padding: Spacing.md,
-    ...Typography.body,
-  },
-  previewPlaceholderWrap: {
-    flex: 1,
+    minHeight: 240,
     alignItems: "center",
     justifyContent: "center",
     gap: Spacing.sm,
-    padding: Spacing.md,
-  },
-  previewPlaceholderText: {
-    ...Typography.body,
-    textAlign: "center",
-  },
-  previewLargeGlyph: {
-    fontSize: 34,
-    lineHeight: 34,
-    fontWeight: "500",
-  },
-  previewImage: {
-    width: "100%",
-    height: "100%",
-  },
-  previewFileWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: Spacing.md,
     padding: Spacing.lg,
   },
-  previewFileName: {
-    ...Typography.body,
-    textAlign: "center",
-  },
-  uploadActions: {
-    width: 76,
-    justifyContent: "center",
-    gap: Spacing.md,
-  },
+  dropZoneFileName: { textAlign: "center" },
+  dropZoneHint: { textAlign: "center" },
+  modeRow: { flexDirection: "row", justifyContent: "center", gap: Spacing.md, marginTop: Spacing.lg },
   uploadActionButton: {
-    width: 76,
-    height: 64,
-    borderRadius: Radius.xl,
+    width: 64,
+    height: 52,
+    borderRadius: Radius.md,
     overflow: "hidden",
   },
   uploadActionInner: {
@@ -1232,32 +1293,28 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   uploadActionText: {
-    fontSize: 28,
-    lineHeight: 28,
+    fontSize: 24,
+    lineHeight: 26,
     fontWeight: "500",
   },
-  formattingInput: {
-    minHeight: 118,
-    borderRadius: Radius.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
-    ...Typography.body,
-    fontStyle: "italic",
-  },
+  extractionWrap: { marginTop: Spacing.lg, gap: Spacing.sm },
+  extractionStage: { textAlign: "center" },
+  extractionError: { marginTop: Spacing.lg, textAlign: "center" },
+  reviewCard: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.xl },
+  formattingField: { marginBottom: Spacing.lg },
+  multilineInput: { minHeight: 96, textAlignVertical: "top" },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.32)",
     justifyContent: "center",
     padding: Spacing.lg,
   },
   modalCard: {
     borderRadius: Radius.lg,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     maxHeight: "70%",
     paddingVertical: Spacing.sm,
   },
   modalTitle: {
-    ...Typography.h2,
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
   },
@@ -1267,11 +1324,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  modalItemText: {
-    ...Typography.body,
-  },
   emptyPickerText: {
-    ...Typography.body,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.lg,
   },

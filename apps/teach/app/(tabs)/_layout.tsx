@@ -32,7 +32,7 @@ const CREATE_OPTIONS: CreateOption[] = [
 ];
 
 export default function TabsLayout() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const [createSheetOpen, setCreateSheetOpen] = useState(false);
@@ -48,31 +48,22 @@ export default function TabsLayout() {
     router.push(route);
   }, []);
 
+  // Create-hub option colors come from the shared session-category ramp so
+  // they stay in the same family as the calendar/library and recolor in dark.
   const optionColors = useMemo(() => {
-    const isDark = scheme === "dark";
+    const cat = c.category;
+    const tone = (t: { soft: string; onSoft: string; border: string }) => ({
+      bg: t.soft,
+      border: t.border,
+      fg: t.onSoft,
+    });
     return {
-      lessonplan: {
-        bg: isDark ? "#2F3D45" : "#DDECF4",
-        border: isDark ? "#435560" : "#CCDCE4",
-        fg: isDark ? "#C7D9E2" : "#3B5563",
-      },
-      subject: {
-        bg: isDark ? "#413850" : "#F4E3F5",
-        border: isDark ? "#5A4D6E" : "#E4D1E5",
-        fg: isDark ? "#DDD1EB" : "#59446A",
-      },
-      lesson: {
-        bg: isDark ? "#2D4634" : "#DFF2DE",
-        border: isDark ? "#3E6049" : "#CFE2CD",
-        fg: isDark ? "#C9E7D1" : "#3F6449",
-      },
-      activities: {
-        bg: isDark ? "#4D4630" : "#F8EDC8",
-        border: isDark ? "#685E41" : "#E8DDAF",
-        fg: isDark ? "#ECE0BA" : "#6A5B34",
-      },
+      lessonplan: tone(cat.lesson),
+      subject: tone(cat.performanceTask),
+      lesson: tone(cat.writtenWork),
+      activities: tone(cat.exam),
     } as const;
-  }, [scheme]);
+  }, [c.category]);
 
   return (
     <>
@@ -184,6 +175,8 @@ export default function TabsLayout() {
                     },
                   ]}
                   onPress={() => goToCreate(option.route)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Create ${option.label.toLowerCase()}`}
                 >
                   <Ionicons name={option.icon} size={24} color={optionColors[option.key].fg} />
                   <Text style={[styles.optionText, { color: optionColors[option.key].fg }]}>
@@ -203,7 +196,7 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.12)",
+    backgroundColor: "rgba(0,0,0,0.12)", // lighter than c.backdrop by design: the tab bar stays legible
     paddingHorizontal: 12,
   },
   sheet: {

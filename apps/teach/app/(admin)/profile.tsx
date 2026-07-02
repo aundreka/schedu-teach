@@ -16,6 +16,8 @@ import Animated, { FadeInDown, FadeIn } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AnimatedPressable from "../../components/AnimatedPressable";
+import { ErrorState } from "../../components/ui";
+import { Typography } from "../../constants/fonts";
 import { useAppTheme } from "../../context/theme";
 import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { supabase } from "../../lib/supabase";
@@ -50,6 +52,7 @@ type DeptRowItemProps = {
 };
 
 function DeptRowItem({ dept, index, isLast, borderColor, textColor, mutedColor, onDelete }: DeptRowItemProps) {
+  const { colors: c } = useAppTheme();
   return (
     <Animated.View
       entering={FadeInDown.duration(260).delay(index * 55)}
@@ -68,15 +71,16 @@ function DeptRowItem({ dept, index, isLast, borderColor, textColor, mutedColor, 
         accessibilityRole="button"
         accessibilityLabel="Delete department"
       >
-        <Ionicons name="trash-outline" size={18} color="#D7487B" />
+        <Ionicons name="trash-outline" size={18} color={c.danger} />
       </Pressable>
     </Animated.View>
   );
 }
 
 export default function AdminProfileScreen() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [school, setSchool] = useState<School | null>(null);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [tier2Count, setTier2Count] = useState(0);
@@ -86,13 +90,14 @@ export default function AdminProfileScreen() {
   const [addingDept, setAddingDept] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
 
-  const screenBg = scheme === "dark" ? "#11161C" : "#F5F3EE";
-  const cardBg = scheme === "dark" ? "#171E27" : "#FFFFFF";
-  const borderColor = scheme === "dark" ? "#222B35" : "#E8E1D7";
-  const inputBg = scheme === "dark" ? "#1A2330" : "#F5F3EE";
+  const screenBg = c.surfaceAlt;
+  const cardBg = c.card;
+  const borderColor = c.border;
+  const inputBg = c.surfaceAlt;
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const {
         data: { user },
@@ -167,6 +172,7 @@ export default function AdminProfileScreen() {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Please try again.";
       Alert.alert("Unable to load settings", message);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -273,6 +279,16 @@ export default function AdminProfileScreen() {
     );
   }
 
+  if (loadError) {
+    return (
+      <SafeAreaView style={[styles.safe, { backgroundColor: screenBg }]} edges={["top", "bottom"]}>
+        <View style={styles.center}>
+          <ErrorState title="Unable to load settings" onRetry={loadData} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (!school) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: screenBg }]} edges={["top", "bottom"]}>
@@ -298,10 +314,10 @@ export default function AdminProfileScreen() {
         {/* School info */}
         <Animated.View
           entering={FadeInDown.duration(300).delay(60)}
-          style={[styles.section, { backgroundColor: cardBg, borderColor }]}
+          style={[styles.section, { backgroundColor: cardBg, borderColor, shadowColor: c.shadow }]}
         >
           <Text style={[styles.sectionTitle, { color: c.text }]}>{school.name}</Text>
-          <View style={[styles.typeBadge, { backgroundColor: scheme === "dark" ? "#1A2330" : "#F0EDE8" }]}>
+          <View style={[styles.typeBadge, { backgroundColor: c.surfaceAlt }]}>
             <Text style={[styles.typeBadgeText, { color: c.mutedText }]}>
               {SCHOOL_TYPE_LABELS[school.type] ?? school.type}
             </Text>
@@ -324,19 +340,23 @@ export default function AdminProfileScreen() {
         </Animated.View>
         <Animated.View
           entering={FadeInDown.duration(280).delay(160)}
-          style={[styles.section, { backgroundColor: cardBg, borderColor }]}
+          style={[styles.section, { backgroundColor: cardBg, borderColor, shadowColor: c.shadow }]}
         >
           <Text style={[styles.joinCode, { color: c.text }]}>{school.join_code}</Text>
           <View style={styles.codeActions}>
             <AnimatedPressable
-              animatedStyle={[styles.codeBtn, { backgroundColor: scheme === "dark" ? "#243B30" : "#DFF5EB" }]}
+              accessibilityRole="button"
+              accessibilityLabel="Share join code"
+              animatedStyle={[styles.codeBtn, { backgroundColor: c.tintSoft }]}
               onPress={handleCopyCode}
             >
-              <Ionicons name="share-outline" size={16} color="#146854" />
-              <Text style={styles.codeBtnText}>Share</Text>
+              <Ionicons name="share-outline" size={16} color={c.category.lesson.onSoft} />
+              <Text style={[styles.codeBtnText, { color: c.category.lesson.onSoft }]}>Share</Text>
             </AnimatedPressable>
             <AnimatedPressable
-              animatedStyle={[styles.codeBtn, { backgroundColor: scheme === "dark" ? "#1A2330" : "#F0EDE8" }]}
+              accessibilityRole="button"
+              accessibilityLabel="Regenerate join code"
+              animatedStyle={[styles.codeBtn, { backgroundColor: c.surfaceAlt }]}
               onPress={handleRegenerateCode}
               disabled={regenerating}
             >
@@ -359,7 +379,7 @@ export default function AdminProfileScreen() {
         </Animated.View>
         <Animated.View
           entering={FadeInDown.duration(280).delay(260)}
-          style={[styles.section, { backgroundColor: cardBg, borderColor, gap: 0 }]}
+          style={[styles.section, { backgroundColor: cardBg, borderColor, shadowColor: c.shadow, gap: 0 }]}
         >
           {departments.length === 0 ? (
             <Text style={[styles.emptyText, { color: c.mutedText }]}>No departments added yet.</Text>
@@ -378,6 +398,8 @@ export default function AdminProfileScreen() {
             ))
           )}
           <AnimatedPressable
+            accessibilityRole="button"
+            accessibilityLabel="Add department"
             animatedStyle={[
               styles.addDeptBtn,
               { borderTopWidth: departments.length > 0 ? 1 : 0, borderTopColor: borderColor },
@@ -392,7 +414,7 @@ export default function AdminProfileScreen() {
 
       {/* Add department modal */}
       <Modal visible={addDeptModalOpen} transparent animationType="fade" onRequestClose={() => setAddDeptModalOpen(false)}>
-        <Pressable style={styles.overlay} onPress={() => setAddDeptModalOpen(false)}>
+        <Pressable style={[styles.overlay, { backgroundColor: c.backdrop }]} onPress={() => setAddDeptModalOpen(false)}>
           <Pressable
             style={[styles.modal, { backgroundColor: cardBg, borderColor }]}
             onPress={(e) => e.stopPropagation()}
@@ -410,7 +432,8 @@ export default function AdminProfileScreen() {
             />
             <View style={styles.modalActions}>
               <Pressable
-                style={[styles.modalBtn, { backgroundColor: scheme === "dark" ? "#1A2330" : "#F0EDE8" }]}
+                accessibilityRole="button"
+                style={[styles.modalBtn, { backgroundColor: c.surfaceAlt }]}
                 onPress={() => {
                   setAddDeptModalOpen(false);
                   setNewDeptName("");
@@ -419,18 +442,19 @@ export default function AdminProfileScreen() {
                 <Text style={[styles.modalBtnText, { color: c.mutedText }]}>Cancel</Text>
               </Pressable>
               <Pressable
+                accessibilityRole="button"
                 style={[
                   styles.modalBtn,
-                  { backgroundColor: scheme === "dark" ? "#243B30" : "#DFF5EB" },
+                  { backgroundColor: c.tintSoft },
                   (!newDeptName.trim() || addingDept) && { opacity: 0.5 },
                 ]}
                 onPress={handleAddDepartment}
                 disabled={!newDeptName.trim() || addingDept}
               >
                 {addingDept ? (
-                  <ActivityIndicator size="small" color="#146854" />
+                  <ActivityIndicator size="small" color={c.category.lesson.onSoft} />
                 ) : (
-                  <Text style={[styles.modalBtnText, { color: "#146854" }]}>Add</Text>
+                  <Text style={[styles.modalBtnText, { color: c.category.lesson.onSoft }]}>Add</Text>
                 )}
               </Pressable>
             </View>
@@ -447,36 +471,34 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 48, gap: 12 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: { marginBottom: 4 },
-  title: { fontSize: 28, fontWeight: "800", letterSpacing: -0.8 },
+  title: { ...Typography.display },
   section: {
     borderRadius: 20,
     borderWidth: 1,
     paddingHorizontal: 20,
     paddingVertical: 18,
     gap: 12,
-    shadowColor: "#A79B89",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 1,
   },
-  sectionTitle: { fontSize: 20, fontWeight: "700" },
+  sectionTitle: { ...Typography.h2 },
   typeBadge: {
     alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 8,
   },
-  typeBadgeText: { fontSize: 13, fontWeight: "600" },
+  typeBadgeText: { ...Typography.bodySm },
   divider: { height: 1, marginVertical: 4 },
   seatRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  seatText: { fontSize: 14, fontWeight: "500" },
+  seatText: { ...Typography.bodySm },
   sectionHeader: { gap: 2, marginTop: 8 },
-  sectionLabel: { fontSize: 18, fontWeight: "700" },
-  sectionHint: { fontSize: 13, fontWeight: "500" },
+  sectionLabel: { ...Typography.h3 },
+  sectionHint: { ...Typography.bodySm },
   joinCode: {
-    fontSize: 36,
-    fontWeight: "800",
+    ...Typography.display,
     letterSpacing: 6,
     textAlign: "center",
     fontVariant: ["tabular-nums"],
@@ -490,8 +512,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
   },
-  codeBtnText: { fontSize: 15, fontWeight: "600", color: "#146854" },
-  emptyText: { fontSize: 14, fontWeight: "500" },
+  codeBtnText: { ...Typography.bodyMedium },
+  emptyText: { ...Typography.bodySm },
   deptRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -499,8 +521,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   deptMain: { flex: 1, gap: 2 },
-  deptName: { fontSize: 16, fontWeight: "600" },
-  deptHead: { fontSize: 13, fontWeight: "500" },
+  deptName: { ...Typography.bodyMedium },
+  deptHead: { ...Typography.bodySm },
   deptDelete: { padding: 4 },
   addDeptBtn: {
     flexDirection: "row",
@@ -508,10 +530,9 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 14,
   },
-  addDeptText: { fontSize: 15, fontWeight: "600" },
+  addDeptText: { ...Typography.bodyMedium },
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "center",
     paddingHorizontal: 24,
   },
@@ -521,13 +542,13 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 16,
   },
-  modalTitle: { fontSize: 20, fontWeight: "700" },
+  modalTitle: { ...Typography.h2 },
   modalInput: {
+    ...Typography.body,
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 16,
   },
   modalActions: { flexDirection: "row", gap: 12 },
   modalBtn: {
@@ -536,5 +557,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: "center",
   },
-  modalBtnText: { fontSize: 15, fontWeight: "700" },
+  modalBtnText: { ...Typography.bodyMedium },
 });

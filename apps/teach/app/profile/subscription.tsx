@@ -111,7 +111,7 @@ function TierCard({
 
   return (
     <Card
-      variant={recommended ? "elevated" : "flat"}
+      variant="flat"
       style={[
         tierCardStyles.card,
         recommended && { borderWidth: 1.5, borderColor: c.tint },

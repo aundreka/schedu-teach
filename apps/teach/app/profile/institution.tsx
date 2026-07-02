@@ -18,6 +18,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
 import { useAppTheme } from "../../context/theme";
+import { AvatarPalette, OnAvatar } from "../../constants/colors";
 import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { supabase } from "../../lib/supabase";
 
@@ -58,16 +59,7 @@ const SCHOOL_TYPE_LABEL: Record<SchoolType, string> = {
   training_center: "Training Center",
 };
 
-const AVATAR_COLORS = [
-  "#22C55E",
-  "#0EA5E9",
-  "#F97316",
-  "#EF4444",
-  "#A855F7",
-  "#EAB308",
-  "#14B8A6",
-  "#64748B",
-] as const;
+const AVATAR_COLORS = AvatarPalette;
 
 function sanitizeFileName(name: string) {
   return name.replace(/[^\w.\-]+/g, "_");
@@ -159,7 +151,7 @@ export default function InstitutionScreen() {
       type: school.type as SchoolType,
       avatar_url: school.avatar_url ?? null,
       avatar_signed_url: avatarSignedUrl,
-      avatar_color: school.avatar_color ?? "#22C55E",
+      avatar_color: school.avatar_color ?? AVATAR_COLORS[0],
       is_default: Boolean(school.is_default),
       is_primary: Boolean(data?.is_primary),
     });
@@ -229,7 +221,7 @@ export default function InstitutionScreen() {
     if (!institution) return;
     setInstitutionName(institution.name);
     setInstitutionType(institution.type);
-    setInstitutionAvatarColor(institution.avatar_color || "#22C55E");
+    setInstitutionAvatarColor(institution.avatar_color || AVATAR_COLORS[0]);
     setPickedAvatar(null);
     setShowInstitutionModal(true);
   };
@@ -422,7 +414,7 @@ export default function InstitutionScreen() {
         .update({
           name,
           type: institutionType,
-          avatar_color: institutionAvatarColor || "#22C55E",
+          avatar_color: institutionAvatarColor || AVATAR_COLORS[0],
         })
         .eq("school_id", schoolIdValue);
       if (error) throw error;
@@ -510,7 +502,7 @@ export default function InstitutionScreen() {
               style={[
                 styles.avatarWrap,
                 {
-                  backgroundColor: institution.avatar_signed_url ? "transparent" : institution.avatar_color || "#22C55E",
+                  backgroundColor: institution.avatar_signed_url ? "transparent" : institution.avatar_color || AVATAR_COLORS[0],
                   borderColor: c.border,
                 },
               ]}
@@ -541,12 +533,14 @@ export default function InstitutionScreen() {
           <Text style={[styles.sectionTitle, { color: c.text }]}>Sections</Text>
           <Pressable
             onPress={() => setShowSectionModal(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Add section"
             style={({ pressed }) => [
               styles.ctaBtn,
               { backgroundColor: c.tint, opacity: pressed ? 0.9 : 1 },
             ]}
           >
-            <Text style={styles.ctaBtnText}>Add Section</Text>
+            <Text style={[styles.ctaBtnText, { color: c.onTint }]}>Add Section</Text>
           </Pressable>
         </View>
 
@@ -565,7 +559,7 @@ export default function InstitutionScreen() {
                     onPress={() => handleDeleteSection(section)}
                     disabled={Boolean(deletingSectionId)}
                     accessibilityRole="button"
-                    accessibilityLabel="Delete section"
+                    accessibilityLabel={`Delete section ${section.name}`}
                     style={({ pressed }) => [
                       styles.swipeActionBtn,
                       {
@@ -599,7 +593,8 @@ export default function InstitutionScreen() {
                   <Pressable
                     onPress={() => openSectionEditor(section)}
                     accessibilityRole="button"
-                    accessibilityLabel="Edit section"
+                    accessibilityLabel={`Edit section ${section.name}`}
+                    accessibilityState={{ expanded: editingSectionId === section.section_id }}
                     style={({ pressed }) => [
                       styles.topIconBtn,
                       { borderColor: c.border, backgroundColor: c.card, opacity: pressed ? 0.9 : 1 },
@@ -617,6 +612,7 @@ export default function InstitutionScreen() {
                         onChangeText={setEditSectionGradeLevel}
                         placeholder="Not set"
                         placeholderTextColor={c.mutedText}
+                        accessibilityLabel="Year level"
                         style={[
                           styles.sectionEditorInput,
                           { color: c.text, borderColor: c.border, backgroundColor: c.background },
@@ -630,6 +626,7 @@ export default function InstitutionScreen() {
                         onChangeText={setEditSectionName}
                         placeholder="Section name"
                         placeholderTextColor={c.mutedText}
+                        accessibilityLabel="Section name"
                         style={[
                           styles.sectionEditorInput,
                           { color: c.text, borderColor: c.border, backgroundColor: c.background },
@@ -678,7 +675,7 @@ export default function InstitutionScreen() {
           resetSectionForm();
         }}
       >
-        <View style={styles.modalBackdrop}>
+        <View style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}>
           <View style={[styles.modalCard, { backgroundColor: c.card, borderColor: c.border }]}>
             <Text style={[styles.modalTitle, { color: c.text }]}>Add Section</Text>
             <TextInput
@@ -686,6 +683,7 @@ export default function InstitutionScreen() {
               onChangeText={setSectionName}
               placeholder="Section name"
               placeholderTextColor={c.mutedText}
+              accessibilityLabel="Section name"
               style={[
                 styles.input,
                 { color: c.text, borderColor: c.border, backgroundColor: c.background },
@@ -696,6 +694,7 @@ export default function InstitutionScreen() {
               onChangeText={setSectionGradeLevel}
               placeholder="Year level"
               placeholderTextColor={c.mutedText}
+              accessibilityLabel="Year level"
               style={[
                 styles.input,
                 { color: c.text, borderColor: c.border, backgroundColor: c.background },
@@ -707,6 +706,8 @@ export default function InstitutionScreen() {
                   setShowSectionModal(false);
                   resetSectionForm();
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
                 style={[styles.modalBtn, { borderColor: c.border }]}
               >
                 <Text style={{ color: c.text, fontWeight: "600" }}>Cancel</Text>
@@ -714,9 +715,12 @@ export default function InstitutionScreen() {
               <Pressable
                 onPress={handleAddSection}
                 disabled={savingSection}
+                accessibilityRole="button"
+                accessibilityLabel="Save section"
+                accessibilityState={{ disabled: savingSection, busy: savingSection }}
                 style={[styles.modalBtnPrimary, { backgroundColor: c.tint }]}
               >
-                <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>
+                <Text style={{ color: c.onTint, fontWeight: "700" }}>
                   {savingSection ? "Saving..." : "Save"}
                 </Text>
               </Pressable>
@@ -734,7 +738,7 @@ export default function InstitutionScreen() {
           resetInstitutionForm();
         }}
       >
-        <View style={styles.modalBackdrop}>
+        <View style={[styles.modalBackdrop, { backgroundColor: c.backdrop }]}>
           <View style={[styles.modalCard, { backgroundColor: c.card, borderColor: c.border }]}>
             <Text style={[styles.modalTitle, { color: c.text }]}>Edit Institution</Text>
             <TextInput
@@ -742,6 +746,7 @@ export default function InstitutionScreen() {
               onChangeText={setInstitutionName}
               placeholder="Institution name"
               placeholderTextColor={c.mutedText}
+              accessibilityLabel="Institution name"
               style={[
                 styles.input,
                 { color: c.text, borderColor: c.border, backgroundColor: c.background },
@@ -755,11 +760,14 @@ export default function InstitutionScreen() {
                   <Pressable
                     key={opt.value}
                     onPress={() => setInstitutionType(opt.value)}
+                    accessibilityRole="button"
+                    accessibilityLabel={selected ? `${opt.label}, selected` : opt.label}
+                    accessibilityState={{ selected }}
                     style={[
                       styles.inlineOption,
                       {
                         borderColor: selected ? c.tint : c.border,
-                        backgroundColor: selected ? `${c.tint}22` : c.card,
+                        backgroundColor: selected ? c.tintSoft : c.card,
                       },
                     ]}
                   >
@@ -783,13 +791,15 @@ export default function InstitutionScreen() {
                     { backgroundColor: color, borderColor: institutionAvatarColor === color ? c.text : c.border },
                   ]}
                 >
-                  {institutionAvatarColor === color ? <Ionicons name="checkmark" size={12} color="#FFFFFF" /> : null}
+                  {institutionAvatarColor === color ? <Ionicons name="checkmark" size={12} color={OnAvatar} /> : null}
                 </Pressable>
               ))}
             </View>
             <Text style={[styles.inputLabel, { color: c.mutedText }]}>Image</Text>
             <Pressable
               onPress={pickAvatarImage}
+              accessibilityRole="button"
+              accessibilityLabel={pickedAvatar ? `Avatar image: ${pickedAvatar.name}` : "Upload avatar image"}
               style={({ pressed }) => [
                 styles.uploadBtn,
                 { borderColor: c.border, backgroundColor: c.background, opacity: pressed ? 0.9 : 1 },
@@ -806,6 +816,8 @@ export default function InstitutionScreen() {
                   setShowInstitutionModal(false);
                   resetInstitutionForm();
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
                 style={[styles.modalBtn, { borderColor: c.border }]}
               >
                 <Text style={{ color: c.text, fontWeight: "600" }}>Cancel</Text>
@@ -813,9 +825,12 @@ export default function InstitutionScreen() {
               <Pressable
                 onPress={handleSaveInstitution}
                 disabled={savingInstitution}
+                accessibilityRole="button"
+                accessibilityLabel="Save institution"
+                accessibilityState={{ disabled: savingInstitution, busy: savingInstitution }}
                 style={[styles.modalBtnPrimary, { backgroundColor: c.tint }]}
               >
-                <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>
+                <Text style={{ color: c.onTint, fontWeight: "700" }}>
                   {savingInstitution ? "Saving..." : "Save"}
                 </Text>
               </Pressable>
@@ -869,7 +884,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  avatarInitials: { color: "#FFFFFF", fontSize: 24, fontWeight: "700" },
+  avatarInitials: { color: OnAvatar, fontSize: 24, fontWeight: "700" },
   schoolName: { fontSize: 20, fontWeight: "700", textAlign: "center" },
   metaRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   pill: {
@@ -892,7 +907,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  ctaBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
+  ctaBtnText: { fontSize: 12, fontWeight: "700" },
 
   emptyCard: { borderWidth: 1, borderRadius: 14, padding: 14, alignItems: "center" },
 
@@ -937,7 +952,6 @@ const styles = StyleSheet.create({
 
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "center",
     padding: 18,
   },

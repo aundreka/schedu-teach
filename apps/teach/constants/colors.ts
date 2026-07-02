@@ -104,3 +104,22 @@ export const Colors = {
 } as const;
 
 export type CategoryKey = keyof typeof lightCategory;
+
+/**
+ * Fill colors a user can pick for school/institution avatars. These are
+ * persisted verbatim in `schools.avatar_color`, so they are data values (not
+ * theme tokens) and stay identical in both schemes.
+ */
+export const AvatarPalette = [
+  "#22C55E",
+  "#0EA5E9",
+  "#F97316",
+  "#EF4444",
+  "#A855F7",
+  "#EAB308",
+  "#14B8A6",
+  "#64748B",
+] as const;
+
+/** Contrast color for text/icons rendered over an AvatarPalette fill. */
+export const OnAvatar = "#FFFFFF";
