@@ -202,7 +202,7 @@ export default function LessonDetailScreen() {
           <WebView
             originWhitelist={["*"]}
             source={previewSource}
-            key={`lesson-preview-${lesson.lesson_id}-${contentHtml.length}`}
+            key={`lesson-preview-${lesson.lesson_id}`}
             onMessage={(event) => {
               const nextHeight = parseWebHeight(event);
               if (nextHeight) setPreviewHeight(nextHeight);

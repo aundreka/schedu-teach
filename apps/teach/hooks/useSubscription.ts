@@ -94,5 +94,18 @@ export function useSubscription(): SubscriptionState {
 
   useEffect(() => { void refetch(); }, [refetch]);
 
+  // Refetch on auth changes so tier/quotas never show a previous account's
+  // data after switching users in-app (sign-in, sign-out, token refresh for a
+  // different session).
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        if (event === "SIGNED_OUT") setState(DEFAULTS);
+        else void refetch();
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, [refetch]);
+
   return { ...state, refetch };
 }

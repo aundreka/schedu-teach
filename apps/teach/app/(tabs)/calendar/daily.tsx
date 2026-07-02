@@ -33,7 +33,6 @@ import {
   type DayAgenda,
   type DayBlock,
   dayOfMonth,
-  DEMO_AGENDA,
   deleteBlock,
   formatLongDate,
   hourLabel12,
@@ -49,6 +48,8 @@ import SuspendSheet from "../../../components/calendar/suspend-sheet";
 import PopulateSheet from "../../../components/calendar/populate-sheet";
 import BlockActionSheet from "../../../components/calendar/block-action-sheet";
 import Toast from "../../../components/Toast";
+import { EmptyState, ErrorState } from "../../../components/ui";
+import { PlanSeed } from "../../../components/illustrations";
 import { Spacing } from "../../../constants/fonts";
 import { useAppTheme } from "../../../context/theme";
 import { emitLessonPlanRefresh, subscribeToLessonPlanRefresh } from "../../../lib/lesson-plan-refresh";
@@ -88,8 +89,8 @@ export default function DailyCalendarScreen() {
   const today = useMemo(() => todayISO(), []);
   const initialDate = typeof params.date === "string" && params.date ? params.date : today;
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [agenda, setAgenda] = useState<DayAgenda | null>(null);
-  const [usingDemo, setUsingDemo] = useState(false);
   const [dateISO, setDateISO] = useState(initialDate);
   const [editor, setEditor] = useState<EditorState>({ open: false, mode: "create", initial: null });
   const [suspendOpen, setSuspendOpen] = useState(false);
@@ -108,36 +109,17 @@ export default function DailyCalendarScreen() {
 
   const load = useCallback(async (date: string) => {
     setLoading(true);
+    setLoadError(false);
     try {
-      let userId: string | null = null;
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        userId = user?.id ?? null;
-      } catch {
-        userId = null;
-      }
-      if (!userId) {
-        setAgenda(DEMO_AGENDA);
-        setUsingDemo(true);
-        setDateISO(DEMO_AGENDA.dateISO);
-        return;
-      }
-      const result = await loadDayAgenda(userId, date);
-      if (result.plans.length === 0) {
-        setAgenda(DEMO_AGENDA);
-        setUsingDemo(true);
-        setDateISO(DEMO_AGENDA.dateISO);
-      } else {
-        setAgenda(result);
-        setUsingDemo(false);
-        setDateISO(date);
-        // Use first plan for suspend/populate operations
-        setActivePlanId(result.plans[0]?.lessonPlanId ?? null);
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id ?? null;
+      const result = userId ? await loadDayAgenda(userId, date) : null;
+      setAgenda(result);
+      setDateISO(date);
+      // Use first plan for suspend/populate operations
+      setActivePlanId(result?.plans[0]?.lessonPlanId ?? null);
     } catch {
-      setAgenda(DEMO_AGENDA);
-      setUsingDemo(true);
-      setDateISO(DEMO_AGENDA.dateISO);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -156,18 +138,14 @@ export default function DailyCalendarScreen() {
   const selectDay = useCallback(
     (date: string) => {
       setDateISO(date);
-      if (!usingDemo) load(date);
+      load(date);
     },
-    [load, usingDemo],
+    [load],
   );
 
   const weekDates = useMemo(() => weekOf(dateISO), [dateISO]);
 
-  const entries = useMemo<DayBlock[]>(() => {
-    if (!agenda) return [];
-    if (usingDemo && dateISO !== DEMO_AGENDA.dateISO) return [];
-    return agenda.entries;
-  }, [agenda, usingDemo, dateISO]);
+  const entries = useMemo<DayBlock[]>(() => agenda?.entries ?? [], [agenda]);
 
   const { startHour, endHour, positioned } = useMemo(() => {
     const starts = entries.map((e) => Math.floor(timeToMinutes(e.startTime) / 60));
@@ -230,13 +208,9 @@ export default function DailyCalendarScreen() {
   }, []);
 
   const openSuspend = useCallback(() => {
-    if (usingDemo) {
-      Alert.alert("Sample calendar", "Open a real lesson plan to suspend it.");
-      return;
-    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSuspendOpen(true);
-  }, [usingDemo]);
+  }, []);
 
   const onSuspendDone = useCallback((displacedCount: number, vacancyCount: number) => {
     if (displacedCount > 0) {
@@ -291,7 +265,6 @@ export default function DailyCalendarScreen() {
 
   const confirmDeleteEntry = useCallback(
     (entry: DayBlock) => {
-      if (usingDemo) return;
       // Requirement blocks → show action sheet with 3 options
       if (
         entry.category === "written_work" ||
@@ -328,15 +301,11 @@ export default function DailyCalendarScreen() {
         },
       ]);
     },
-    [dateISO, load, usingDemo],
+    [dateISO, load],
   );
 
   const navigateToDetail = useCallback(
     (entry: DayBlock) => {
-      if (usingDemo) {
-        Alert.alert("Sample calendar", "Open a real lesson plan to see block details.");
-        return;
-      }
       const subjectId = entry.subjectId || "";
       if (entry.category === "lesson") {
         if (!entry.lessonId) {
@@ -360,7 +329,7 @@ export default function DailyCalendarScreen() {
         });
       }
     },
-    [usingDemo],
+    [],
   );
 
   return (
@@ -436,9 +405,23 @@ export default function DailyCalendarScreen() {
         <View style={[styles.divider, { backgroundColor: c.border }]} />
       </View>
 
-      {loading || !agenda ? (
+      {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={c.tint} />
+        </View>
+      ) : loadError ? (
+        <View style={styles.center}>
+          <ErrorState title="Couldn't load this day" onRetry={() => load(dateISO)} />
+        </View>
+      ) : !agenda || agenda.plans.length === 0 ? (
+        <View style={styles.center}>
+          <EmptyState
+            illustration={<PlanSeed size={190} />}
+            title="No plans yet"
+            body="Create a lesson plan to see your day-by-day schedule here."
+            ctaLabel="Create your first plan"
+            onCta={() => router.push("/(tabs)/create/lessonplan")}
+          />
         </View>
       ) : (
         <ScrollView
@@ -559,7 +542,6 @@ export default function DailyCalendarScreen() {
         existingEntries={entries}
         dateISO={dateISO}
         initial={editor.initial}
-        readOnly={usingDemo}
         onClose={closeEditor}
         onSubmit={submitEditor}
         onDelete={editor.mode === "edit" ? deleteEditorBlock : undefined}

@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,7 +27,6 @@ import type {
   SessionSubcategory,
 } from "../../algorithm/00_types";
 import {
-  DEMO_AGENDA,
   formatLongDate,
   formatTime12,
   labelBlocks,
@@ -37,6 +36,9 @@ import {
   type DayBlock,
   type RawBlockGroup,
 } from "../../components/calendar";
+import { EmptyState, ErrorState, Skeleton } from "../../components/ui";
+import { PlanSeed } from "../../components/illustrations";
+import { useLoadState } from "../../hooks/useLoadState";
 import { Radius, Spacing, Typography } from "../../constants/fonts";
 import { useAppTheme } from "../../context/theme";
 import { getTermForDate } from "../../lib/deped-calendar";
@@ -66,7 +68,6 @@ type UpcomingData = {
   dateISO: string;
   cards: ClassCard[];
   firstBlock: DayBlock | null;
-  demo: boolean;
 };
 
 type OverviewKind = "lesson" | "text" | "empty";
@@ -109,6 +110,13 @@ function normTime(value: unknown): string {
   const m = String(value ?? "").match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
   if (!m) return "00:00:00";
   return `${m[1].padStart(2, "0")}:${m[2]}:${(m[3] ?? "00").padStart(2, "0")}`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function metadataScopeIds(metadata: JsonObject | null | undefined, fallback: string | null): string[] {
@@ -266,36 +274,12 @@ async function loadSoonestData(userId: string, fromISO: string): Promise<Upcomin
     dateISO: soonest,
     cards: groupCards(entries),
     firstBlock: entries[0] ?? null,
-    demo: false,
   };
 }
 
-function demoUpcoming(fromISO: string): UpcomingData {
-  // The demo agenda is hard-coded for 2026-10-30. If today is past that, still
-  // show it as a sample; otherwise pretend the demo is the next class day.
-  const dateISO = DEMO_AGENDA.dateISO >= fromISO ? DEMO_AGENDA.dateISO : DEMO_AGENDA.dateISO;
-  return {
-    dateISO,
-    cards: groupCards(DEMO_AGENDA.entries),
-    firstBlock: DEMO_AGENDA.entries[0] ?? null,
-    demo: true,
-  };
-}
-
-async function loadOverviewContent(block: DayBlock | null, demo: boolean): Promise<OverviewContent> {
+async function loadOverviewContent(block: DayBlock | null): Promise<OverviewContent> {
   if (!block) return { kind: "empty", title: "", html: "<p></p>", text: "" };
   const title = chipLabel(block);
-
-  if (demo) {
-    // Static body copy that mirrors the dashboard mock.
-    if (block.category === "lesson" && block.title.toLowerCase() === "polynomials") {
-      const html = normalizeToHtml(
-        "A <strong>polynomial</strong> is a mathematical expression composed of variables, coefficients, and exponents, involving only the operations of addition, subtraction, and multiplication. It consists of a finite number of terms, where each term is a constant or a product of a constant and one or more variables raised to a non-negative integer power. The highest exponent in a polynomial determines its degree.\n\n<strong>Types of polynomials:</strong>\n<ul><li>Monomial: A polynomial with one term — e.g. 5x²</li><li>Binomial: A polynomial with two terms — e.g. x + 3</li><li>Trinomial: A polynomial with three terms</li></ul>",
-      );
-      return { kind: "lesson", title, html, text: "" };
-    }
-    return { kind: "text", title, html: "<p></p>", text: "Sample overview content." };
-  }
 
   if (block.category === "lesson" && block.lessonId) {
     const { data } = await supabase
@@ -312,13 +296,53 @@ async function loadOverviewContent(block: DayBlock | null, demo: boolean): Promi
     };
   }
 
-  const { data } = await supabase
+  // Assessment blocks (written work / performance task / exam) have no lesson body of
+  // their own, so compose a genuinely useful overview from the lessons the assessment
+  // covers — the topics it spans and their learning objectives — instead of only the
+  // one-line block description. Falls back to the description when no scope is known.
+  const { data: blockRow } = await supabase
     .from("blocks")
     .select("description")
     .eq("block_id", block.blockId)
     .maybeSingle();
-  const text = data?.description ? String(data.description).trim() : "";
-  return { kind: "text", title, html: "<p></p>", text };
+  const description = blockRow?.description ? String(blockRow.description).trim() : "";
+
+  const scopeIds = block.scopeLessonIds ?? [];
+  if (scopeIds.length > 0) {
+    const { data: lessonRows } = await supabase
+      .from("lessons")
+      .select("lesson_id, title, learning_objectives, sequence_no")
+      .in("lesson_id", scopeIds);
+    const lessons = (lessonRows ?? [])
+      .slice()
+      .sort((a, b) => Number(a?.sequence_no ?? 0) - Number(b?.sequence_no ?? 0));
+    if (lessons.length > 0) {
+      const kindLabel =
+        block.category === "exam"
+          ? "exam"
+          : block.category === "performance_task"
+            ? "performance task"
+            : "written work";
+      const items = lessons
+        .map((lesson) => {
+          const lessonTitle = escapeHtml(String(lesson?.title ?? "Lesson"));
+          const objectives = lesson?.learning_objectives
+            ? escapeHtml(String(lesson.learning_objectives).trim())
+            : "";
+          return `<li><strong>${lessonTitle}</strong>${
+            objectives ? `<br/>${objectives}` : ""
+          }</li>`;
+        })
+        .join("");
+      const intro = description ? `<p>${escapeHtml(description)}</p>` : "";
+      const html = normalizeToHtml(
+        `${intro}<p><strong>What this ${kindLabel} covers</strong></p><ul>${items}</ul>`,
+      );
+      return { kind: "lesson", title, html, text: "" };
+    }
+  }
+
+  return { kind: "text", title, html: "<p></p>", text: description };
 }
 
 function openBlockDetail(block: DayBlock) {
@@ -400,7 +424,7 @@ function DoubleChevron({ color }: { color: string }) {
 }
 
 export default function Home() {
-  const { colors: c, scheme } = useAppTheme();
+  const { colors: c } = useAppTheme();
   const today = useMemo(() => todayISO(), []);
   const termInfo = useMemo(() => getTermForDate(today), [today]);
   const termPill = useMemo(() => {
@@ -408,44 +432,37 @@ export default function Home() {
     return formatTermProgress([termInfo.term], today);
   }, [termInfo, today]);
 
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<UpcomingData | null>(null);
-  const [overview, setOverview] = useState<OverviewContent>({ kind: "empty", title: "", html: "<p></p>", text: "" });
   const [overviewHeight, setOverviewHeight] = useState(260);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      let userId: string | null = null;
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        userId = user?.id ?? null;
-      } catch {
-        userId = null;
-      }
-
-      const next = userId ? await loadSoonestData(userId, today) : null;
-      const resolved = next ?? demoUpcoming(today);
-      setData(resolved);
-      const content = await loadOverviewContent(resolved.firstBlock, resolved.demo);
-      setOverview(content);
-      setOverviewHeight(260);
-    } finally {
-      setLoading(false);
-    }
+  const {
+    status,
+    data: home,
+    reload,
+    refreshing,
+    onRefresh,
+  } = useLoadState(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const userId = user?.id ?? null;
+    const upcoming = userId ? await loadSoonestData(userId, today) : null;
+    const overview = await loadOverviewContent(upcoming?.firstBlock ?? null);
+    return { upcoming, overview };
   }, [today]);
 
+  const data = home?.upcoming ?? null;
+  const overview = home?.overview ?? { kind: "empty" as OverviewKind, title: "", html: "<p></p>", text: "" };
+
   useEffect(() => {
-    load();
-  }, [load]);
+    setOverviewHeight(260);
+  }, [data?.firstBlock?.blockId]);
 
   useEffect(() => {
     return subscribeToLessonPlanRefresh(() => {
-      load();
+      reload();
     });
-  }, [load]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const overviewSource = useMemo(
     () => ({ html: tiptapDocumentHtml({ editable: false, initialHtml: overview.html }) }),
@@ -460,13 +477,49 @@ export default function Home() {
     if (data?.firstBlock) openBlockDetail(data.firstBlock);
   }, [data?.firstBlock]);
 
-  const cardShellBg = scheme === "dark" ? c.card : "#FFFFFF";
+  const cardShellBg = c.card;
 
-  if (loading || !data) {
+  if (status === "loading") {
+    return (
+      <View style={[styles.page, { backgroundColor: c.background, padding: Spacing.lg }]}>
+        <Skeleton width={170} height={26} radius={Radius.round} />
+        <View style={{ height: Spacing.xxl }} />
+        <Skeleton width={110} height={14} />
+        <View style={{ height: Spacing.md }} />
+        <Skeleton height={78} radius={Radius.md} />
+        <View style={{ height: Spacing.md }} />
+        <Skeleton height={78} radius={Radius.md} />
+        <View style={{ height: Spacing.xxl }} />
+        <Skeleton width={110} height={14} />
+        <View style={{ height: Spacing.md }} />
+        <Skeleton height={220} radius={Radius.lg} />
+      </View>
+    );
+  }
+
+  if (status === "error") {
     return (
       <View style={[styles.page, styles.center, { backgroundColor: c.background }]}>
-        <ActivityIndicator color={c.tint} />
+        <ErrorState title="Couldn't load your classes" onRetry={reload} />
       </View>
+    );
+  }
+
+  if (!data) {
+    return (
+      <ScrollView
+        style={{ backgroundColor: c.background }}
+        contentContainerStyle={[styles.scroll, styles.center, { flexGrow: 1 }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.tint} />}
+      >
+        <EmptyState
+          illustration={<PlanSeed size={220} />}
+          title="Let's plan your school year"
+          body="Pick a subject and schEDU distributes lessons, quizzes and exams around the DepEd calendar for you."
+          ctaLabel="Create your first plan"
+          onCta={() => router.push("/(tabs)/create/lessonplan")}
+        />
+      </ScrollView>
     );
   }
 
@@ -475,6 +528,7 @@ export default function Home() {
       style={{ backgroundColor: c.background }}
       contentContainerStyle={styles.scroll}
       showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.tint} />}
     >
       {termPill ? (
         <Animated.View
@@ -489,32 +543,9 @@ export default function Home() {
         </Animated.View>
       ) : null}
 
-      {data.demo ? (
-        <Animated.View
-          entering={FadeInDown.duration(320).delay(40)}
-          style={[styles.firstPlanCta, { borderColor: c.border, backgroundColor: c.card }]}
-        >
-          <Ionicons name="document-text-outline" size={24} color={c.tint} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.firstPlanCtaTitle, { color: c.text }]}>
-              Create your first lesson plan
-            </Text>
-            <Text style={[styles.firstPlanCtaBody, { color: c.mutedText }]}>
-              {"You're viewing a sample agenda. Generate a real plan to see your own classes here."}
-            </Text>
-          </View>
-          <AnimatedPressable
-            onPress={() => router.push("/(tabs)/create/lessonplan")}
-            animatedStyle={[styles.firstPlanCtaButton, { backgroundColor: c.tint }]}
-          >
-            <Text style={styles.firstPlanCtaButtonText}>Start</Text>
-          </AnimatedPressable>
-        </Animated.View>
-      ) : null}
-
       <Animated.View entering={FadeInDown.duration(300).delay(60)} style={styles.section}>
         <Text style={[styles.kicker, { color: c.mutedText }]}>Upcoming</Text>
-        <AnimatedPressable style={styles.sectionHeadRow} onPress={onOpenDay} hitSlop={6}>
+        <AnimatedPressable animatedStyle={styles.sectionHeadRow} onPress={onOpenDay} hitSlop={6}>
           <Text style={[styles.sectionTitle, { color: c.text }]} numberOfLines={1}>
             {formatLongDate(data.dateISO)}
           </Text>
@@ -544,7 +575,7 @@ export default function Home() {
       <Animated.View entering={FadeInDown.duration(300).delay(120)} style={styles.section}>
         <Text style={[styles.kicker, { color: c.mutedText }]}>Overview</Text>
         <AnimatedPressable
-          style={styles.sectionHeadRow}
+          animatedStyle={styles.sectionHeadRow}
           onPress={onOpenOverview}
           hitSlop={6}
           disabled={!data.firstBlock}
@@ -566,7 +597,7 @@ export default function Home() {
               <WebView
                 originWhitelist={["*"]}
                 source={overviewSource}
-                key={`overview-${data.firstBlock?.blockId ?? "none"}-${overview.html.length}`}
+                key={`overview-${data.firstBlock?.blockId ?? "none"}`}
                 onMessage={(event) => {
                   const next = parseWebHeight(event);
                   if (next) setOverviewHeight(next);
@@ -617,34 +648,6 @@ const styles = StyleSheet.create({
   termPillText: {
     ...Typography.caption,
     fontWeight: "600",
-  },
-  firstPlanCta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
-    padding: Spacing.lg,
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.md,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-  },
-  firstPlanCtaTitle: {
-    ...Typography.h3,
-    fontWeight: "600",
-  },
-  firstPlanCtaBody: {
-    ...Typography.caption,
-    marginTop: 2,
-  },
-  firstPlanCtaButton: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.sm,
-  },
-  firstPlanCtaButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "600",
-    fontSize: 14,
   },
   section: {
     paddingHorizontal: Spacing.lg,

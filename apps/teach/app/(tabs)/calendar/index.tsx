@@ -22,9 +22,6 @@ import Animated, { FadeInDown, FadeOutUp } from "react-native-reanimated";
 import {
   CalendarMonth,
   CalendarToolbar,
-  DEMO_PLAN_ID,
-  DEMO_PLAN_SUMMARY,
-  DEMO_SCHEDULE,
   listLessonPlans,
   loadPlanSchedule,
   monthName,
@@ -34,6 +31,8 @@ import {
   type ScheduleData,
   type YearMonth,
 } from "../../../components/calendar";
+import { EmptyState, ErrorState } from "../../../components/ui";
+import { PlanSeed } from "../../../components/illustrations";
 import PopulateSheet from "../../../components/calendar/populate-sheet";
 import { useAppTheme } from "../../../context/theme";
 import { subscribeToLessonPlanRefresh } from "../../../lib/lesson-plan-refresh";
@@ -64,8 +63,9 @@ export default function CalendarScreen() {
   const contentWidth = Math.max(280, windowWidth - PAGE_PADDING_H * 2);
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
-  const [plans, setPlans] = useState<PlanSummary[]>([DEMO_PLAN_SUMMARY]);
+  const [plans, setPlans] = useState<PlanSummary[]>([]);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [monthIndex, setMonthIndex] = useState(0);
   const [gridHeight, setGridHeight] = useState(0);
@@ -78,35 +78,26 @@ export default function CalendarScreen() {
 
   const load = useCallback(async (planId?: string) => {
     setLoading(true);
+    setLoadError(false);
     try {
-      let realPlans: PlanSummary[] = [];
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) realPlans = await listLessonPlans(user.id);
-      } catch {
-        realPlans = [];
-      }
-      // Only fall back to the demo for users with no real plans (a first-run
-      // sample). Never inject it alongside real plans — that surfaced fabricated
-      // data to active users.
-      setPlans(realPlans.length > 0 ? realPlans : [DEMO_PLAN_SUMMARY]);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      const realPlans = user ? await listLessonPlans(user.id) : [];
+      setPlans(realPlans);
 
-      const target = planId ?? realPlans[0]?.lessonPlanId ?? DEMO_PLAN_ID;
-      if (target === DEMO_PLAN_ID) {
-        setSchedule(DEMO_SCHEDULE);
-        setSelectedPlanId(DEMO_PLAN_ID);
-      } else {
-        try {
-          const data = await loadPlanSchedule(target);
-          setSchedule(data);
-          setSelectedPlanId(target);
-        } catch {
-          setSchedule(DEMO_SCHEDULE);
-          setSelectedPlanId(DEMO_PLAN_ID);
-        }
+      const target = planId ?? realPlans[0]?.lessonPlanId ?? null;
+      if (!target) {
+        // Honest first-run state — no fabricated sample schedule.
+        setSchedule(null);
+        setSelectedPlanId(null);
+        return;
       }
+      const data = await loadPlanSchedule(target);
+      setSchedule(data);
+      setSelectedPlanId(target);
+    } catch {
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -189,9 +180,23 @@ export default function CalendarScreen() {
 
   return (
     <View style={[styles.page, { backgroundColor: c.background }]}>
-      {loading || !schedule ? (
+      {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={c.tint} />
+        </View>
+      ) : loadError ? (
+        <View style={styles.center}>
+          <ErrorState title="Couldn't load your calendar" onRetry={() => load(selectedPlanId ?? undefined)} />
+        </View>
+      ) : !schedule ? (
+        <View style={styles.center}>
+          <EmptyState
+            illustration={<PlanSeed size={220} />}
+            title="Your school year, visualized"
+            body="Create a lesson plan and schEDU lays out every session, quiz and exam on this calendar."
+            ctaLabel="Create your first plan"
+            onCta={() => router.push("/(tabs)/create/lessonplan")}
+          />
         </View>
       ) : (
         <>
@@ -210,24 +215,26 @@ export default function CalendarScreen() {
             />
           </View>
 
-          {schedule.blocks.length === 0 && schedule.planId !== DEMO_PLAN_ID ? (
+          {schedule.blocks.length === 0 ? (
             <Text style={[styles.emptyHint, { color: c.mutedText }]}>
               No scheduled sessions for this plan yet.
             </Text>
           ) : null}
 
-          {vacancies.length > 0 && selectedPlanId && selectedPlanId !== DEMO_PLAN_ID ? (
+          {vacancies.length > 0 && selectedPlanId ? (
             <Animated.View entering={FadeInDown.springify()} exiting={FadeOutUp.duration(200)}>
               <Pressable
                 onPress={() => setPopulateOpen(true)}
-                style={styles.vacancyBanner}
+                accessibilityRole="button"
+                accessibilityLabel="Fill open session slots"
+                style={[styles.vacancyBanner, { backgroundColor: c.infoSoft }]}
               >
-                <Ionicons name="sparkles" size={15} color="#3B82F6" />
-                <Text style={styles.vacancyBannerText}>
+                <Ionicons name="sparkles" size={15} color={c.info} />
+                <Text style={[styles.vacancyBannerText, { color: c.info }]}>
                   {vacancies.reduce((s, r) => s + r.excess_slots, 0)} open session slot
                   {vacancies.reduce((s, r) => s + r.excess_slots, 0) !== 1 ? "s" : ""} — tap to fill
                 </Text>
-                <Ionicons name="chevron-forward" size={14} color="#93C5FD" />
+                <Ionicons name="chevron-forward" size={14} color={c.info} />
               </Pressable>
             </Animated.View>
           ) : null}
@@ -309,7 +316,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: "#EFF6FF",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -319,7 +325,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: "600",
-    color: "#1D4ED8",
   },
   list: {
     flex: 1,

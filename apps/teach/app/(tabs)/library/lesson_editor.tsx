@@ -355,7 +355,7 @@ export default function LessonEditorScreen() {
             ref={editorRef}
             originWhitelist={["*"]}
             source={editorSource}
-            key={`lesson-editor-${lesson.lesson_id}-${contentHtml.length}`}
+            key={`lesson-editor-${lesson.lesson_id}`}
             onMessage={handleMessage}
             scrollEnabled={false}
             javaScriptEnabled
