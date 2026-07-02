@@ -11,30 +11,40 @@ export const FontWeights = {
   medium: "500",
   semibold: "600",
   bold: "700",
+  heavy: "800",
 } as const;
 
 export const FontSizes = {
+  display: 28,
   h1: 24,
-  h2: 18,
-  h3: 16,
-  body: 14,
+  h2: 20,
+  h3: 17,
+  body: 15,
+  bodySm: 13,
   caption: 12,
+  label: 11,
 } as const;
 
 export const LineHeights = {
+  display: 34,
   h1: 30,
-  h2: 24,
-  h3: 22,
-  body: 20,
+  h2: 26,
+  h3: 23,
+  body: 21,
+  bodySm: 18,
   caption: 16,
+  label: 14,
 } as const;
 
 export const LetterSpacing = {
+  display: -0.3,
   h1: -0.2,
-  h2: -0.1,
+  h2: -0.15,
   h3: 0,
   body: 0,
+  bodySm: 0,
   caption: 0.1,
+  label: 0.8,
 } as const;
 
 export const Spacing = {
@@ -48,48 +58,47 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  sm: 6,
-  md: 8,
-  lg: 12,
-  xl: 16,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
   round: 999,
 } as const;
 
-export const Typography = {
-  h1: {
-    fontFamily: FontFamilies.bold,
-    fontWeight: FontWeights.bold,
-    fontSize: FontSizes.h1,
-    lineHeight: LineHeights.h1,
-    letterSpacing: LetterSpacing.h1,
-  },
-  h2: {
-    fontFamily: FontFamilies.semibold,
-    fontWeight: FontWeights.semibold,
-    fontSize: FontSizes.h2,
-    lineHeight: LineHeights.h2,
-    letterSpacing: LetterSpacing.h2,
-  },
-  h3: {
-    fontFamily: FontFamilies.semibold,
-    fontWeight: FontWeights.semibold,
-    fontSize: FontSizes.h3,
-    lineHeight: LineHeights.h3,
-    letterSpacing: LetterSpacing.h3,
-  },
-  body: {
-    fontFamily: FontFamilies.regular,
-    fontWeight: FontWeights.regular,
-    fontSize: FontSizes.body,
-    lineHeight: LineHeights.body,
-    letterSpacing: LetterSpacing.body,
-  },
-  caption: {
-    fontFamily: FontFamilies.regular,
-    fontWeight: FontWeights.regular,
-    fontSize: FontSizes.caption,
-    lineHeight: LineHeights.caption,
-    letterSpacing: LetterSpacing.caption,
-  },
-} as const;
+type TypeStyle = {
+  fontFamily: string;
+  fontWeight: (typeof FontWeights)[keyof typeof FontWeights];
+  fontSize: number;
+  lineHeight: number;
+  letterSpacing: number;
+};
 
+function style(
+  size: keyof typeof FontSizes,
+  family: keyof typeof FontFamilies,
+  weight: keyof typeof FontWeights
+): TypeStyle {
+  return {
+    fontFamily: FontFamilies[family],
+    fontWeight: FontWeights[weight],
+    fontSize: FontSizes[size],
+    lineHeight: LineHeights[size],
+    letterSpacing: LetterSpacing[size],
+  };
+}
+
+/**
+ * The full type scale. Use these instead of raw fontSize values.
+ * `label` is the uppercase kicker style — pair with `textTransform: "uppercase"`.
+ */
+export const Typography = {
+  display: style("display", "bold", "heavy"),
+  h1: style("h1", "bold", "bold"),
+  h2: style("h2", "semibold", "semibold"),
+  h3: style("h3", "semibold", "semibold"),
+  body: style("body", "regular", "regular"),
+  bodyMedium: { ...style("body", "medium", "medium") },
+  bodySm: style("bodySm", "regular", "regular"),
+  caption: style("caption", "regular", "regular"),
+  label: style("label", "semibold", "bold"),
+} as const;

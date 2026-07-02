@@ -1,6 +1,8 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Appearance, Pressable, StyleSheet, Text, View } from "react-native";
 import { captureException } from "../lib/sentry";
+import { Colors } from "../constants/colors";
+import { Radius, Spacing, Typography } from "../constants/fonts";
 
 interface Props {
   children: React.ReactNode;
@@ -11,6 +13,8 @@ interface State {
   error: Error | null;
 }
 
+// Class component (required for componentDidCatch), so it can't call
+// useAppTheme — it follows the system scheme directly.
 class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -28,15 +32,23 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const c = Colors[Appearance.getColorScheme() === "dark" ? "dark" : "light"];
       return (
-        <View style={styles.container}>
-          <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.message}>{this.state.error?.message ?? "An unexpected error occurred."}</Text>
+        <View
+          accessibilityRole="alert"
+          style={[styles.container, { backgroundColor: c.background }]}
+        >
+          <Text style={[Typography.h2, styles.title, { color: c.text }]}>Something went wrong</Text>
+          <Text style={[Typography.body, styles.message, { color: c.mutedText }]}>
+            {this.state.error?.message ?? "An unexpected error occurred."}
+          </Text>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Try again"
             onPress={() => this.setState({ hasError: false, error: null })}
-            style={styles.button}
+            style={[styles.button, { backgroundColor: c.tint }]}
           >
-            <Text style={styles.buttonText}>Try Again</Text>
+            <Text style={[Typography.bodyMedium, { color: c.onTint }]}>Try Again</Text>
           </Pressable>
         </View>
       );
@@ -48,33 +60,21 @@ class ErrorBoundary extends React.Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#111",
     alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+    padding: Spacing.xxl,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#fff",
-    marginBottom: 10,
+    marginBottom: Spacing.sm,
   },
   message: {
-    fontSize: 14,
-    color: "#9CA3AF",
     textAlign: "center",
-    marginBottom: 28,
+    marginBottom: Spacing.xxl,
   },
   button: {
-    backgroundColor: "#22c55e",
     paddingHorizontal: 28,
     paddingVertical: 12,
-    borderRadius: 10,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "600",
+    borderRadius: Radius.md,
   },
 });
 

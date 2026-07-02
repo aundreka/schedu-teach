@@ -24,6 +24,7 @@ import {
   Gesture,
   GestureDetector,
 } from "react-native-gesture-handler";
+import { useAppTheme } from "../context/theme";
 
 const SPRING_CONFIG = {
   damping: 28,
@@ -46,6 +47,7 @@ export default function BottomSheet({
   children,
   snapFraction = 0.58,
 }: Props) {
+  const { colors: c } = useAppTheme();
   const { height: screenH } = useWindowDimensions();
   const sheetH = screenH * snapFraction;
 
@@ -93,8 +95,16 @@ export default function BottomSheet({
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* Backdrop */}
-      <Animated.View style={[styles.backdrop, backdropStyle]} pointerEvents={visible ? "auto" : "none"}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      <Animated.View
+        style={[styles.backdrop, { backgroundColor: c.backdrop }, backdropStyle]}
+        pointerEvents={visible ? "auto" : "none"}
+      >
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close sheet"
+        />
       </Animated.View>
 
       {/* Sheet */}
@@ -102,11 +112,11 @@ export default function BottomSheet({
         <Animated.View
           style={[
             styles.sheet,
-            { height: sheetH + 40 /* extra for rubber-band feel */ },
+            { height: sheetH + 40 /* extra for rubber-band feel */, backgroundColor: c.card },
             sheetStyle,
           ]}
         >
-          <View style={styles.handle} />
+          <View style={[styles.handle, { backgroundColor: c.border }]} />
           {children}
         </Animated.View>
       </GestureDetector>
@@ -117,14 +127,12 @@ export default function BottomSheet({
 const styles = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.46)",
   },
   sheet: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     paddingTop: 12,
@@ -138,7 +146,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#D1D5DB",
     alignSelf: "center",
     marginBottom: 8,
   },

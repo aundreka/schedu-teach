@@ -10,6 +10,7 @@ import Animated, {
   FadeOutDown,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
+import { useAppTheme } from "../context/theme";
 
 export type ToastVariant = "success" | "warning" | "error" | "info";
 
@@ -22,11 +23,11 @@ type Props = {
   duration?: number;
 };
 
-const PALETTE: Record<ToastVariant, { bg: string; text: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  success: { bg: "#10B981", text: "#FFFFFF", icon: "checkmark-circle" },
-  warning: { bg: "#F59E0B", text: "#FFFFFF", icon: "warning" },
-  error: { bg: "#EF4444", text: "#FFFFFF", icon: "close-circle" },
-  info: { bg: "#3B82F6", text: "#FFFFFF", icon: "information-circle" },
+const ICONS: Record<ToastVariant, keyof typeof Ionicons.glyphMap> = {
+  success: "checkmark-circle",
+  warning: "warning",
+  error: "close-circle",
+  info: "information-circle",
 };
 
 export default function Toast({
@@ -36,7 +37,14 @@ export default function Toast({
   onHide,
   duration = 2600,
 }: Props) {
-  const palette = PALETTE[variant];
+  const { colors: c } = useAppTheme();
+  const bgByVariant: Record<ToastVariant, string> = {
+    success: c.tintDeep,
+    warning: c.warning,
+    error: c.danger,
+    info: c.info,
+  };
+  const palette = { bg: bgByVariant[variant], text: "#FFFFFF", icon: ICONS[variant] };
 
   useEffect(() => {
     if (!visible) return;
@@ -78,7 +86,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 14,
-    shadowColor: "#000",
+    shadowColor: "#000000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
