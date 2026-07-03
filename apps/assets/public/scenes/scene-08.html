@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene 08 — Open the app, know what to teach</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  html, body { margin: 0; min-height: 100vh; }
+  body { background: #F4F6F8; display: flex; align-items: center; justify-content: center; }
+  .stage { background: transparent; border: none; border-radius: 0; width: 620px; min-height: 0; padding: 44px 44px 64px; zoom: 1.5; }
+  .stage-tools { display: none; }
+
+  .day { position: relative; width: 440px; margin: 0 auto; }
+  .day-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; opacity: 0; animation: s8in 9s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite; }
+  .day-head b { font-family: var(--display); font-size: 19px; letter-spacing: -0.02em; }
+  .day-head span { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+  .row {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 14px;
+    padding: 13px 16px; margin-bottom: 10px;
+    box-shadow: 0 8px 20px rgba(var(--shadow), 0.07);
+    opacity: 0; animation: s8in 9s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite; animation-delay: var(--d);
+  }
+  @keyframes s8in {
+    0%   { opacity: 0; transform: translateY(12px); }
+    4%   { opacity: 1; transform: translateY(0); }
+    91%  { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .time { font-family: var(--mono); font-size: 11.5px; color: var(--muted); min-width: 44px; font-variant-numeric: tabular-nums; }
+  .row .body { flex: 1; min-width: 0; }
+  .row .body b { display: block; font-size: 13.5px; letter-spacing: -0.01em; }
+  .row .body span { font-size: 11.5px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 999px; flex: none; }
+  .d-lesson { background: var(--cat-lesson); }
+  .d-ww { background: var(--cat-ww); }
+
+  /* done tick on the earlier class */
+  .tick { width: 20px; height: 20px; border-radius: 999px; background: var(--tint-soft); display: flex; align-items: center; justify-content: center; flex: none; opacity: 0; animation: s8tick 9s cubic-bezier(0.2, 0.9, 0.3, 1.4) infinite; }
+  @keyframes s8tick {
+    0%, 24% { opacity: 0; transform: scale(0.4); }
+    27%     { opacity: 1; transform: scale(1); }
+    91%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .row.done .body b, .row.done .time { color: var(--faint); }
+
+  /* the current class lights up */
+  .row.now { position: relative; border-color: transparent; }
+  .row.now::before {
+    content: ""; position: absolute; inset: -1px; border-radius: 14px; pointer-events: none;
+    border: 2px solid var(--tint); opacity: 0;
+    animation: s8ring 9s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite;
+  }
+  @keyframes s8ring {
+    0%, 34% { opacity: 0; transform: scale(0.985); }
+    38%     { opacity: 1; transform: scale(1); }
+    91%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .nowchip {
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase;
+    background: var(--tint); color: var(--on-tint); border-radius: 999px; padding: 4px 9px; flex: none;
+    opacity: 0; animation: s8chip 9s cubic-bezier(0.2, 0.9, 0.3, 1.4) infinite;
+  }
+  @keyframes s8chip {
+    0%, 38% { opacity: 0; transform: scale(0.5); }
+    41%     { opacity: 1; transform: scale(1); }
+    91%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .attach {
+    display: flex; align-items: center; gap: 7px; margin-top: 8px;
+    font-size: 11px; font-weight: 600; color: var(--tint-deep);
+    max-height: 0; overflow: hidden; opacity: 0;
+    animation: s8attach 9s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite;
+  }
+  .attach svg { flex: none; }
+  @keyframes s8attach {
+    0%, 46% { max-height: 0; opacity: 0; }
+    52%     { max-height: 20px; opacity: 1; }
+    91%     { max-height: 20px; opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .day .badge { position: absolute; bottom: -42px; right: 0; opacity: 0; animation: s8badge 9s cubic-bezier(0.2, 0.9, 0.3, 1.3) infinite; }
+  @keyframes s8badge {
+    0%, 66% { opacity: 0; transform: translateY(10px) scale(0.9); }
+    71%     { opacity: 1; transform: translateY(0) scale(1); }
+    91%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="stage s8" data-scene>
+  <div class="day" role="img" aria-label="Animation: a today view fills with the day's classes, the finished class gets a checkmark, the current class lights up with a Now chip and shows its attached lesson, and a badge says Know exactly what's next.">
+    <div class="day-head"><b>Today</b><span>TUE · WEEK 6 · Q2</span></div>
+
+    <div class="row done" style="--d: 0.5s">
+      <span class="time">7:30</span>
+      <span class="dot d-lesson"></span>
+      <div class="body"><b>Math 8 · Linear Equations</b><span>Lesson 11</span></div>
+      <span class="tick">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5" stroke="#16A34A" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </div>
+
+    <div class="row now" style="--d: 0.9s">
+      <span class="time">9:00</span>
+      <span class="dot d-lesson"></span>
+      <div class="body">
+        <b>Science 8 · Photosynthesis</b>
+        <span>Lesson 12</span>
+        <div class="attach">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 3h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="2"/><path d="M9.5 8h5M9.5 12h5M9.5 16h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          Lesson plan and materials attached
+        </div>
+      </div>
+      <span class="nowchip">Now</span>
+    </div>
+
+    <div class="row" style="--d: 1.3s">
+      <span class="time">10:30</span>
+      <span class="dot d-ww"></span>
+      <div class="body"><b>Science 7 · Quiz 4</b><span>Written Work</span></div>
+    </div>
+
+    <div class="row" style="--d: 1.7s">
+      <span class="time">1:00</span>
+      <span class="dot d-lesson"></span>
+      <div class="body"><b>English 8 · Active Voice</b><span>Lesson 9</span></div>
+    </div>
+
+    <span class="badge">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Know exactly what's next
+    </span>
+  </div>
+</div>
+</body>
+</html>

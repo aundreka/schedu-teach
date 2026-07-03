@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene 06 — Snap a page, get a lesson</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  html, body { margin: 0; min-height: 100vh; }
+  body { background: #F4F6F8; display: flex; align-items: center; justify-content: center; }
+  .stage { background: transparent; border: none; border-radius: 0; width: 470px; min-height: 0; padding: 44px; zoom: 2.25; }
+  .stage-tools { display: none; }
+
+  .duo { display: flex; flex-direction: column; align-items: center; gap: 26px; }
+
+  /* ---- the photographed page ---- */
+  .snap { position: relative; width: 224px; flex: none; opacity: 0; animation: s6snapIn 10s cubic-bezier(0.2, 0.9, 0.3, 1.15) infinite; }
+  @keyframes s6snapIn {
+    0%   { opacity: 0; transform: translateY(14px) scale(0.97); }
+    4%   { opacity: 1; transform: translateY(0) scale(1); }
+    11.5%{ transform: scale(1); }
+    13%  { transform: scale(0.985); }
+    14.5%{ transform: scale(1); }
+    92%  { opacity: 1; transform: scale(1); }
+    97%, 100% { opacity: 0; }
+  }
+  .page {
+    background: #FDFDF9; border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 16px 16px; box-shadow: 0 12px 26px rgba(var(--shadow), 0.10);
+  }
+  .page b { display: block; font-size: 12.5px; letter-spacing: -0.01em; margin-bottom: 10px; color: #3F3A2E; }
+  .pbar { height: 7px; border-radius: 4px; background: #E7E3D6; margin-bottom: 8px; }
+  .pfig {
+    height: 52px; border-radius: 8px; background: #EDF6EC; border: 1px solid #D9EAD8;
+    margin: 10px 0; display: flex; align-items: center; justify-content: center;
+  }
+  .pfig svg { display: block; }
+  .corner { position: absolute; width: 20px; height: 20px; border: 3.5px solid var(--tint); opacity: 0; animation: s6corner 10s ease-out infinite; }
+  .corner.c1 { top: -9px; left: -9px; border-right: none; border-bottom: none; border-radius: 6px 0 0 0; }
+  .corner.c2 { top: -9px; right: -9px; border-left: none; border-bottom: none; border-radius: 0 6px 0 0; }
+  .corner.c3 { bottom: -9px; left: -9px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
+  .corner.c4 { bottom: -9px; right: -9px; border-left: none; border-top: none; border-radius: 0 0 6px 0; }
+  @keyframes s6corner {
+    0%, 5%  { opacity: 0; transform: scale(1.4); }
+    9%      { opacity: 1; transform: scale(1); }
+    30%     { opacity: 1; }
+    36%     { opacity: 0; }
+    100%    { opacity: 0; }
+  }
+  .flash { position: absolute; inset: -4px; border-radius: 14px; background: #fff; opacity: 0; animation: s6flash 10s linear infinite; }
+  @keyframes s6flash {
+    0%, 12%  { opacity: 0; }
+    13%      { opacity: 0.9; }
+    15.5%    { opacity: 0; }
+    100%     { opacity: 0; }
+  }
+  .scan {
+    position: absolute; left: 4px; right: 4px; top: 0; height: 34px; border-radius: 8px; pointer-events: none;
+    background: linear-gradient(180deg, rgba(34, 197, 94, 0) 0%, rgba(34, 197, 94, 0.20) 50%, rgba(34, 197, 94, 0) 100%);
+    border-bottom: 2px solid rgba(34, 197, 94, 0.55);
+    opacity: 0; animation: s6scan 10s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  @keyframes s6scan {
+    0%, 16%  { opacity: 0; transform: translateY(-10px); }
+    18%      { opacity: 1; }
+    30%      { opacity: 1; transform: translateY(150px); }
+    32%      { opacity: 0; transform: translateY(160px); }
+    100%     { opacity: 0; }
+  }
+
+  /* ---- travelling dots ---- */
+  .flow { display: flex; flex-direction: row; gap: 9px; flex: none; }
+  .flow i { width: 9px; height: 9px; border-radius: 999px; background: var(--tint); opacity: 0; animation: s6dot 10s ease-out infinite; animation-delay: var(--d); }
+  @keyframes s6dot {
+    0%   { opacity: 0; transform: translateY(-14px); }
+    2.5% { opacity: 1; }
+    5%   { opacity: 0; transform: translateY(14px); }
+    100% { opacity: 0; }
+  }
+
+  /* ---- the drafted lesson ---- */
+  .lesson {
+    position: relative; width: 330px; flex: none;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px 22px 24px; box-shadow: 0 18px 38px rgba(var(--shadow), 0.12);
+    opacity: 0; animation: s6lessonIn 10s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite;
+  }
+  @keyframes s6lessonIn {
+    0%, 34% { opacity: 0; transform: translateY(16px) scale(0.96); }
+    38%     { opacity: 1; transform: translateY(0) scale(1); }
+    92%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .lesson .paper-head b { font-size: 14px; }
+  .sec { font-size: 10px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: var(--tint-deep); margin: 14px 0 8px; opacity: 0; animation: s6pop 10s ease-out infinite; animation-delay: var(--d); }
+  .lbar { height: 8px; border-radius: 5px; background: var(--surface-alt); margin-bottom: 8px; position: relative; overflow: hidden; }
+  .lbar::after { content: ""; position: absolute; inset: 0; border-radius: 5px; background: #E2E8F0; transform-origin: left; transform: scaleX(0); animation: s6ink 10s cubic-bezier(0.3, 0, 0.2, 1) infinite; animation-delay: var(--d); }
+  @keyframes s6ink {
+    0%   { transform: scaleX(0); }
+    4%   { transform: scaleX(1); }
+    100% { transform: scaleX(1); }
+  }
+  .mats { display: flex; gap: 7px; margin-top: 13px; flex-wrap: wrap; }
+  .mat {
+    font-size: 10.5px; font-weight: 700; color: var(--tint-deep); background: var(--tint-soft);
+    border: 1px solid var(--cat-lesson-border); border-radius: 999px; padding: 4px 11px;
+    opacity: 0; animation: s6pop 10s cubic-bezier(0.2, 0.9, 0.3, 1.35) infinite; animation-delay: var(--d);
+  }
+  @keyframes s6pop {
+    0%   { opacity: 0; transform: scale(0.6); }
+    3%   { opacity: 1; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .lesson .badge { position: absolute; bottom: -16px; right: 20px; opacity: 0; animation: s6badge 10s cubic-bezier(0.2, 0.9, 0.3, 1.3) infinite; }
+  @keyframes s6badge {
+    0%, 70% { opacity: 0; transform: translateY(10px) scale(0.9); }
+    75%     { opacity: 1; transform: translateY(0) scale(1); }
+    92%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="stage s6" data-scene>
+  <div class="duo" role="img" aria-label="Animation: a textbook page is photographed with a camera flash, a scan line reads it, and a structured lesson plan assembles itself beside it, finishing with a Lesson drafted badge.">
+    <div class="snap">
+      <div class="page">
+        <b>Photosynthesis</b>
+        <div class="pbar" style="width: 100%"></div>
+        <div class="pbar" style="width: 92%"></div>
+        <div class="pbar" style="width: 96%"></div>
+        <div class="pfig">
+          <svg width="70" height="34" viewBox="0 0 70 34" aria-hidden="true">
+            <path d="M12 28 C10 14, 24 4, 38 6 C36 22, 24 30, 12 28 Z" fill="#8FCB8B"/>
+            <path d="M14 27 C22 18, 30 12, 36 8" stroke="#5F9E5C" stroke-width="1.6" fill="none"/>
+            <circle cx="54" cy="12" r="7" fill="#F5D76E"/>
+            <g stroke="#F5D76E" stroke-width="1.6"><path d="M54 1v4M54 19v4M43 12h4M61 12h4"/></g>
+          </svg>
+        </div>
+        <div class="pbar" style="width: 100%"></div>
+        <div class="pbar" style="width: 84%"></div>
+        <div class="pbar" style="width: 90%; margin-bottom: 0"></div>
+      </div>
+      <i class="corner c1"></i><i class="corner c2"></i><i class="corner c3"></i><i class="corner c4"></i>
+      <div class="scan"></div>
+      <div class="flash"></div>
+    </div>
+
+    <div class="flow">
+      <i style="--d: 3.2s"></i>
+      <i style="--d: 3.35s"></i>
+      <i style="--d: 3.5s"></i>
+    </div>
+
+    <div class="lesson">
+      <div class="paper-head"><b>Lesson 12 · Photosynthesis</b><span>SCIENCE 8 · Q2</span></div>
+      <div class="sec" style="--d: 4.0s">Objectives</div>
+      <div class="lbar" style="--d: 4.2s"></div>
+      <div class="lbar" style="width: 82%; --d: 4.5s"></div>
+      <div class="sec" style="--d: 4.9s">Procedure</div>
+      <div class="lbar" style="--d: 5.1s"></div>
+      <div class="lbar" style="width: 90%; --d: 5.4s"></div>
+      <div class="lbar" style="width: 70%; --d: 5.7s"></div>
+      <div class="mats">
+        <span class="mat" style="--d: 6.2s">Leaf samples</span>
+        <span class="mat" style="--d: 6.4s">Sunlight chart</span>
+        <span class="mat" style="--d: 6.6s">Worksheet</span>
+      </div>
+      <span class="badge">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Lesson drafted · ready to edit
+      </span>
+    </div>
+  </div>
+</div>
+</body>
+</html>
