@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene 01 — A whole term, planned in one tap</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  html, body { margin: 0; min-height: 100vh; }
+  body { background: #F4F6F8; display: flex; align-items: center; justify-content: center; }
+  .stage { background: transparent; border: none; border-radius: 0; width: 640px; min-height: 0; padding: 44px; zoom: 1.62; }
+  .stage { padding-bottom: 120px; }
+  .stage-tools { display: none; }
+  .week, .shelf { width: 552px; }
+  .paper { width: 400px; }
+</style>
+</head>
+<body>
+<div class="stage s1" data-scene>
+        <div class="stage-tools">
+          <button class="ctrl" data-still aria-pressed="false">End frame</button>
+          <button class="ctrl" data-pause aria-pressed="false">Pause</button>
+        </div>
+        <div class="week" role="img" aria-label="Animation: colored session blocks dropping one by one into a Monday-to-Friday schedule grid, finishing with an exam block and a Term planned badge.">
+          <div class="week-days"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>
+          <div class="week-grid">
+            <div class="col">
+              <div class="cell"><div class="block b-lesson" style="--d:0.5s"><small>Lesson 1</small>Cell Structure</div></div>
+              <div class="cell"><div class="block b-lesson" style="--d:2.1s"><small>Lesson 5</small>Mitosis</div></div>
+              <div class="cell"><div class="block b-buffer" style="--d:4.1s"><small>Buffer</small>Catch-up</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-lesson" style="--d:0.9s"><small>Lesson 2</small>Organelles</div></div>
+              <div class="cell"><div class="block b-ww" style="--d:2.5s"><small>Written Work</small>Quiz 2</div></div>
+              <div class="cell"><div class="block b-lesson" style="--d:4.5s"><small>Lesson 7</small>Heredity</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-ww" style="--d:1.3s"><small>Written Work</small>Quiz 1</div></div>
+              <div class="cell"><div class="block b-lesson" style="--d:2.9s"><small>Lesson 6</small>Meiosis</div></div>
+              <div class="cell"><div class="block b-pt" style="--d:4.9s"><small>Perf. Task</small>Cell Model</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-lesson" style="--d:1.7s"><small>Lesson 3</small>Membranes</div></div>
+              <div class="cell"><div class="block b-lesson" style="--d:3.3s"><small>Lesson 4</small>Transport</div></div>
+              <div class="cell"><div class="block b-lesson" style="--d:5.3s"><small>Lesson 8</small>Punnett Squares</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-buffer" style="--d:3.7s"><small>Buffer</small>Review</div></div>
+              <div class="cell"><div class="block b-pt" style="--d:5.7s"><small>Perf. Task</small>Lab Report</div></div>
+              <div class="cell"><div class="block b-exam" style="--d:6.1s"><small>Exam</small>1st Quarter</div></div>
+            </div>
+          </div>
+        </div>
+        <span class="badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Term planned · 15 sessions
+        </span>
+      </div>
+
+</body>
+</html>

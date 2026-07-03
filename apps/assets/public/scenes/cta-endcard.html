@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CTA end card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: #f9f9f9; display: flex; align-items: center; justify-content: center;
+    font-family: "Montserrat", -apple-system, system-ui, sans-serif;
+  }
+  .stack { display: flex; flex-direction: column; align-items: center; text-align: center; }
+
+  /* master timeline: 5 s seamless loop */
+  @keyframes rise {
+    0%      { opacity: 0; transform: translateY(26px); }
+    10%     { opacity: 1; transform: translateY(0); }
+    90%     { opacity: 1; transform: translateY(0); }
+    98%, 100% { opacity: 0; }
+  }
+  .logo, .head, .pill, .word { opacity: 0; animation: rise 5s cubic-bezier(0.2, 0.75, 0.3, 1) infinite; }
+  .logo { animation-delay: 0.1s; }
+  .head { animation-delay: 0.4s; }
+  .pill { animation-delay: 0.7s; }
+  .word { animation-delay: 0.95s; }
+
+  .head { font-size: 108px; font-weight: 800; color: #000; line-height: 1.1; margin: 48px 0 0; }
+  .head em { font-style: normal; color: #00bf63; }
+
+  .pill-wrap { position: relative; margin-top: 64px; }
+  @keyframes pulse {
+    0%, 14% { transform: scale(1); box-shadow: 0 12px 34px rgba(0, 191, 99, 0.28); }
+    52%     { transform: scale(1.035); box-shadow: 0 18px 48px rgba(0, 191, 99, 0.38); }
+    90%     { transform: scale(1); box-shadow: 0 12px 34px rgba(0, 191, 99, 0.28); }
+    100%    { transform: scale(1); }
+  }
+  .pill {
+    display: inline-block; background: #00bf63; color: #000;
+    font-size: 52px; font-weight: 800; padding: 34px 88px; border-radius: 999px;
+  }
+  .pill.animating { animation: rise 5s cubic-bezier(0.2, 0.75, 0.3, 1) infinite, pulse 5s ease-in-out infinite; animation-delay: 0.7s, 0.7s; }
+
+  .word { font-size: 54px; font-weight: 800; color: #000; margin-top: 120px; letter-spacing: 0.02em; }
+  .word em { font-style: normal; color: #00bf63; }
+</style>
+</head>
+<body>
+  <div class="stack">
+    <svg class="logo" width="220" height="220" viewBox="0 0 200 200" role="img" aria-label="SCHEDU logo">
+      <rect x="14" y="26" width="172" height="160" rx="20" fill="#fff" stroke="#E5E7EB" stroke-width="3"/>
+      <path d="M14 46 a20 20 0 0 1 20 -20 h132 a20 20 0 0 1 20 20 v26 H14 Z" fill="#00bf63"/>
+      <rect x="52" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
+      <rect x="134" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
+      <g fill="#EDEDED">
+        <rect x="32" y="86" width="30" height="16" rx="4"/><rect x="130" y="86" width="38" height="16" rx="4"/>
+        <rect x="32" y="130" width="24" height="16" rx="4"/><rect x="144" y="130" width="24" height="16" rx="4"/>
+        <rect x="32" y="158" width="38" height="16" rx="4"/><rect x="138" y="158" width="30" height="16" rx="4"/>
+      </g>
+      <g fill="#00bf63">
+        <rect x="62" y="88" width="76" height="18" rx="3"/>
+        <rect x="62" y="106" width="18" height="14" rx="3"/>
+        <rect x="62" y="120" width="76" height="18" rx="3"/>
+        <rect x="120" y="138" width="18" height="14" rx="3"/>
+        <rect x="62" y="152" width="76" height="18" rx="3"/>
+      </g>
+    </svg>
+    <div class="head">Plan the term.<br><em>Keep the Sunday.</em></div>
+    <div class="pill-wrap"><span class="pill animating">Try SCHEDU free</span></div>
+    <div class="word">schedu.ph</div>
+  </div>
+</body>
+</html>

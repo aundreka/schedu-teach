@@ -35,21 +35,28 @@
     font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
     color: var(--muted); margin: 26px 0 0;
   }
-  .actions { display: flex; gap: 14px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    font-family: var(--font); font-size: 15px; font-weight: 700;
-    padding: 15px 42px; border-radius: 999px; text-decoration: none;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, filter 0.18s ease;
+  .actions { display: flex; gap: 16px; margin-top: 22px; flex-wrap: wrap; justify-content: center; }
+  .action {
+    display: flex; align-items: center; gap: 16px; text-align: left;
+    width: min(300px, 84vw); padding: 18px 20px;
+    border: 1.5px solid var(--border); border-radius: 20px;
+    background: #fff; text-decoration: none; color: var(--black);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   }
-  .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.10); }
-  .btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
-  .btn.primary { background: var(--green); color: var(--black); }
-  .btn.primary:hover { filter: brightness(0.96); }
-  .btn.secondary { background: #fff; color: var(--black); border: 2px solid var(--black); }
-  .btn.secondary:hover { background: var(--paper); }
-  .btn:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
+  .action:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.10); border-color: var(--green); }
+  .action:active { transform: translateY(-1px); }
+  .action:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
+  .action .thumb {
+    width: 64px; height: 64px; border-radius: 16px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .action.videos .thumb { background: var(--green); }
+  .action.shots .thumb { background: var(--paper); border: 1.5px solid var(--border); }
+  .action .txt b { display: block; font-size: 17px; font-weight: 800; }
+  .action .txt span { font-size: 12.5px; color: var(--muted); }
+  .action .arrow { margin-left: auto; color: var(--muted); transition: transform 0.18s ease, color 0.18s ease; }
+  .action:hover .arrow { transform: translateX(4px); color: var(--green); }
 
   .guide { background: var(--paper); border-top: 1px solid var(--border); padding: 40px 24px 46px; }
   .guide-inner { max-width: 760px; margin: 0 auto; }
@@ -59,13 +66,21 @@
   }
   .guide-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
   .glink {
-    background: #fff; border: 1px solid var(--border); border-radius: 14px;
-    padding: 16px 18px; text-decoration: none; color: var(--black); display: block;
+    background: #fff; border: 1.5px solid var(--border); border-radius: 16px;
+    padding: 18px; text-decoration: none; color: var(--black);
+    display: flex; align-items: flex-start; gap: 14px;
     transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   }
-  .glink:hover { border-color: var(--green); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.07); }
+  .glink:hover { border-color: var(--green); transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.08); }
   .glink:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
-  .glink b { display: block; font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .glink .ico {
+    width: 42px; height: 42px; border-radius: 12px; flex: none;
+    background: #E8F8F0; display: flex; align-items: center; justify-content: center;
+  }
+  .glink .txt { flex: 1; }
+  .glink b { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; margin-bottom: 3px; }
+  .glink b svg { transition: transform 0.18s ease; color: var(--muted); }
+  .glink:hover b svg { transform: translateX(3px); color: var(--green); }
   .glink span { font-size: 12.5px; color: var(--muted); }
   .hero > * { opacity: 0; transform: translateY(12px); animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
   .hero > :nth-child(2) { animation-delay: 0.07s; }
@@ -104,8 +119,29 @@
     <p class="tagline">your time belongs in a classroom</p>
     <p class="kit-label">Marketing Kit</p>
     <div class="actions">
-      <a class="btn primary" href="videos.html">Videos</a>
-      <a class="btn secondary" href="screens/index.html">Screenshots</a>
+      <a class="action videos" href="videos.html">
+        <span class="thumb" aria-hidden="true">
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+            <rect x="3" y="6" width="28" height="22" rx="5" fill="#fff"/>
+            <path d="M14.5 12.5v9l8-4.5-8-4.5z" fill="#00bf63"/>
+          </svg>
+        </span>
+        <span class="txt"><b>Videos</b><span>9 clips · landscape &amp; portrait</span></span>
+        <svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a class="action shots" href="screens/index.html">
+        <span class="thumb" aria-hidden="true">
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+            <rect x="10" y="3" width="14" height="28" rx="4" fill="#fff" stroke="#000" stroke-width="1.8"/>
+            <rect x="10" y="3" width="14" height="7" rx="4" fill="#00bf63"/>
+            <rect x="13" y="14" width="8" height="2.6" rx="1.3" fill="#E5E7EB"/>
+            <rect x="13" y="19" width="8" height="2.6" rx="1.3" fill="#E5E7EB"/>
+            <rect x="13" y="24" width="5" height="2.6" rx="1.3" fill="#00bf63"/>
+          </svg>
+        </span>
+        <span class="txt"><b>Screenshots</b><span>113 captures · light &amp; dark</span></span>
+        <svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
     </div>
   </section>
 
@@ -113,9 +149,18 @@
     <div class="guide-inner">
       <h2>Also in this kit</h2>
       <div class="guide-links">
-        <a class="glink" href="templates.html"><b>Post templates</b><span>Type the text, download the PNG. Walang Pasok day and the Sunday carousel.</span></a>
-        <a class="glink" href="kit.html"><b>Style guide</b><span>Beat sheets, export specs, captions, and usage rules for editors.</span></a>
-        <a class="glink" href="brand.html"><b>Brand styling</b><span>Logo, fonts, and colors. Start here before designing anything new.</span></a>
+        <a class="glink" href="templates.html">
+          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="3" stroke="#00bf63" stroke-width="2"/><path d="M8 8h8M8 12h8M8 16h4" stroke="#00bf63" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="txt"><b>Post templates <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></b><span>Type the text, download the PNG. Walang Pasok day and the Sunday carousel.</span></span>
+        </a>
+        <a class="glink" href="kit.html">
+          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5H6.5A2.5 2.5 0 0 0 4 21V5.5z" stroke="#00bf63" stroke-width="2" stroke-linejoin="round"/><path d="M9 8h6M9 12h4" stroke="#00bf63" stroke-width="2" stroke-linecap="round"/></svg></span>
+          <span class="txt"><b>Style guide <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></b><span>Beat sheets, export specs, captions, and usage rules for editors.</span></span>
+        </a>
+        <a class="glink" href="brand.html">
+          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="5" stroke="#00bf63" stroke-width="2"/><circle cx="15" cy="15" r="5" fill="#E8F8F0" stroke="#00bf63" stroke-width="2"/></svg></span>
+          <span class="txt"><b>Brand styling <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></b><span>Logo, fonts, and colors. Start here before designing anything new.</span></span>
+        </a>
       </div>
     </div>
   </section>
