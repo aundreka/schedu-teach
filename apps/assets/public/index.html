@@ -41,13 +41,14 @@
     grid-template-columns: repeat(3, 1fr);
     grid-template-areas:
       "shots tmpl vids"
-      "guide brand vids";
+      "guide brand vids"
+      "pack pack pack";
   }
   @media (max-width: 900px) {
-    .tiles { grid-template-columns: 1fr 1fr; grid-template-areas: "vids vids" "shots tmpl" "guide brand"; }
+    .tiles { grid-template-columns: 1fr 1fr; grid-template-areas: "vids vids" "shots tmpl" "guide brand" "pack pack"; }
   }
   @media (max-width: 560px) {
-    .tiles { grid-template-columns: 1fr; grid-template-areas: "vids" "shots" "tmpl" "guide" "brand"; }
+    .tiles { grid-template-columns: 1fr; grid-template-areas: "vids" "shots" "tmpl" "guide" "brand" "pack"; }
   }
 
   .tile {
@@ -63,6 +64,7 @@
   .tile:nth-child(3) { animation-delay: 0.32s; }
   .tile:nth-child(4) { animation-delay: 0.38s; }
   .tile:nth-child(5) { animation-delay: 0.44s; }
+  .tile:nth-child(6) { animation-delay: 0.50s; }
   .tile:hover { transform: translateY(-6px); box-shadow: 0 22px 44px rgba(0, 0, 0, 0.16); }
   .tile:active { transform: translateY(-2px); }
   .tile:focus-visible { outline: 4px solid var(--black); outline-offset: 3px; }
@@ -84,6 +86,10 @@
   .t-tmpl  { grid-area: tmpl;  background: #FFD98E; }
   .t-guide { grid-area: guide; background: #CDC3F9; }
   .t-brand { grid-area: brand; background: #FFC2CE; }
+  .t-pack  { grid-area: pack;  background: #B9EDD3; min-height: 150px; }
+  .t-pack .art { top: -34%; right: 4%; width: 34%; transform: rotate(-5deg); }
+  .t-pack:hover .art { transform: rotate(-1deg) scale(1.05); }
+  @media (max-width: 560px) { .t-pack { min-height: 190px; } .t-pack .art { width: 52%; top: -16%; } }
 
   .t-vids .art  { top: 6%; right: -8%; width: 88%; transform: rotate(-6deg); }
   .t-vids:hover .art { transform: rotate(-2deg) scale(1.05); }
@@ -193,6 +199,26 @@
         <circle cx="160" cy="204" r="17" fill="#111827"/>
       </svg>
       <span class="label">Brand<small>logo · fonts · colors</small></span>
+    </a>
+
+    <a class="tile t-pack" href="shoot-pack.html">
+      <svg class="art" viewBox="0 0 260 190" aria-hidden="true">
+        <g transform="rotate(-4 90 100)">
+          <rect x="20" y="66" width="140" height="96" rx="12" fill="#fff"/>
+          <path d="M20 78 a12 12 0 0 1 12 -12 h116 a12 12 0 0 1 12 12 v18 H20 Z" fill="#111827"/>
+          <path d="M34 66l18 30M66 66l18 30M98 66l18 30M130 66l18 30" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+          <rect x="34" y="112" width="76" height="11" rx="5.5" fill="#E5E7EB"/>
+          <rect x="34" y="132" width="52" height="11" rx="5.5" fill="#00bf63"/>
+        </g>
+        <g transform="rotate(7 205 105)">
+          <rect x="188" y="38" width="34" height="15" rx="7" fill="#111827"/>
+          <circle cx="205" cy="112" r="62" fill="#fff"/>
+          <circle cx="205" cy="112" r="50" fill="none" stroke="#E5E7EB" stroke-width="9"/>
+          <path d="M205 62 a50 50 0 0 1 43.3 75" stroke="#00bf63" stroke-width="9" fill="none" stroke-linecap="round"/>
+          <circle cx="205" cy="112" r="9" fill="#111827"/>
+        </g>
+      </svg>
+      <span class="label">Shoot pack<small>overlays for the demo videos · hooks · callouts · timer · end cards</small></span>
     </a>
 
   </nav>
