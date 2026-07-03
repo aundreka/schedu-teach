@@ -17,10 +17,11 @@
 //   PAYMONGO_CANCEL_URL      — page to return to on cancel
 //
 // metadata.user_id and metadata.tier are attached so paymongo-webhook can map the
-// resulting payment back to the user. NOTE: this creates a one-time Checkout
-// Session. For recurring billing, switch to the PayMongo Subscriptions API using
-// PAYMONGO_TIER{1,2}_PLAN_ID (already read by paymongo-webhook) — tracked as a
-// launch follow-up; the webhook already handles subscription.* events.
+// resulting payment back to the user. This creates a one-time Checkout Session:
+// paymongo-webhook handles checkout_session.payment.paid and grants the tier for
+// 30 days (expiry enforced by 13_billing_expiry.sql). A future move to recurring
+// billing would switch to the PayMongo Subscriptions API using
+// PAYMONGO_TIER{1,2}_PLAN_ID — the webhook already handles subscription.* events.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { rateLimitCheck, rateLimitHeaders } from "../_shared/rate-limit.ts";

@@ -16,6 +16,10 @@
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://rlaqermqpykxazfyfnpq.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "sb_publishable_AVOUYaImArE-g7mEgzY9qQ_WZIyT_x9"
       }
     }
   },

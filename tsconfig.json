@@ -4,5 +4,6 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
-  }
+  },
+  "extends": "expo/tsconfig.base"
 }

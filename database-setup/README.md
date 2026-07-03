@@ -4,7 +4,7 @@ Apply these SQL files **in strict numeric order** against a fresh Supabase /
 Postgres project. The files are idempotent (`if not exists`, `drop policy if
 exists`, guarded `do $$` blocks) so re-running the full set is safe.
 
-## Canonical apply order (00 → 12)
+## Canonical apply order (00 → 13)
 
 | Order | File | Purpose |
 |------:|------|---------|
@@ -21,6 +21,7 @@ exists`, guarded `do $$` blocks) so re-running the full set is safe.
 | 10 | `10_billing_v2.sql` | Tier limits, daily AI quota (`period_month` → `period_day`), `billing_events` |
 | 11 | `11_departments.sql` | Departments, join codes, school-admin RPCs |
 | 12 | `12_versions.sql` | Lesson-plan version history |
+| 13 | `13_billing_expiry.sql` | `current_period_end` expiry enforcement (one-time PayMongo payments) |
 
 > Ordering matters: `10_billing_v2.sql` renames `usage_quotas.period_month` to
 > `period_day`, and `04_academics.sql` must create `courses` before `subjects`
@@ -29,7 +30,7 @@ exists`, guarded `do $$` blocks) so re-running the full set is safe.
 ## Verifying a clean apply
 
 Run `./apply.sh "$DATABASE_URL"` (see below) against a **scratch** database. It
-applies 00 → 12 in order and fails on the first error. CI runs this on every PR.
+applies 00 → 13 in order and fails on the first error. CI runs this on every PR.
 
 ## Seeds (`seeds/dev-only/`)
 

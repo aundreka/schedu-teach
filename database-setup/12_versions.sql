@@ -24,6 +24,7 @@ create index if not exists lesson_plan_versions_plan_date
 
 alter table public.lesson_plan_versions enable row level security;
 
+drop policy if exists "owner can manage versions" on public.lesson_plan_versions;
 create policy "owner can manage versions"
   on public.lesson_plan_versions
   for all

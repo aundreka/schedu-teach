@@ -10,7 +10,9 @@
     "dev:teach-web": "turbo dev --filter=schedu-teach-web"
   },
   "devDependencies": {
-    "turbo": "^2.5.0"
+    "@types/react": "~19.1.10",
+    "turbo": "^2.5.0",
+    "typescript": "~5.9.2"
   },
   "packageManager": "pnpm@11.6.0",
   "dependencies": {

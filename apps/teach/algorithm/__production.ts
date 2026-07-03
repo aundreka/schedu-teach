@@ -444,7 +444,6 @@ section('calendar events: priority — delay (3) > exam_week (2) > generic event
     blackout_reason: 'sick',
     reason: 'Teacher illness',
     created_at: TS,
-    updated_at: TS,
   };
 
   const built = buildPlan({

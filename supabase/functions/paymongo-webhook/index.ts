@@ -16,9 +16,20 @@ import { rateLimitCheck, rateLimitHeaders } from "../_shared/rate-limit.ts";
 //
 // PayMongo identifies the user via attributes.metadata.user_id, which the paywall must
 // set when creating the subscription/checkout session.
+//
+// Two payment models are handled:
+//   - checkout_session.payment.paid — the LIVE model. create-paymongo-checkout makes a
+//     one-time Checkout Session with metadata {user_id, tier}; a paid session grants that
+//     tier for ONE_TIME_PERIOD_DAYS. Expiry is enforced at read time by
+//     current_effective_tier / get_subscription_status (13_billing_expiry.sql).
+//   - subscription.* — kept for a future move to the PayMongo Subscriptions API, keyed on
+//     PAYMONGO_TIER{1,2}_PLAN_ID.
 
 type Tier = "free" | "tier1" | "tier2";
 type SubStatus = "active" | "canceled" | "past_due" | "expired";
+
+// How long a one-time checkout payment keeps the tier active.
+const ONE_TIME_PERIOD_DAYS = 30;
 
 Deno.serve(async (req: Request) => {
   try {
@@ -126,6 +137,11 @@ async function handleEvent({
   tier2PlanId: string;
 }) {
   const attrs = eventData?.attributes ?? {};
+
+  if (eventType === "checkout_session.payment.paid") {
+    return handleCheckoutPaid({ admin, attrs });
+  }
+
   const userId: string | undefined = attrs?.metadata?.user_id;
   const planId: string | undefined = attrs?.plan_id ?? attrs?.plan?.id;
   const customerId: string | undefined = attrs?.customer_id ?? attrs?.customer?.id;
@@ -237,6 +253,62 @@ async function handleEvent({
   });
 
   return { handled: true, eventType, tier, status };
+}
+
+// One-time Checkout Session paid: grant metadata.tier for ONE_TIME_PERIOD_DAYS.
+// attrs is the checkout session's attributes, carrying the metadata that
+// create-paymongo-checkout attached plus the settled payments.
+async function handleCheckoutPaid({ admin, attrs }: { admin: any; attrs: any }) {
+  const eventType = "checkout_session.payment.paid";
+  const userId: string | undefined = attrs?.metadata?.user_id;
+  const metaTier: string | undefined = attrs?.metadata?.tier;
+
+  if (!userId) {
+    return { handled: false, eventType, reason: "missing metadata.user_id" };
+  }
+  // Fail CLOSED: only grant tiers we recognize (same principle as the plan_id check).
+  if (metaTier !== "tier1" && metaTier !== "tier2") {
+    return { handled: false, eventType, reason: `unknown metadata.tier: ${metaTier ?? "none"}` };
+  }
+  const tier: Tier = metaTier;
+
+  const now = new Date();
+  const periodEnd = new Date(now.getTime() + ONE_TIME_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+
+  const { error } = await admin
+    .from("subscriptions")
+    .update({
+      tier,
+      status: "active" satisfies SubStatus,
+      current_period_start: now.toISOString(),
+      current_period_end: periodEnd.toISOString(),
+      cancel_at_period_end: false,
+    })
+    .eq("user_id", userId);
+
+  if (error) {
+    return { handled: false, eventType, error: error.message };
+  }
+
+  const payment = attrs?.payments?.[0]?.attributes;
+  const lineItem = attrs?.line_items?.[0];
+  const amountCents: number | null =
+    typeof payment?.amount === "number" ? payment.amount
+    : typeof lineItem?.amount === "number" ? lineItem.amount
+    : null;
+  const currency: string = (payment?.currency ?? lineItem?.currency ?? "PHP").toUpperCase();
+
+  const tierLabel = tier === "tier1" ? "PRO" : "MAX";
+  await admin.from("billing_events").insert({
+    user_id:      userId,
+    event_type:   eventType,
+    tier,
+    amount_cents: amountCents,
+    currency,
+    description:  `Payment received — ${tierLabel} Plan (${ONE_TIME_PERIOD_DAYS} days)`,
+  });
+
+  return { handled: true, eventType, tier, status: "active" };
 }
 
 // PayMongo signature header format:

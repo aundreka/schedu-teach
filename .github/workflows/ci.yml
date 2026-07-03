@@ -23,15 +23,18 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Scoped to the app: the Next.js apps (website, teach-web) still use the
+      # removed `next lint` and have no ESLint config — migrate them to the
+      # ESLint CLI before widening this back to `pnpm lint`.
       - name: Lint
-        run: pnpm lint
+        run: pnpm --filter schedu-teach lint
       - name: Scheduler property tests
         run: pnpm --filter schedu-teach test:properties
       - name: Scheduler scenario tests
         run: pnpm --filter schedu-teach test:scenarios
 
   migrations:
-    name: Clean migration apply (00 -> 12)
+    name: Clean migration apply (00 -> 13)
     runs-on: ubuntu-latest
     services:
       postgres:

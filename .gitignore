@@ -68,3 +68,6 @@ supabase-token
 /review
 /todo
 /ScheduTeach-QA-Audit-Report.*
+
+# Marketing kit zips are generated from apps/assets/public — keep them out of git
+marketing/*.zip

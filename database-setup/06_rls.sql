@@ -22,10 +22,18 @@ alter table public.plan_subject_content enable row level security;
 alter table public.school_calendar_events enable row level security;
 alter table public.delays enable row level security;
 
+-- These role/membership helpers are SECURITY DEFINER so they read public.users and
+-- public.user_schools as the table owner, bypassing RLS. That is essential: they are
+-- invoked from inside RLS policies (including policies ON users / user_schools), and a
+-- plain (invoker-rights) function that reads users from within the users policy causes
+-- "infinite recursion detected in policy for relation users" (42P17) at query time,
+-- which breaks every authenticated read of the profile and cascades across the app.
 create or replace function public.is_current_user_admin()
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select exists (
     select 1
@@ -39,6 +47,8 @@ create or replace function public.is_current_user_school_admin(p_school_id uuid)
 returns boolean
 language sql
 stable
+security definer
+set search_path = public
 as $$
   select exists (
     select 1
@@ -50,22 +60,36 @@ as $$
   );
 $$;
 
+-- Whether the caller (a school admin) may read the target user's profile because they
+-- share a school. SECURITY DEFINER to bypass RLS on users/user_schools and avoid the
+-- recursion described above; entirely self-contained so the users policy never
+-- re-enters the users policy.
+create or replace function public.can_read_user_profile(p_target uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.users cu
+    where cu.userid = auth.uid()
+      and cu.role in ('admin', 'superadmin')
+  )
+  and exists (
+    select 1
+    from public.user_schools a
+    join public.user_schools b on b.school_id = a.school_id
+    where a.user_id = auth.uid()
+      and b.user_id = p_target
+  );
+$$;
+
 drop policy if exists "admins can read school member profiles" on public.users;
 create policy "admins can read school member profiles"
 on public.users for select
-using (
-  exists (
-    select 1
-    from public.user_schools current_membership
-    join public.user_schools target_membership
-      on target_membership.school_id = current_membership.school_id
-    join public.users admin_user
-      on admin_user.userid = current_membership.user_id
-    where current_membership.user_id = auth.uid()
-      and admin_user.role in ('admin', 'superadmin')
-      and target_membership.user_id = users.userid
-  )
-);
+using ( public.can_read_user_profile(users.userid) );
 
 -- schools
 drop policy if exists "users can read member schools" on public.schools;

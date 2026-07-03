@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Apply the schema migrations (00 -> 12) in strict order against a target DB.
+# Apply the schema migrations (00 -> 13) in strict order against a target DB.
 # Fails on the first error. Never touches seeds/dev-only/.
 #
 # Usage:
