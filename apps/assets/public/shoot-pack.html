@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCHEDU Shoot Pack</title>
+<link rel="icon" type="image/png" href="assets/logo/favicon-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --brand: #00bf63; --brand-deep: #009e52; --black: #000; --paper: #f9f9f9;
+    --muted: #6B7280; --border: #E5E7EB; --font: "Montserrat", -apple-system, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--black); font-family: var(--font); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  main { max-width: 1020px; margin: 0 auto; padding: 0 24px 90px; }
+  .top { padding: 56px 0 8px; }
+  .back { font-size: 13px; font-weight: 700; color: var(--brand-deep); text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+  h1 { font-size: clamp(30px, 5vw, 42px); font-weight: 800; letter-spacing: -0.02em; margin: 14px 0 10px; }
+  .sub { color: var(--muted); max-width: 66ch; margin: 0 0 8px; font-size: 15px; }
+
+  h2 { font-size: 13px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 52px 0 6px; }
+  .h2sub { font-size: 13.5px; color: var(--muted); margin: 0 0 18px; max-width: 70ch; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .card { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: #fff; display: flex; flex-direction: column; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,0.07); }
+  .card .art { background: repeating-conic-gradient(#EDEFF2 0% 25%, #fff 0% 50%) 0 0 / 22px 22px; display: flex; align-items: center; justify-content: center; padding: 14px; min-height: 150px; }
+  .card .art.solid { background: var(--paper); }
+  .card img { max-width: 100%; max-height: 240px; display: block; }
+  .card .body { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .card b { font-size: 12.5px; font-weight: 800; }
+  .card span { font-size: 11.5px; color: var(--muted); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--brand); color: var(--black); font-size: 12px; font-weight: 800;
+    padding: 9px 0; border-radius: 9px; text-decoration: none; transition: background 0.15s ease;
+  }
+  .btn:hover { background: var(--brand-deep); }
+
+  .notes { border: 1px solid var(--border); border-radius: 16px; padding: 22px 26px; margin-top: 18px; }
+  .notes ul { margin: 0; padding-left: 20px; }
+  .notes li { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+  .notes li:last-child { margin-bottom: 0; }
+  .notes b { color: var(--black); }
+  .notes code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; background: var(--paper); border-radius: 5px; padding: 1px 6px; }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <a class="back" href="index.html">&larr; Kit home</a>
+    <h1>Shoot pack</h1>
+    <p class="sub">
+      Overlay graphics for the two demo videos: the 60 second walkthrough and the 47 second
+      speedrun reel. Hooks and end cards are full-frame 1080&times;1920 stills; callouts and
+      timers are transparent PNGs, ready to drop over the screen recording.
+    </p>
+  </header>
+
+  <h2>Hook title cards &middot; 1080&times;1920</h2>
+  <p class="h2sub">Open on these for a beat before the screen recording starts.</p>
+  <div class="grid">
+    <article class="card">
+      <div class="art solid"><img src="assets/shoot-pack/hook47.png" alt="Hook card: Planning my whole term. 47 seconds. Go." loading="lazy"></div>
+      <div class="body"><b>Speedrun hook</b><span>"Planning my whole term. 47 seconds. Go."</span>
+      <a class="btn" href="assets/shoot-pack/hook47.png" download>Download PNG</a></div>
+    </article>
+    <article class="card">
+      <div class="art solid"><img src="assets/shoot-pack/hook60.png" alt="Hook card: Plan your whole term in 60 seconds." loading="lazy"></div>
+      <div class="body"><b>Walkthrough hook</b><span>"Plan your whole term in 60 seconds."</span>
+      <a class="btn" href="assets/shoot-pack/hook60.png" download>Download PNG</a></div>
+    </article>
+  </div>
+
+  <h2>Payoff callouts &middot; transparent</h2>
+  <p class="h2sub">
+    For the 0:28 beat: pop these over the calendar one by one, in this order, then land
+    the solid "Automatically." chip. 1080&times;300 with alpha; safe on any footage.
+  </p>
+  <div class="grid">
+    <article class="card">
+      <div class="art"><img src="assets/shoot-pack/callout-lessons.png" alt="Callout chip: Lessons paced" loading="lazy"></div>
+      <div class="body"><b>1 &middot; Lessons paced</b>
+      <a class="btn" href="assets/shoot-pack/callout-lessons.png" download>Download PNG</a></div>
+    </article>
+    <article class="card">
+      <div class="art"><img src="assets/shoot-pack/callout-quizzes.png" alt="Callout chip: Quizzes spaced" loading="lazy"></div>
+      <div class="body"><b>2 &middot; Quizzes spaced</b>
+      <a class="btn" href="assets/shoot-pack/callout-quizzes.png" download>Download PNG</a></div>
+    </article>
+    <article class="card">
+      <div class="art"><img src="assets/shoot-pack/callout-exams.png" alt="Callout chip: Exams ordered" loading="lazy"></div>
+      <div class="body"><b>3 &middot; Exams ordered</b>
+      <a class="btn" href="assets/shoot-pack/callout-exams.png" download>Download PNG</a></div>
+    </article>
+    <article class="card">
+      <div class="art"><img src="assets/shoot-pack/callout-holidays.png" alt="Callout chip: Holidays skipped" loading="lazy"></div>
+      <div class="body"><b>4 &middot; Holidays skipped</b>
+      <a class="btn" href="assets/shoot-pack/callout-holidays.png" download>Download PNG</a></div>
+    </article>
+    <article class="card">
+      <div class="art"><img src="assets/shoot-pack/callout-auto.png" alt="Callout chip: Automatically." loading="lazy"></div>
+      <div class="body"><b>5 &middot; Automatically.</b>
+      <a class="btn" href="assets/shoot-pack/callout-auto.png" download>Download PNG</a></div>
+    </article>
+  </div>
+
+  <h2>Timer &middot; transparent</h2>
+  <p class="h2sub">
+    The 0:38 stopwatch is the script's proof moment. 0:00 works under the hook, 0:23 at the
+    calendar reveal if you want a running motif. 620&times;620 with alpha.
+  </p>
+  <div class="grid">
+    <article class="card">
+      <div class="art"><img src="assets/shoot-pack/timer-0.png" alt="Stopwatch graphic at 0:00" loading="lazy"></div>
+      <div class="body"><b>Timer &middot; 0:00</b>
+      <a class="btn" href="assets/shoot-pack/timer-0.png" download>Download PNG</a></div>
+    </article>
+    <article class="card">
+      <div class="art"><img src="assets/shoot-pack/timer-23.png" alt="Stopwatch graphic at 0:23" loading="lazy"></div>
+      <div class="body"><b>Timer &middot; 0:23</b>
+      <a class="btn" href="assets/shoot-pack/timer-23.png" download>Download PNG</a></div>
+    </article>
+    <article class="card">
+      <div class="art"><img src="assets/shoot-pack/timer-38.png" alt="Stopwatch graphic at 0:38" loading="lazy"></div>
+      <div class="body"><b>Timer &middot; 0:38</b>
+      <a class="btn" href="assets/shoot-pack/timer-38.png" download>Download PNG</a></div>
+    </article>
+  </div>
+
+  <h2>End cards &middot; 1080&times;1920</h2>
+  <p class="h2sub">Hold for the last 3 to 4 seconds. Use Download now for the speedrun, the Android line for the walkthrough.</p>
+  <div class="grid">
+    <article class="card">
+      <div class="art solid"><img src="assets/shoot-pack/end-download.png" alt="End card: Download now, link in bio" loading="lazy"></div>
+      <div class="body"><b>Download now</b><span>Speedrun closer &middot; 0:43</span>
+      <a class="btn" href="assets/shoot-pack/end-download.png" download>Download PNG</a></div>
+    </article>
+    <article class="card">
+      <div class="art solid"><img src="assets/shoot-pack/end-android.png" alt="End card: Try SCHEDU free on Android, link in bio" loading="lazy"></div>
+      <div class="body"><b>Try SCHEDU free on Android</b><span>Walkthrough closer &middot; 0:57</span>
+      <a class="btn" href="assets/shoot-pack/end-android.png" download>Download PNG</a></div>
+    </article>
+  </div>
+
+  <h2>Notes for the shoot</h2>
+  <div class="notes">
+    <ul>
+      <li><b>Actual button labels differ slightly from the script.</b> The empty home says <code>Create your first plan</code> (not "Create my first plan"), steps advance with <code>Continue</code>, and the final button is <code>Generate plan</code> (not "Proceed"). Either update the VO or keep it loose; just do not caption the wrong label over the button.</li>
+      <li><b>The flow includes creating the subject first.</b> Adding a subject means typing or snapping a syllabus, which the app turns into chapters and lessons before you reach the plan funnel. Budget for it in the edit; it speeds up nicely.</li>
+      <li><b>Reference footage exists.</b> <a class="back" href="videos.html">Videos</a> has a real 5&times; capture of the entire flow (speedrun-zero-to-term.mp4), useful as a timing reference or as b-roll if a segment fails on set.</li>
+      <li><b>Record clean.</b> Fresh account or the empty test account, notifications off, battery full or hidden, and hold the calendar reveal for a beat at 0:23; that is the payoff.</li>
+      <li><b>Type and color.</b> Montserrat, green <code>#00bf63</code>, black, off-white <code>#f9f9f9</code>. If you add your own captions, the <a class="back" href="kit.html">style guide</a> has the caption bank and export specs.</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>
