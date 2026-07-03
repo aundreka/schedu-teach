@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>schEDU Reactive Post Templates</title>
+<title>SCHEDU Reactive Post Templates</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -11,6 +11,7 @@
   :root {
     --bg: #FFFFFF; --surface-alt: #F4F6F8; --text: #111827; --muted: #6B7280;
     --faint: #9CA3AF; --border: #E5E7EB; --hairline: #EEF1F4;
+    --brand: #00bf63;
     --tint: #22C55E; --tint-deep: #16A34A; --on-tint: #07301A;
     --display: "Montserrat", -apple-system, system-ui, sans-serif;
     --body: "Montserrat", -apple-system, system-ui, sans-serif;
@@ -21,12 +22,12 @@
   main { max-width: 1060px; margin: 0 auto; padding: 0 24px 90px; }
 
   header.masthead { padding: 56px 0 6px; }
-  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tint-deep); display: flex; align-items: center; gap: 10px; }
-  .eyebrow::before { content: ""; width: 26px; height: 3px; border-radius: 2px; background: var(--tint); }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brand); display: flex; align-items: center; gap: 10px; }
+  .eyebrow::before { content: ""; width: 26px; height: 3px; border-radius: 2px; background: var(--brand); }
   h1 { font-family: var(--display); font-size: clamp(30px, 4.6vw, 44px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.08; margin: 16px 0 12px; text-wrap: balance; }
   .lede { max-width: 64ch; color: var(--muted); font-size: 16px; margin: 0; }
   .lede b { color: var(--text); }
-  a.back { font-size: 13px; font-weight: 700; color: var(--tint-deep); text-decoration: none; }
+  a.back { font-size: 13px; font-weight: 700; color: var(--brand); text-decoration: none; }
   a.back:hover { text-decoration: underline; }
 
   section.tpl { margin-top: 70px; }
@@ -35,6 +36,7 @@
   .sub { color: var(--muted); max-width: 66ch; margin: 8px 0 20px; font-size: 14.5px; }
 
   .workbench { display: grid; grid-template-columns: 250px 1fr; gap: 22px; align-items: start; }
+  .workbench > * { min-width: 0; }
   @media (max-width: 780px) { .workbench { grid-template-columns: 1fr; } }
   .fields { border: 1px solid var(--hairline); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; position: sticky; top: 16px; }
   .fields h3 { margin: 0 0 2px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
@@ -43,21 +45,21 @@
     font: 600 13px/1.3 var(--body); color: var(--text);
     border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; background: var(--bg);
   }
-  .fields input:focus { outline: 2px solid var(--tint); outline-offset: 1px; border-color: var(--tint); }
+  .fields input:focus { outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand); }
   .fields .hint { font-size: 11.5px; color: var(--faint); font-weight: 500; margin: 0; }
 
-  .boards { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
-  figure.art { margin: 0; display: flex; flex-direction: column; gap: 10px; }
-  .art svg { display: block; border: 1px solid var(--hairline); border-radius: 14px; background: #fff; }
-  .art figcaption { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .boards { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; min-width: 0; }
+  figure.art { margin: 0; display: flex; flex-direction: column; gap: 10px; min-width: 0; max-width: 100%; }
+  .art svg { display: block; border: 1px solid var(--hairline); border-radius: 14px; background: #fff; max-width: 100%; height: auto; }
+  .art figcaption { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
   .art figcaption span { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
   .btn {
     display: inline-flex; align-items: center; gap: 7px; border: none; cursor: pointer;
-    background: var(--tint); color: var(--on-tint); font-family: var(--body); font-size: 12.5px; font-weight: 800;
+    background: var(--brand); color: #000; font-family: var(--body); font-size: 12.5px; font-weight: 800;
     padding: 9px 15px; border-radius: 999px; text-decoration: none;
   }
-  .btn:hover { background: var(--tint-deep); }
-  .btn:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+  .btn:hover { filter: brightness(0.94); }
+  .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
   .usage { background: var(--surface-alt); border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 18px; font-size: 13px; color: var(--muted); margin-top: 18px; max-width: 760px; }
   .usage b { color: var(--text); }
@@ -66,11 +68,12 @@
     * { animation: none !important; transition: none !important; }
   }
 </style>
+<script src="assets/fonts/montserrat-embed.js"></script>
 </head>
 <body>
 <main>
   <header class="masthead">
-    <p class="eyebrow">schEDU · reactive post templates</p>
+    <p class="eyebrow">SCHEDU · reactive post templates</p>
     <h1>Type the details, hit download, post.</h1>
     <p class="lede">
       Edit the text fields and the artboards update live. <b>Download PNG</b> exports at full
@@ -100,7 +103,7 @@
           <input id="ty-sub" value="Walang nawawalang session." maxlength="30">
         </label>
         <label>CTA (story only)
-          <input id="ty-cta" value="Try schEDU free" maxlength="20">
+          <input id="ty-cta" value="Try SCHEDU free" maxlength="20">
         </label>
       </div>
       <div class="boards">
@@ -169,6 +172,89 @@
       clock time so it never goes stale.
     </div>
   </section>
+
+  <!-- ================= QUOTE CARD ================= -->
+  <section class="tpl" id="quote">
+    <p class="kicker">Social proof · 1:1</p>
+    <h2>Testimonial card</h2>
+    <p class="sub">One teacher, one sentence, big type. Swap the quote per post; keep names real and approved.</p>
+    <div class="workbench">
+      <div class="fields">
+        <h3>Edit text</h3>
+        <label>Quote line 1<input id="qt-l1" value="Nabuo ko ang buong" maxlength="22"></label>
+        <label>Quote line 2<input id="qt-l2" value="quarter in 20 minutes." maxlength="24"></label>
+        <label>Name<input id="qt-name" value="Teacher Maria" maxlength="24"></label>
+        <label>Role / school<input id="qt-role" value="Grade 3 · Public elementary" maxlength="34"></label>
+      </div>
+      <div class="boards">
+        <figure class="art">
+          <svg id="qt-1" viewBox="0 0 1080 1080" width="380" height="380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Testimonial card preview"></svg>
+          <figcaption><span>1080×1080 · feed</span><button class="btn" data-dl="qt-1" data-w="1080" data-h="1080" data-name="testimonial">Download PNG</button></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= CAROUSEL COVER ================= -->
+  <section class="tpl" id="carousel">
+    <p class="kicker">Education content · 4:5</p>
+    <h2>Carousel cover</h2>
+    <p class="sub">Slide 1 of any tips or how-to carousel. Big promise, swipe cue, nothing else.</p>
+    <div class="workbench">
+      <div class="fields">
+        <h3>Edit text</h3>
+        <label>Kicker<input id="cc-kick" value="5 SCHED HACKS" maxlength="20"></label>
+        <label>Title line 1<input id="cc-l1" value="Plan one quarter" maxlength="18"></label>
+        <label>Title line 2 (green)<input id="cc-l2" value="in one gabi." maxlength="18"></label>
+      </div>
+      <div class="boards">
+        <figure class="art">
+          <svg id="cc-1" viewBox="0 0 1080 1350" width="320" height="400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Carousel cover preview"></svg>
+          <figcaption><span>1080×1350 · slide 1</span><button class="btn" data-dl="cc-1" data-w="1080" data-h="1350" data-name="carousel-cover">Download PNG</button></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FEATURE HIGHLIGHT ================= -->
+  <section class="tpl" id="feature">
+    <p class="kicker">Any screenshot · 4:5</p>
+    <h2>Feature highlight</h2>
+    <p class="sub">Wrap any capture from the gallery in a headline frame. Save a screenshot first, then upload it here.</p>
+    <div class="workbench">
+      <div class="fields">
+        <h3>Edit</h3>
+        <label>Headline line 1<input id="fh-l1" value="Kita mo agad" maxlength="18"></label>
+        <label>Headline line 2 (green)<input id="fh-l2" value="ang buong week." maxlength="18"></label>
+        <label>Screenshot (PNG)<input id="fh-img" type="file" accept="image/png,image/jpeg"></label>
+      </div>
+      <div class="boards">
+        <figure class="art">
+          <svg id="fh-1" viewBox="0 0 1080 1350" width="320" height="400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Feature highlight preview"></svg>
+          <figcaption><span>1080×1350 · feed</span><button class="btn" data-dl="fh-1" data-w="1080" data-h="1350" data-name="feature-highlight">Download PNG</button></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FB COVER ================= -->
+  <section class="tpl" id="fbcover">
+    <p class="kicker">Page setup · one-time</p>
+    <h2>Facebook cover</h2>
+    <p class="sub">Page header with the lockup and tagline. The matching 500×500 avatar is a ready file: <a class="back" href="assets/logo/schedu-avatar-500.png" download>download avatar</a>.</p>
+    <div class="workbench">
+      <div class="fields">
+        <h3>Edit text</h3>
+        <label>Tagline<input id="fb-tag" value="your time belongs in a classroom" maxlength="36"></label>
+      </div>
+      <div class="boards">
+        <figure class="art">
+          <svg id="fb-1" viewBox="0 0 1640 624" width="520" height="198" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Facebook cover preview"></svg>
+          <figcaption><span>1640×624 · FB cover</span><button class="btn" data-dl="fb-1" data-w="1640" data-h="624" data-name="fb-cover">Download PNG</button></figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
 </main>
 
 <script>
@@ -176,8 +262,9 @@
   "use strict";
 
   /* ============ brand + type constants (from constants/colors.ts) ============ */
-  var F = "'Helvetica Neue', Arial, sans-serif";
+  var F = "'Montserrat Embed', 'Montserrat', 'Helvetica Neue', Arial, sans-serif";
   var C = {
+    brand: "#00bf63",
     ink: "#111827", muted: "#6B7280", faint: "#9CA3AF", border: "#E5E7EB",
     surface: "#F4F6F8", tint: "#22C55E", tintDeep: "#16A34A", onTint: "#07301A",
     warn: "#F59E0B", warnSoft: "#FEF3C7", warnFg: "#B45309",
@@ -262,8 +349,9 @@
       + '</g>';
   }
 
-  function wordmark(x, y, size, color) {
-    return '<text x="' + x + '" y="' + y + '" text-anchor="end" font-family="' + F + '" font-size="' + size + '" font-weight="800" letter-spacing="-0.5" fill="' + (color || C.faint) + '">schEDU</text>';
+  function wordmark(x, y, size) {
+    return '<text x="' + x + '" y="' + y + '" text-anchor="end" font-family="' + F + '" font-size="' + size + '" font-weight="800" letter-spacing="0.5">'
+      + '<tspan fill="#000000">SCH</tspan><tspan fill="' + C.brand + '">EDU</tspan></text>';
   }
 
   /* ============ typhoon artboards ============ */
@@ -280,7 +368,7 @@
     s += '<rect x="' + M + '" y="' + (M + 6) + '" width="' + chipW + '" height="52" rx="26" fill="' + C.warnSoft + '"/>'
       + '<text x="' + (M + 20) + '" y="' + (M + 40) + '" font-family="' + F + '" font-size="21" font-weight="800" letter-spacing="2" fill="' + C.warnFg + '">' + esc(eyebrow) + '</text>';
     s += '<text x="' + M + '" y="272" font-family="' + F + '" font-size="108" font-weight="800" letter-spacing="-3" fill="' + C.ink + '">' + esc(head) + '</text>';
-    s += '<text x="' + M + '" y="352" font-family="' + F + '" font-size="52" font-weight="800" letter-spacing="-1" fill="' + C.tintDeep + '">' + esc(sub) + '</text>';
+    s += '<text x="' + M + '" y="352" font-family="' + F + '" font-size="52" font-weight="800" letter-spacing="-1" fill="' + C.brand + '">' + esc(sub) + '</text>';
     s += weekGrid(M, 470, 1.135, "suspended");
     s += badge(M, 928, "Rebalanced · 0 sessions lost", 28);
     s += wordmark(1080 - M, 978, 40);
@@ -291,12 +379,12 @@
     t += '<rect x="' + M + '" y="206" width="' + chipW + '" height="52" rx="26" fill="' + C.warnSoft + '"/>'
       + '<text x="' + (M + 20) + '" y="240" font-family="' + F + '" font-size="21" font-weight="800" letter-spacing="2" fill="' + C.warnFg + '">' + esc(eyebrow) + '</text>';
     t += '<text x="' + M + '" y="436" font-family="' + F + '" font-size="122" font-weight="800" letter-spacing="-3.5" fill="' + C.ink + '">' + esc(head) + '</text>';
-    t += '<text x="' + M + '" y="524" font-family="' + F + '" font-size="54" font-weight="800" letter-spacing="-1" fill="' + C.tintDeep + '">' + esc(sub) + '</text>';
+    t += '<text x="' + M + '" y="524" font-family="' + F + '" font-size="54" font-weight="800" letter-spacing="-1" fill="' + C.brand + '">' + esc(sub) + '</text>';
     t += weekGrid(M, 680, 1.135, "suspended");
     t += badge(M, 1140, "Rebalanced · 0 sessions lost", 28);
     var ctaW = 120 + cta.length * 24;
-    t += '<rect x="' + (540 - ctaW / 2) + '" y="1518" width="' + ctaW + '" height="104" rx="52" fill="' + C.tint + '"/>'
-      + '<text x="540" y="1584" text-anchor="middle" font-family="' + F + '" font-size="42" font-weight="800" fill="' + C.onTint + '">' + esc(cta) + '</text>';
+    t += '<rect x="' + (540 - ctaW / 2) + '" y="1518" width="' + ctaW + '" height="104" rx="52" fill="' + C.brand + '"/>'
+      + '<text x="540" y="1584" text-anchor="middle" font-family="' + F + '" font-size="42" font-weight="800" fill="#000">' + esc(cta) + '</text>';
     t += '<text x="540" y="1730" text-anchor="middle" font-family="' + F + '" font-size="30" font-weight="600" fill="' + C.faint + '">schedu.ph</text>';
     t += wordmark(1080 - M, 1836, 40);
     document.getElementById("ty-story").innerHTML = t;
@@ -338,18 +426,114 @@
 
     // ---- slide 2: AFTER (morning) ----
     var t = '<rect width="1080" height="1350" fill="#FFFFFF"/>';
-    t += '<text x="' + M + '" y="150" font-family="' + F + '" font-size="26" font-weight="800" letter-spacing="4" fill="' + C.tintDeep + '">' + esc(eyebrow) + '</text>';
+    t += '<text x="' + M + '" y="150" font-family="' + F + '" font-size="26" font-weight="800" letter-spacing="4" fill="' + C.brand + '">' + esc(eyebrow) + '</text>';
     t += '<text x="' + M + '" y="286" font-family="' + F + '" font-size="96" font-weight="800" letter-spacing="-2.5" fill="' + C.ink + '">' + esc(h2a) + '</text>';
-    t += '<text x="' + M + '" y="390" font-family="' + F + '" font-size="96" font-weight="800" letter-spacing="-2.5" fill="' + C.tintDeep + '">' + esc(h2b) + '</text>';
+    t += '<text x="' + M + '" y="390" font-family="' + F + '" font-size="96" font-weight="800" letter-spacing="-2.5" fill="' + C.brand + '">' + esc(h2b) + '</text>';
     t += weekGrid(M, 520, 1.135, "planned");
     t += badge(M, 1000, "Term planned · 15 sessions", 28);
-    t += '<text x="' + M + '" y="1240" font-family="' + F + '" font-size="34" font-weight="800" fill="' + C.tintDeep + '">Start free → schedu.ph</text>';
+    t += '<text x="' + M + '" y="1240" font-family="' + F + '" font-size="34" font-weight="800" fill="' + C.brand + '">Start free → schedu.ph</text>';
     t += wordmark(1080 - M, 1240, 40);
     document.getElementById("ba-2").innerHTML = t;
   }
 
+
+  /* ============ real icon as data URI (for FB cover / highlight) ============ */
+  var ICON_URI = null;
+  fetch("assets/logo/schedu-icon.png").then(function (r) { return r.blob(); }).then(function (b) {
+    var fr = new FileReader();
+    fr.onload = function () { ICON_URI = fr.result; redraw(); };
+    fr.readAsDataURL(b);
+  }).catch(function () {});
+
+  function iconImage(x, y, size) {
+    if (!ICON_URI) return "";
+    return '<image href="' + ICON_URI + '" x="' + x + '" y="' + y + '" width="' + size + '" height="' + size + '"/>';
+  }
+  function wordmarkLeft(x, y, size) {
+    return '<text x="' + x + '" y="' + y + '" font-family="' + F + '" font-size="' + size + '" font-weight="800" letter-spacing="0.5">'
+      + '<tspan fill="#000000">SCH</tspan><tspan fill="' + C.brand + '">EDU</tspan></text>';
+  }
+
+  /* ============ quote card ============ */
+  function drawQuote() {
+    var l1 = document.getElementById("qt-l1").value;
+    var l2 = document.getElementById("qt-l2").value;
+    var name = document.getElementById("qt-name").value;
+    var role = document.getElementById("qt-role").value;
+    var M = 96;
+    var s = '<rect width="1080" height="1080" fill="#f9f9f9"/>';
+    s += '<text x="' + M + '" y="300" font-family="' + F + '" font-size="260" font-weight="800" fill="' + C.brand + '">\u201C</text>';
+    s += '<text x="' + M + '" y="470" font-family="' + F + '" font-size="82" font-weight="800" letter-spacing="-1" fill="#000">' + esc(l1) + '</text>';
+    s += '<text x="' + M + '" y="570" font-family="' + F + '" font-size="82" font-weight="800" letter-spacing="-1" fill="#000">' + esc(l2) + '</text>';
+    s += '<rect x="' + M + '" y="640" width="120" height="10" rx="5" fill="' + C.brand + '"/>';
+    s += '<text x="' + M + '" y="740" font-family="' + F + '" font-size="40" font-weight="800" fill="#000">' + esc(name) + '</text>';
+    s += '<text x="' + M + '" y="790" font-family="' + F + '" font-size="32" font-weight="600" fill="' + C.muted + '">' + esc(role) + '</text>';
+    s += wordmark(1080 - M, 972, 44);
+    document.getElementById("qt-1").innerHTML = s;
+  }
+
+  /* ============ carousel cover ============ */
+  function drawCarousel() {
+    var kick = document.getElementById("cc-kick").value;
+    var l1 = document.getElementById("cc-l1").value;
+    var l2 = document.getElementById("cc-l2").value;
+    var M = 88;
+    var kickW = 60 + kick.length * 20;
+    var s = '<rect width="1080" height="1350" fill="#FFFFFF"/>';
+    s += '<rect x="' + M + '" y="200" width="' + kickW + '" height="66" rx="33" fill="#E8F8F0"/>'
+      + '<text x="' + (M + 30) + '" y="245" font-family="' + F + '" font-size="30" font-weight="800" letter-spacing="3" fill="' + C.brand + '">' + esc(kick) + '</text>';
+    s += '<text x="' + M + '" y="480" font-family="' + F + '" font-size="112" font-weight="800" letter-spacing="-3" fill="#000">' + esc(l1) + '</text>';
+    s += '<text x="' + M + '" y="610" font-family="' + F + '" font-size="112" font-weight="800" letter-spacing="-3" fill="' + C.brand + '">' + esc(l2) + '</text>';
+    s += '<text x="' + M + '" y="1230" font-family="' + F + '" font-size="40" font-weight="800" fill="' + C.faint + '">swipe \u2192</text>';
+    s += wordmark(1080 - M, 1230, 44);
+    document.getElementById("cc-1").innerHTML = s;
+  }
+
+  /* ============ feature highlight ============ */
+  var FH_IMG = null;
+  function drawFeature() {
+    var l1 = document.getElementById("fh-l1").value;
+    var l2 = document.getElementById("fh-l2").value;
+    var M = 88;
+    var s = '<rect width="1080" height="1350" fill="#f9f9f9"/>';
+    s += '<text x="' + M + '" y="200" font-family="' + F + '" font-size="88" font-weight="800" letter-spacing="-2" fill="#000">' + esc(l1) + '</text>';
+    s += '<text x="' + M + '" y="300" font-family="' + F + '" font-size="88" font-weight="800" letter-spacing="-2" fill="' + C.brand + '">' + esc(l2) + '</text>';
+    // phone frame
+    var pw = 560, ph = 880, px = (1080 - pw) / 2, py = 390;
+    s += '<rect x="' + (px - 14) + '" y="' + (py - 14) + '" width="' + (pw + 28) + '" height="' + (ph + 28) + '" rx="64" fill="#111827"/>';
+    s += '<clipPath id="fh-clip"><rect x="' + px + '" y="' + py + '" width="' + pw + '" height="' + ph + '" rx="50"/></clipPath>';
+    if (FH_IMG) {
+      s += '<image href="' + FH_IMG + '" x="' + px + '" y="' + py + '" width="' + pw + '" height="' + ph + '" preserveAspectRatio="xMidYMin slice" clip-path="url(#fh-clip)"/>';
+    } else {
+      s += '<rect x="' + px + '" y="' + py + '" width="' + pw + '" height="' + ph + '" rx="50" fill="#E5E7EB"/>'
+        + '<text x="540" y="' + (py + ph / 2) + '" text-anchor="middle" font-family="' + F + '" font-size="34" font-weight="700" fill="' + C.muted + '">Upload a screenshot</text>';
+    }
+    s += wordmark(1080 - M, 1310, 40);
+    document.getElementById("fh-1").innerHTML = s;
+  }
+  document.getElementById("fh-img").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function () { FH_IMG = fr.result; drawFeature(); };
+    fr.readAsDataURL(f);
+  });
+
+  /* ============ FB cover ============ */
+  function drawFb() {
+    var tag = document.getElementById("fb-tag").value;
+    var s = '<rect width="1640" height="624" fill="#FFFFFF"/>';
+    s += '<rect x="0" y="584" width="1640" height="40" fill="' + C.brand + '"/>';
+    s += iconImage(560, 130, 170);
+    s += '<text x="760" y="250" font-family="' + F + '" font-size="110" font-weight="800" letter-spacing="1">'
+      + '<tspan fill="#000">SCH</tspan><tspan fill="' + C.brand + '">EDU</tspan></text>';
+    s += '<text x="762" y="310" font-family="' + F + '" font-size="34" font-weight="600" fill="' + C.muted + '">' + esc(tag) + '</text>';
+    s += '<text x="820" y="470" text-anchor="middle" font-family="' + F + '" font-size="30" font-weight="800" fill="' + C.brand + '">schedu.ph</text>';
+    document.getElementById("fb-1").innerHTML = s;
+  }
+
   /* ============ live binding + PNG export ============ */
-  function redraw() { drawTyphoon(); drawBeforeAfter(); }
+  function redraw() { drawTyphoon(); drawBeforeAfter(); drawQuote(); drawCarousel(); drawFeature(); drawFb(); }
   document.querySelectorAll(".fields input").forEach(function (inp) {
     inp.addEventListener("input", redraw);
   });
@@ -362,10 +546,19 @@
       var clone = svg.cloneNode(true);
       clone.setAttribute("width", w);
       clone.setAttribute("height", h);
+      if (window.MONTSERRAT_FACE) {
+        var st = document.createElementNS("http://www.w3.org/2000/svg", "style");
+        st.textContent = window.MONTSERRAT_FACE;
+        clone.insertBefore(st, clone.firstChild);
+      }
       var xml = new XMLSerializer().serializeToString(clone);
       var url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
       var img = new Image();
       img.onload = function () {
+        var go = img.decode ? img.decode().catch(function () {}) : Promise.resolve();
+        go.then(function () { paint(); });
+      };
+      function paint() {
         var canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
         canvas.getContext("2d").drawImage(img, 0, 0, w, h);
@@ -377,7 +570,7 @@
           a.click();
           setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
         }, "image/png");
-      };
+      }
       img.src = url;
     });
   });

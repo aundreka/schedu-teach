@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene 02 — Walang pasok? The plan absorbs it</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  html, body { margin: 0; min-height: 100vh; }
+  body { background: #F4F6F8; display: flex; align-items: center; justify-content: center; }
+  .stage { background: transparent; border: none; border-radius: 0; width: 660px; min-height: 0; padding: 44px; zoom: 1.5; }
+  .stage { padding-bottom: 120px; }
+  .stage-tools { display: none; }
+  .week, .shelf { width: 572px; }
+  .paper { width: 400px; }
+</style>
+</head>
+<body>
+<div class="stage s2" data-scene>
+        <div class="stage-tools">
+          <button class="ctrl" data-still aria-pressed="false">End frame</button>
+          <button class="ctrl" data-pause aria-pressed="false">Pause</button>
+        </div>
+        <div class="week" role="img" aria-label="Animation: a class-suspension banner covers Wednesday, its two session blocks lift out and re-land later in the week, and a badge announces zero sessions lost while the session counter stays at 15.">
+          <span class="tally"><i></i>15 sessions</span>
+          <div style="height:40px"></div>
+          <div class="week-days"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>
+          <div class="week-grid">
+            <div class="col">
+              <div class="cell"><div class="block b-lesson"><small>Lesson 9</small>Ecosystems</div></div>
+              <div class="cell"><div class="block b-ww"><small>Written Work</small>Quiz 3</div></div>
+              <div class="cell"><div class="block b-lesson"><small>Lesson 12</small>Food Webs</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-lesson"><small>Lesson 10</small>Biomes</div></div>
+              <div class="cell"><div class="block b-pt"><small>Perf. Task</small>Field Guide</div></div>
+              <div class="cell"><div class="block b-buffer"><small>Buffer</small>Catch-up</div></div>
+            </div>
+            <div class="col" style="position:relative">
+              <div class="cell"><div class="block b-lesson goes"><small>Lesson 11</small>Cycles</div></div>
+              <div class="cell"><div class="block b-ww goes"><small>Written Work</small>Quiz 4</div></div>
+              <div class="cell"></div>
+              <div class="suspend" role="presentation">Class<br>suspended</div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-lesson"><small>Lesson 13</small>Energy Flow</div></div>
+              <div class="cell"><div class="block b-lesson lands" style="--d:0s"><small>Lesson 11</small>Cycles</div></div>
+              <div class="cell"><div class="block b-ww lands" style="--d:0.3s"><small>Written Work</small>Quiz 4</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-pt lands" style="--d:0.6s"><small>Perf. Task</small>Eco Diorama</div></div>
+              <div class="cell"><div class="block b-lesson lands" style="--d:0.9s"><small>Lesson 14</small>Review</div></div>
+              <div class="cell"><div class="block b-exam lands" style="--d:1.2s"><small>Exam</small>2nd Quarter</div></div>
+            </div>
+          </div>
+        </div>
+        <span class="badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Rebalanced · 0 sessions lost
+        </span>
+      </div>
+
+</body>
+</html>

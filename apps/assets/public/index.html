@@ -4,166 +4,199 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SCHEDU Marketing Kit</title>
+<link rel="icon" type="image/png" href="assets/logo/favicon-64.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --green: #00bf63;
     --black: #000000;
     --paper: #f9f9f9;
     --muted: #6B7280;
-    --border: #E5E7EB;
     --font: "Montserrat", -apple-system, system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; background: #fff; color: var(--black);
-    font-family: var(--font); line-height: 1.6; -webkit-font-smoothing: antialiased;
-    display: flex; flex-direction: column; min-height: 100vh;
+    font-family: var(--font); line-height: 1.5; -webkit-font-smoothing: antialiased;
   }
+  main { max-width: 1080px; margin: 0 auto; padding: 0 24px 60px; }
 
-  .hero {
-    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 72px 24px 48px;
-  }
-  .hero svg { display: block; }
-  .wordmark { font-size: clamp(34px, 6vw, 52px); font-weight: 800; letter-spacing: 0.02em; margin: 22px 0 0; }
+  /* ============ hero: one title ============ */
+  .hero { text-align: center; padding: 64px 0 44px; }
+  .hero .mark { display: inline-block; }
+  .wordmark { font-size: clamp(40px, 7vw, 64px); font-weight: 800; letter-spacing: 0.02em; margin: 18px 0 0; line-height: 1; }
   .wordmark em { font-style: normal; color: var(--green); }
-  .tagline { color: var(--muted); font-size: 15px; margin: 6px 0 0; }
-  .kit-label {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
-    color: var(--muted); margin: 26px 0 0;
-  }
-  .actions { display: flex; gap: 16px; margin-top: 22px; flex-wrap: wrap; justify-content: center; }
-  .action {
-    display: flex; align-items: center; gap: 16px; text-align: left;
-    width: min(300px, 84vw); padding: 18px 20px;
-    border: 1.5px solid var(--border); border-radius: 20px;
-    background: #fff; text-decoration: none; color: var(--black);
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-  }
-  .action:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.10); border-color: var(--green); }
-  .action:active { transform: translateY(-1px); }
-  .action:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
-  .action .thumb {
-    width: 64px; height: 64px; border-radius: 16px; flex: none;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .action.videos .thumb { background: var(--green); }
-  .action.shots .thumb { background: var(--paper); border: 1.5px solid var(--border); }
-  .action .txt b { display: block; font-size: 17px; font-weight: 800; }
-  .action .txt span { font-size: 12.5px; color: var(--muted); }
-  .action .arrow { margin-left: auto; color: var(--muted); transition: transform 0.18s ease, color 0.18s ease; }
-  .action:hover .arrow { transform: translateX(4px); color: var(--green); }
+  .kit-label { font-size: 12px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); margin: 14px 0 0; }
 
-  .guide { background: var(--paper); border-top: 1px solid var(--border); padding: 40px 24px 46px; }
-  .guide-inner { max-width: 760px; margin: 0 auto; }
-  .guide h2 {
-    font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
-    color: var(--muted); margin: 0 0 18px; text-align: center;
-  }
-  .guide-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-  .glink {
-    background: #fff; border: 1.5px solid var(--border); border-radius: 16px;
-    padding: 18px; text-decoration: none; color: var(--black);
-    display: flex; align-items: flex-start; gap: 14px;
-    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-  }
-  .glink:hover { border-color: var(--green); transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.08); }
-  .glink:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
-  .glink .ico {
-    width: 42px; height: 42px; border-radius: 12px; flex: none;
-    background: #E8F8F0; display: flex; align-items: center; justify-content: center;
-  }
-  .glink .txt { flex: 1; }
-  .glink b { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 800; margin-bottom: 3px; }
-  .glink b svg { transition: transform 0.18s ease; color: var(--muted); }
-  .glink:hover b svg { transform: translateX(3px); color: var(--green); }
-  .glink span { font-size: 12.5px; color: var(--muted); }
   .hero > * { opacity: 0; transform: translateY(12px); animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
-  .hero > :nth-child(2) { animation-delay: 0.07s; }
-  .hero > :nth-child(3) { animation-delay: 0.13s; }
-  .hero > :nth-child(4) { animation-delay: 0.19s; }
-  .hero > :nth-child(5) { animation-delay: 0.26s; }
+  .hero > :nth-child(2) { animation-delay: 0.08s; }
+  .hero > :nth-child(3) { animation-delay: 0.16s; }
   @keyframes rise { to { opacity: 1; transform: none; } }
+
+  /* ============ graphic tiles ============ */
+  .tiles {
+    display: grid; gap: 20px;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-areas:
+      "shots tmpl vids"
+      "guide brand vids";
+  }
+  @media (max-width: 900px) {
+    .tiles { grid-template-columns: 1fr 1fr; grid-template-areas: "vids vids" "shots tmpl" "guide brand"; }
+  }
+  @media (max-width: 560px) {
+    .tiles { grid-template-columns: 1fr; grid-template-areas: "vids" "shots" "tmpl" "guide" "brand"; }
+  }
+
+  .tile {
+    position: relative; display: block; overflow: hidden;
+    border-radius: 30px; text-decoration: none; color: var(--black);
+    min-height: 210px; padding: 24px;
+    transition: transform 0.22s cubic-bezier(0.2, 0.7, 0.3, 1), box-shadow 0.22s ease;
+    opacity: 0; transform: translateY(16px);
+    animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  }
+  .tile:nth-child(1) { animation-delay: 0.20s; }
+  .tile:nth-child(2) { animation-delay: 0.26s; }
+  .tile:nth-child(3) { animation-delay: 0.32s; }
+  .tile:nth-child(4) { animation-delay: 0.38s; }
+  .tile:nth-child(5) { animation-delay: 0.44s; }
+  .tile:hover { transform: translateY(-6px); box-shadow: 0 22px 44px rgba(0, 0, 0, 0.16); }
+  .tile:active { transform: translateY(-2px); }
+  .tile:focus-visible { outline: 4px solid var(--black); outline-offset: 3px; }
+
+  .tile .label {
+    position: absolute; left: 26px; bottom: 22px; z-index: 2;
+    font-size: clamp(20px, 2.4vw, 26px); font-weight: 800; line-height: 1.15; letter-spacing: -0.01em;
+  }
+  .tile .label small { display: block; font-size: 12.5px; font-weight: 700; opacity: 0.55; letter-spacing: 0.02em; margin-top: 3px; }
+  .tile .art {
+    position: absolute; z-index: 1; pointer-events: none;
+    transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.16));
+  }
+  .tile:hover .art { transform: scale(1.06) rotate(-3deg); }
+
+  .t-vids  { grid-area: vids;  background: var(--green); min-height: 440px; }
+  .t-shots { grid-area: shots; background: #AEDCFF; }
+  .t-tmpl  { grid-area: tmpl;  background: #FFD98E; }
+  .t-guide { grid-area: guide; background: #CDC3F9; }
+  .t-brand { grid-area: brand; background: #FFC2CE; }
+
+  .t-vids .art  { top: 6%; right: -8%; width: 88%; transform: rotate(-6deg); }
+  .t-vids:hover .art { transform: rotate(-2deg) scale(1.05); }
+  .t-shots .art { top: -12%; right: -6%; width: 62%; transform: rotate(8deg); }
+  .t-tmpl .art  { top: -10%; right: -4%; width: 66%; transform: rotate(-7deg); }
+  .t-guide .art { top: -8%; right: -2%; width: 60%; transform: rotate(6deg); }
+  .t-brand .art { top: -10%; right: -4%; width: 58%; transform: rotate(-8deg); }
+
+  @media (max-width: 900px) { .t-vids { min-height: 280px; } .t-vids .art { width: 52%; top: -10%; } }
+
+  footer { text-align: center; font-size: 12px; color: var(--muted); padding: 34px 0 8px; }
 
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
+    .hero > *, .tile { opacity: 1; transform: none; }
   }
-  footer { text-align: center; font-size: 12px; color: var(--muted); padding: 18px; background: var(--paper); }
 </style>
 </head>
 <body>
+<main>
   <section class="hero">
-    <svg width="88" height="88" viewBox="0 0 200 200" role="img" aria-label="SCHEDU calendar logo">
-      <rect x="14" y="26" width="172" height="160" rx="20" fill="#fff" stroke="#E5E7EB" stroke-width="3"/>
-      <path d="M14 46 a20 20 0 0 1 20 -20 h132 a20 20 0 0 1 20 20 v26 H14 Z" fill="#00bf63"/>
-      <rect x="52" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
-      <rect x="134" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
-      <g fill="#EDEDED">
-        <rect x="32" y="86" width="30" height="16" rx="4"/><rect x="130" y="86" width="38" height="16" rx="4"/>
-        <rect x="32" y="130" width="24" height="16" rx="4"/><rect x="144" y="130" width="24" height="16" rx="4"/>
-        <rect x="32" y="158" width="38" height="16" rx="4"/><rect x="138" y="158" width="30" height="16" rx="4"/>
-      </g>
-      <g fill="#00bf63">
-        <rect x="62" y="88" width="76" height="18" rx="3"/>
-        <rect x="62" y="106" width="18" height="14" rx="3"/>
-        <rect x="62" y="120" width="76" height="18" rx="3"/>
-        <rect x="120" y="138" width="18" height="14" rx="3"/>
-        <rect x="62" y="152" width="76" height="18" rx="3"/>
-      </g>
-    </svg>
+    <img class="mark" src="assets/logo/schedu-icon.png" width="88" height="88" alt="SCHEDU calendar logo">
     <h1 class="wordmark">SCH<em>EDU</em></h1>
-    <p class="tagline">your time belongs in a classroom</p>
     <p class="kit-label">Marketing Kit</p>
-    <div class="actions">
-      <a class="action videos" href="videos.html">
-        <span class="thumb" aria-hidden="true">
-          <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-            <rect x="3" y="6" width="28" height="22" rx="5" fill="#fff"/>
-            <path d="M14.5 12.5v9l8-4.5-8-4.5z" fill="#00bf63"/>
-          </svg>
-        </span>
-        <span class="txt"><b>Videos</b><span>9 clips · landscape &amp; portrait</span></span>
-        <svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
-      <a class="action shots" href="screens/index.html">
-        <span class="thumb" aria-hidden="true">
-          <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-            <rect x="10" y="3" width="14" height="28" rx="4" fill="#fff" stroke="#000" stroke-width="1.8"/>
-            <rect x="10" y="3" width="14" height="7" rx="4" fill="#00bf63"/>
-            <rect x="13" y="14" width="8" height="2.6" rx="1.3" fill="#E5E7EB"/>
-            <rect x="13" y="19" width="8" height="2.6" rx="1.3" fill="#E5E7EB"/>
-            <rect x="13" y="24" width="5" height="2.6" rx="1.3" fill="#00bf63"/>
-          </svg>
-        </span>
-        <span class="txt"><b>Screenshots</b><span>113 captures · light &amp; dark</span></span>
-        <svg class="arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
-    </div>
   </section>
 
-  <section class="guide">
-    <div class="guide-inner">
-      <h2>Also in this kit</h2>
-      <div class="guide-links">
-        <a class="glink" href="templates.html">
-          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="3" stroke="#00bf63" stroke-width="2"/><path d="M8 8h8M8 12h8M8 16h4" stroke="#00bf63" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="txt"><b>Post templates <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></b><span>Type the text, download the PNG. Walang Pasok day and the Sunday carousel.</span></span>
-        </a>
-        <a class="glink" href="kit.html">
-          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5H6.5A2.5 2.5 0 0 0 4 21V5.5z" stroke="#00bf63" stroke-width="2" stroke-linejoin="round"/><path d="M9 8h6M9 12h4" stroke="#00bf63" stroke-width="2" stroke-linecap="round"/></svg></span>
-          <span class="txt"><b>Style guide <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></b><span>Beat sheets, export specs, captions, and usage rules for editors.</span></span>
-        </a>
-        <a class="glink" href="brand.html">
-          <span class="ico" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="5" stroke="#00bf63" stroke-width="2"/><circle cx="15" cy="15" r="5" fill="#E8F8F0" stroke="#00bf63" stroke-width="2"/></svg></span>
-          <span class="txt"><b>Brand styling <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></b><span>Logo, fonts, and colors. Start here before designing anything new.</span></span>
-        </a>
-      </div>
-    </div>
-  </section>
-  <footer>SCHEDU marketing kit · July 2026</footer>
+  <nav class="tiles" aria-label="Kit sections">
+
+    <a class="tile t-shots" href="screens/index.html">
+      <svg class="art" viewBox="0 0 220 260" aria-hidden="true">
+        <rect x="96" y="30" width="104" height="204" rx="20" fill="#0B0F14" transform="rotate(6 148 132)"/>
+        <rect x="30" y="14" width="112" height="220" rx="22" fill="#fff"/>
+        <rect x="30" y="14" width="112" height="52" rx="22" fill="#00bf63"/>
+        <rect x="30" y="44" width="112" height="22" fill="#00bf63"/>
+        <rect x="44" y="82" width="84" height="12" rx="6" fill="#E5E7EB"/>
+        <rect x="44" y="104" width="60" height="12" rx="6" fill="#E5E7EB"/>
+        <rect x="44" y="130" width="84" height="34" rx="10" fill="#E8F8F0"/>
+        <rect x="52" y="140" width="46" height="13" rx="6" fill="#00bf63"/>
+        <rect x="44" y="176" width="84" height="34" rx="10" fill="#F1F5F9"/>
+        <rect x="52" y="186" width="34" height="13" rx="6" fill="#CBD5E1"/>
+      </svg>
+      <span class="label">Screenshots<small>108 captures</small></span>
+    </a>
+
+    <a class="tile t-tmpl" href="templates.html">
+      <svg class="art" viewBox="0 0 230 250" aria-hidden="true">
+        <rect x="26" y="18" width="150" height="196" rx="18" fill="#fff"/>
+        <rect x="44" y="40" width="86" height="16" rx="8" fill="#111827"/>
+        <rect x="44" y="64" width="58" height="16" rx="8" fill="#00bf63"/>
+        <rect x="44" y="96" width="114" height="64" rx="12" fill="#FEF3C7" stroke="#F59E0B" stroke-width="4"/>
+        <path d="M60 100l-14 14v12l24-24zm32 0l-44 44v12l56-56zm32 0l-56 56h12l56-56zm12 22l-34 34h12l22-22z" fill="#FDE8B8"/>
+        <rect x="44" y="176" width="72" height="22" rx="11" fill="#00bf63"/>
+        <g transform="rotate(38 186 120)">
+          <rect x="176" y="34" width="22" height="128" rx="5" fill="#FFB020"/>
+          <rect x="176" y="34" width="22" height="22" rx="5" fill="#FF7A9E"/>
+          <path d="M176 162h22l-11 30z" fill="#F4D7B0"/>
+          <path d="M183 186l4 6 4-6z" fill="#111827"/>
+        </g>
+      </svg>
+      <span class="label">Templates<small>type &amp; download</small></span>
+    </a>
+
+    <a class="tile t-vids" href="videos.html">
+      <svg class="art" viewBox="0 0 300 300" aria-hidden="true">
+        <circle cx="150" cy="140" r="86" fill="#fff"/>
+        <path d="M128 102l64 38-64 38z" fill="#00bf63"/>
+        <rect x="30" y="52" width="64" height="34" rx="10" fill="#ffffff" opacity="0.5" transform="rotate(-10 62 69)"/>
+        <rect x="216" y="70" width="56" height="30" rx="9" fill="#ffffff" opacity="0.4" transform="rotate(9 244 85)"/>
+        <rect x="42" y="216" width="58" height="30" rx="9" fill="#ffffff" opacity="0.4" transform="rotate(7 71 231)"/>
+        <rect x="204" y="226" width="66" height="34" rx="10" fill="#ffffff" opacity="0.55" transform="rotate(-8 237 243)"/>
+        <circle cx="252" cy="160" r="10" fill="#ffffff" opacity="0.6"/>
+        <circle cx="52" cy="150" r="7" fill="#ffffff" opacity="0.5"/>
+      </svg>
+      <span class="label" style="font-size: clamp(24px, 3vw, 32px)">Videos<small>16 clips · reels · square · landscape</small></span>
+    </a>
+
+    <a class="tile t-guide" href="kit.html">
+      <svg class="art" viewBox="0 0 230 240" aria-hidden="true">
+        <circle cx="112" cy="118" r="78" fill="#fff"/>
+        <circle cx="112" cy="118" r="62" fill="none" stroke="#E5E7EB" stroke-width="10"/>
+        <path d="M112 118 V66" stroke="#111827" stroke-width="10" stroke-linecap="round"/>
+        <path d="M112 118 l36 24" stroke="#00bf63" stroke-width="10" stroke-linecap="round"/>
+        <circle cx="112" cy="118" r="12" fill="#111827"/>
+        <rect x="96" y="20" width="32" height="16" rx="8" fill="#111827"/>
+        <rect x="176" y="150" width="52" height="14" rx="7" fill="#111827"/>
+        <rect x="176" y="172" width="36" height="14" rx="7" fill="#00bf63"/>
+        <rect x="176" y="194" width="44" height="14" rx="7" fill="#9CA3AF"/>
+      </svg>
+      <span class="label">Style guide<small>beat sheets &amp; specs</small></span>
+    </a>
+
+    <a class="tile t-brand" href="brand.html">
+      <svg class="art" viewBox="0 0 230 240" aria-hidden="true">
+        <rect x="34" y="34" width="148" height="138" rx="18" fill="#fff"/>
+        <path d="M34 52 a18 18 0 0 1 18 -18 h112 a18 18 0 0 1 18 18 v22 H34 Z" fill="#00bf63"/>
+        <rect x="66" y="20" width="12" height="26" rx="6" fill="#CFCFCF"/>
+        <rect x="138" y="20" width="12" height="26" rx="6" fill="#CFCFCF"/>
+        <g fill="#00bf63">
+          <rect x="76" y="88" width="64" height="15" rx="3"/>
+          <rect x="76" y="103" width="15" height="12" rx="3"/>
+          <rect x="76" y="115" width="64" height="15" rx="3"/>
+          <rect x="125" y="130" width="15" height="12" rx="3"/>
+          <rect x="76" y="142" width="64" height="15" rx="3"/>
+        </g>
+        <circle cx="70" cy="204" r="17" fill="#f9f9f9" stroke="#E5E7EB" stroke-width="3"/>
+        <circle cx="115" cy="204" r="17" fill="#00bf63"/>
+        <circle cx="160" cy="204" r="17" fill="#111827"/>
+      </svg>
+      <span class="label">Brand<small>logo · fonts · colors</small></span>
+    </a>
+
+  </nav>
+</main>
+<footer>SCHEDU marketing kit · updated July 3, 2026 · new: ready-to-post reels, square cuts, 6 templates, real logo files</footer>
 </body>
 </html>

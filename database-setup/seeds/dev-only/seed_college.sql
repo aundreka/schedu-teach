@@ -167,7 +167,7 @@ alter table public.lesson_plans
 with school_seed(public_id, name, type_name, avatar_color, is_default, created_by_public_id) as (
   values (
     'sch_batstateu',
-    'Batangas State University',
+    'San Isidro State University',
     'university',
     '#B91C1C',
     true,
