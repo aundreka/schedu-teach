@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene 11 — June is coming</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  html, body { margin: 0; min-height: 100vh; }
+  body { background: #F4F6F8; display: flex; align-items: center; justify-content: center; }
+  .stage { background: transparent; border: none; border-radius: 0; width: 440px; min-height: 0; padding: 44px 44px 64px; zoom: 2.4; }
+  .stage { overflow: visible; padding-bottom: 150px; }
+  .stage-tools { display: none; }
+
+  .deck { position: relative; width: 340px; margin: 0 auto; height: 226px; }
+  .month {
+    position: absolute; inset: 0;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 20px;
+    box-shadow: 0 16px 34px rgba(var(--shadow), 0.10); overflow: hidden;
+    opacity: 0; animation: s11hold 10s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .mh { padding: 16px 0 14px; text-align: center; font-size: 15px; font-weight: 800; letter-spacing: 0.16em; background: var(--surface-alt); color: var(--muted); }
+  .mgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; padding: 16px 18px; }
+  .mgrid i { height: 30px; border-radius: 6px; background: var(--surface-alt); }
+
+  /* stacked months fly off one by one */
+  .m-mar { animation-name: s11mar; z-index: 4; }
+  .m-apr { animation-name: s11apr; z-index: 3; }
+  .m-may { animation-name: s11may; z-index: 2; }
+  @keyframes s11mar {
+    0%      { opacity: 0; transform: translateY(14px); }
+    3.5%    { opacity: 1; transform: translateY(0) rotate(0); }
+    15%     { opacity: 1; transform: translateY(0) rotate(0); }
+    22%     { opacity: 0; transform: translateY(-90px) rotate(-7deg); }
+    100%    { opacity: 0; }
+  }
+  @keyframes s11apr {
+    0%      { opacity: 0; transform: translateY(14px); }
+    3.5%    { opacity: 1; transform: translateY(0) rotate(0); }
+    25%     { opacity: 1; transform: translateY(0) rotate(0); }
+    32%     { opacity: 0; transform: translateY(-90px) rotate(6deg); }
+    100%    { opacity: 0; }
+  }
+  @keyframes s11may {
+    0%      { opacity: 0; transform: translateY(14px); }
+    3.5%    { opacity: 1; transform: translateY(0) rotate(0); }
+    35%     { opacity: 1; transform: translateY(0) rotate(0); }
+    42%     { opacity: 0; transform: translateY(-90px) rotate(-6deg); }
+    100%    { opacity: 0; }
+  }
+
+  /* June: revealed underneath, header turns brand-of-app green, week fills */
+  .m-jun { z-index: 1; animation-name: s11jun; }
+  @keyframes s11jun {
+    0%      { opacity: 0; transform: translateY(14px); }
+    3.5%    { opacity: 1; transform: translateY(0); }
+    40%     { transform: scale(1); }
+    44%     { transform: scale(1.02); }
+    48%     { transform: scale(1); }
+    92%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .m-jun .mh { position: relative; color: var(--muted); }
+  .m-jun .mh::after {
+    content: "JUNE"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: var(--tint); color: var(--on-tint); letter-spacing: 0.16em;
+    opacity: 0; animation: s11junhead 10s ease-out infinite;
+  }
+  @keyframes s11junhead {
+    0%, 42% { opacity: 0; }
+    46%     { opacity: 1; }
+    100%    { opacity: 1; }
+  }
+  .m-jun .mgrid i { position: relative; overflow: visible; }
+  .jblock {
+    position: absolute; inset: 0; border-radius: 6px; border: 1px solid;
+    opacity: 0; animation: s11block 10s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite; animation-delay: var(--d);
+  }
+  @keyframes s11block {
+    0%   { opacity: 0; transform: translateY(-8px) scale(0.9); }
+    2.5% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 1; }
+  }
+  .jb-l { background: var(--cat-lesson-soft); border-color: var(--cat-lesson-border); }
+  .jb-w { background: var(--cat-ww-soft); border-color: var(--cat-ww-border); }
+  .jb-p { background: var(--cat-pt-soft); border-color: var(--cat-pt-border); }
+
+  .kick {
+    position: absolute; left: 50%; bottom: -78px; transform: translateX(-50%); white-space: normal; text-align: center; width: 300px;
+    font-family: var(--display); font-size: 21px; font-weight: 800; letter-spacing: -0.01em;
+    opacity: 0; animation: s11kick 10s cubic-bezier(0.2, 0.9, 0.3, 1.3) infinite;
+  }
+  .kick em { font-style: normal; color: var(--tint-deep); }
+  @keyframes s11kick {
+    0%, 66% { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    71%     { opacity: 1; transform: translateX(-50%) translateY(0); }
+    92%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="stage s11" data-scene>
+  <div class="deck" role="img" aria-label="Animation: calendar pages for March, April, and May fly away one by one. June lands with a green header, its weeks fill with lesson blocks, and the line June is coming, be ready in 15 minutes appears.">
+    <div class="month m-jun">
+      <div class="mh">JUNE</div>
+      <div class="mgrid">
+        <i></i><i><span class="jblock jb-l" style="--d: 4.8s"></span></i><i><span class="jblock jb-l" style="--d: 5.0s"></span></i><i><span class="jblock jb-w" style="--d: 5.2s"></span></i><i><span class="jblock jb-l" style="--d: 5.4s"></span></i><i><span class="jblock jb-l" style="--d: 5.6s"></span></i><i></i>
+        <i></i><i><span class="jblock jb-l" style="--d: 5.8s"></span></i><i><span class="jblock jb-w" style="--d: 6.0s"></span></i><i><span class="jblock jb-l" style="--d: 6.2s"></span></i><i><span class="jblock jb-p" style="--d: 6.4s"></span></i><i><span class="jblock jb-l" style="--d: 6.6s"></span></i><i></i>
+        <i></i><i><span class="jblock jb-w" style="--d: 6.8s"></span></i><i><span class="jblock jb-l" style="--d: 7.0s"></span></i><i><span class="jblock jb-l" style="--d: 7.2s"></span></i><i><span class="jblock jb-l" style="--d: 7.4s"></span></i><i><span class="jblock jb-p" style="--d: 7.6s"></span></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+    <div class="month m-may"><div class="mh">MAY</div><div class="mgrid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="month m-apr"><div class="mh">APRIL</div><div class="mgrid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="month m-mar"><div class="mh">MARCH</div><div class="mgrid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+    <div class="kick">June is coming. <em>Be ready in 15 minutes.</em></div>
+  </div>
+</div>
+</body>
+</html>
