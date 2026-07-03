@@ -38,6 +38,8 @@ function AppNav() {
   const firstSegment = segments[0] as string | undefined;
   const isAuthRoute = firstSegment === "(auth)";
   const isOnboardingRoute = firstSegment === "onboarding";
+  // Legal pages must stay reachable from the sign-in/sign-up screens.
+  const isLegalRoute = firstSegment === "legal";
   const onboardingChecked = useRef(false);
 
   // Refresh subscription data when the app comes back to foreground
@@ -56,7 +58,7 @@ function AppNav() {
     let active = true;
 
     const redirectToAuthIfMissing = (hasSession: boolean) => {
-      if (!active || hasSession || isAuthRoute) return;
+      if (!active || hasSession || isAuthRoute || isLegalRoute) return;
       router.replace("/(auth)");
     };
 
@@ -108,7 +110,7 @@ function AppNav() {
       subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthRoute, isOnboardingRoute, navigationState?.key]);
+  }, [isAuthRoute, isOnboardingRoute, isLegalRoute, navigationState?.key]);
 
   return (
     <NavThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
@@ -134,6 +136,7 @@ function AppNav() {
         <Stack.Screen name="(admin)" options={{ headerShown: false }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: true }} />
+        <Stack.Screen name="legal" options={{ headerShown: true }} />
       </Stack>
     </NavThemeProvider>
   );

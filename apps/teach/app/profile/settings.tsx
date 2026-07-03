@@ -13,7 +13,10 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
+import * as Linking from "expo-linking";
 import { useAppTheme } from "../../context/theme";
+import { LEGAL_WEBSITE_URL } from "../../constants/legal";
 import { usePullToRefresh } from "../../hooks/usePullToRefresh";
 import { supabase } from "../../lib/supabase";
 import { useSubscriptionContext } from "../../context/subscription";
@@ -309,6 +312,37 @@ export default function Settings() {
             <Text style={{ color: c.text, fontSize: 14 }}>{currentLabel}</Text>
             <Ionicons name="chevron-down" size={18} color={c.mutedText} />
           </Pressable>
+        </View>
+
+        {/* About */}
+        <View style={[styles.card, { backgroundColor: c.card, borderColor: c.border }]}>
+          <Text style={[styles.title, { color: c.text }]}>About</Text>
+
+          <ListRow
+            icon="information-circle-outline"
+            title="SchEDU"
+            subtitle="Smarter lesson planning for teachers"
+            value={`v${Constants.expoConfig?.version ?? "1.0.0"}`}
+            chevron={false}
+          />
+          <ListRow
+            icon="globe-outline"
+            title="Website"
+            value="scheduhq.com"
+            onPress={() => Linking.openURL(LEGAL_WEBSITE_URL)}
+            accessibilityLabel="Open the SchEDU website"
+          />
+          <ListRow
+            icon="document-text-outline"
+            title="Terms of Service"
+            onPress={() => router.push("/legal/terms")}
+          />
+          <ListRow
+            icon="shield-checkmark-outline"
+            title="Privacy Policy"
+            onPress={() => router.push("/legal/privacy")}
+            divider={false}
+          />
         </View>
 
         <Pressable

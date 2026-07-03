@@ -248,6 +248,27 @@ export default function AuthIndex() {
             <Text style={[styles.registerLink, { color: c.tint }]}>Register</Text>
           </Pressable>
         </View>
+
+        {/* Legal */}
+        <Text style={[styles.legalText, { color: c.mutedText }]}>
+          By continuing, you agree to our{" "}
+          <Text
+            style={[styles.legalLink, { color: c.tint }]}
+            onPress={() => router.push("/legal/terms")}
+            accessibilityRole="link"
+          >
+            Terms of Service
+          </Text>{" "}
+          and{" "}
+          <Text
+            style={[styles.legalLink, { color: c.tint }]}
+            onPress={() => router.push("/legal/privacy")}
+            accessibilityRole="link"
+          >
+            Privacy Policy
+          </Text>
+          .
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -365,4 +386,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   registerLink: { fontWeight: "700" },
+
+  legalText: {
+    ...Typography.caption,
+    textAlign: "center",
+    marginTop: 16,
+    paddingHorizontal: 12,
+  },
+  legalLink: { textDecorationLine: "underline" },
 });

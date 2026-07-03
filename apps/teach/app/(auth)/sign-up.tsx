@@ -270,6 +270,26 @@ export default function Signup() {
               {errorMsg}
             </Text>
           ) : null}
+
+          <Text style={[styles.legalText, { color: c.mutedText }]}>
+            By creating an account, you agree to our{" "}
+            <Text
+              style={[styles.legalLink, { color: c.tint }]}
+              onPress={() => router.push("/legal/terms")}
+              accessibilityRole="link"
+            >
+              Terms of Service
+            </Text>{" "}
+            and{" "}
+            <Text
+              style={[styles.legalLink, { color: c.tint }]}
+              onPress={() => router.push("/legal/privacy")}
+              accessibilityRole="link"
+            >
+              Privacy Policy
+            </Text>
+            .
+          </Text>
         </Animated.View>
 
         {/* Footer */}
@@ -343,6 +363,13 @@ const styles = StyleSheet.create({
   primaryBtnText: { ...Typography.body, fontWeight: "700" },
 
   error: { ...Typography.bodySm, marginTop: 10 },
+
+  legalText: {
+    ...Typography.caption,
+    textAlign: "center",
+    marginTop: 12,
+  },
+  legalLink: { textDecorationLine: "underline" },
 
   footerRow: {
     marginTop: 16,
