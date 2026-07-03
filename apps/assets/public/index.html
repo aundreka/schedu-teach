@@ -3,239 +3,122 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>schEDU Marketing Kit</title>
+<title>SCHEDU Marketing Kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #FFFFFF; --surface-alt: #F4F6F8; --text: #111827; --muted: #6B7280;
-    --faint: #9CA3AF; --border: #E5E7EB; --hairline: #EEF1F4;
-    --tint: #22C55E; --tint-deep: #16A34A; --tint-soft: #E7F8EE; --on-tint: #07301A;
-    --warning-soft: #FEF3C7; --warning-fg: #B45309;
-    --display: -apple-system, "SF Pro Display", "Segoe UI Variable Display", system-ui, sans-serif;
-    --body: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
-    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --green: #00bf63;
+    --black: #000000;
+    --paper: #f9f9f9;
+    --muted: #6B7280;
+    --border: #E5E7EB;
+    --font: "Montserrat", -apple-system, system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); line-height: 1.55; -webkit-font-smoothing: antialiased; }
-  main { max-width: 1020px; margin: 0 auto; padding: 0 24px 90px; }
+  body {
+    margin: 0; background: #fff; color: var(--black);
+    font-family: var(--font); line-height: 1.6; -webkit-font-smoothing: antialiased;
+    display: flex; flex-direction: column; min-height: 100vh;
+  }
 
-  header.masthead { padding: 60px 0 8px; }
-  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tint-deep); display: flex; align-items: center; gap: 10px; }
-  .eyebrow::before { content: ""; width: 26px; height: 3px; border-radius: 2px; background: var(--tint); }
-  h1 { font-family: var(--display); font-size: clamp(32px, 5vw, 48px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.06; margin: 16px 0 14px; text-wrap: balance; }
-  h1 em { font-style: normal; color: var(--tint-deep); }
-  .lede { max-width: 62ch; color: var(--muted); font-size: 16.5px; margin: 0 0 20px; }
-
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 8px 0 8px; }
-  .step { background: var(--surface-alt); border: 1px solid var(--hairline); border-radius: 14px; padding: 15px 17px; font-size: 13.5px; color: var(--muted); }
-  .step b { display: block; color: var(--text); font-size: 13.5px; margin-bottom: 3px; }
-  .step a { color: var(--tint-deep); font-weight: 700; text-decoration: none; }
-  .step a:hover { text-decoration: underline; }
-
-  section.kit { margin-top: 64px; }
-  .kicker { font-size: 11.5px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--faint); margin: 0 0 8px; }
-  h2 { font-family: var(--display); font-size: clamp(22px, 3vw, 30px); font-weight: 800; letter-spacing: -0.02em; margin: 0; }
-  .sub { color: var(--muted); max-width: 64ch; margin: 8px 0 22px; font-size: 14.5px; }
-
-  .vids { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  @media (max-width: 760px) { .vids { grid-template-columns: 1fr; } }
-  .vid { border: 1px solid var(--hairline); border-radius: 18px; overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
-  .vid video { width: 100%; display: block; background: var(--surface-alt); aspect-ratio: 16 / 10; }
-  .vid .body { padding: 15px 18px 17px; display: flex; flex-direction: column; gap: 8px; }
-  .vid h3 { margin: 0; font-family: var(--display); font-size: 16.5px; font-weight: 800; letter-spacing: -0.015em; }
-  .vid h3 .no { font-family: var(--mono); font-size: 11px; color: var(--faint); font-weight: 700; margin-right: 8px; letter-spacing: 0.06em; }
-  .vid p { margin: 0; font-size: 13px; color: var(--muted); }
-  .caps { background: var(--surface-alt); border-radius: 10px; padding: 9px 12px; font-size: 12.5px; color: var(--muted); }
-  .caps b { color: var(--text); }
-  .caps .tl { color: var(--tint-deep); font-weight: 600; }
-  .vid .row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+  .hero {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 72px 24px 48px;
+  }
+  .hero svg { display: block; }
+  .wordmark { font-size: clamp(34px, 6vw, 52px); font-weight: 800; letter-spacing: 0.02em; margin: 22px 0 0; }
+  .wordmark em { font-style: normal; color: var(--green); }
+  .tagline { color: var(--muted); font-size: 15px; margin: 6px 0 0; }
+  .kit-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--muted); margin: 26px 0 0;
+  }
+  .actions { display: flex; gap: 14px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
   .btn {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: var(--tint); color: var(--on-tint); font-size: 12.5px; font-weight: 800;
-    padding: 9px 15px; border-radius: 999px; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-family: var(--font); font-size: 15px; font-weight: 700;
+    padding: 15px 42px; border-radius: 999px; text-decoration: none;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, filter 0.18s ease;
   }
-  .btn:hover { background: var(--tint-deep); }
-  .btn.ghost { background: var(--bg); color: var(--muted); border: 1px solid var(--border); font-weight: 700; }
-  .btn.ghost:hover { color: var(--text); border-color: var(--faint); background: var(--bg); }
-  .btn:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
-  .btn svg { display: block; }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.10); }
+  .btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
+  .btn.primary { background: var(--green); color: var(--black); }
+  .btn.primary:hover { filter: brightness(0.96); }
+  .btn.secondary { background: #fff; color: var(--black); border: 2px solid var(--black); }
+  .btn.secondary:hover { background: var(--paper); }
+  .btn:focus-visible { outline: 3px solid var(--green); outline-offset: 3px; }
 
-  .duo { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 20px; }
-  .panel { border: 1px solid var(--hairline); border-radius: 18px; padding: 22px 24px; background: var(--bg); display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
-  .panel h3 { margin: 0; font-family: var(--display); font-size: 18px; font-weight: 800; letter-spacing: -0.015em; }
-  .panel p { margin: 0; font-size: 13.5px; color: var(--muted); }
-  .panel .meta { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
-  .warn { background: var(--warning-soft); color: var(--warning-fg); border-radius: 10px; padding: 8px 12px; font-size: 12.5px; font-weight: 600; }
-
-  .quick { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
-  .q { border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 16px; font-size: 13px; color: var(--muted); }
-  .q b { display: block; color: var(--text); margin-bottom: 3px; }
-  .q.yes b::before { content: "✓ "; color: var(--tint-deep); }
-  .q.no b::before { content: "✗ "; color: #DC2626; }
-  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .hexpill {
-    display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border);
-    border-radius: 999px; padding: 5px 12px 5px 7px; font-family: var(--mono); font-size: 11.5px;
-    color: var(--muted); background: var(--bg); cursor: pointer;
+  .guide { background: var(--paper); border-top: 1px solid var(--border); padding: 40px 24px 46px; }
+  .guide-inner { max-width: 760px; margin: 0 auto; }
+  .guide h2 {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 18px; text-align: center;
   }
-  .hexpill i { width: 14px; height: 14px; border-radius: 5px; display: inline-block; }
-  .hexpill:hover { color: var(--text); border-color: var(--faint); }
-  .hexpill:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+  .guide-links { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .glink {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; text-decoration: none; color: var(--black); display: block;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .glink:hover { border-color: var(--green); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.07); }
+  .glink:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+  .glink b { display: block; font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .glink span { font-size: 12.5px; color: var(--muted); }
+  .hero > * { opacity: 0; transform: translateY(12px); animation: rise 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) forwards; }
+  .hero > :nth-child(2) { animation-delay: 0.07s; }
+  .hero > :nth-child(3) { animation-delay: 0.13s; }
+  .hero > :nth-child(4) { animation-delay: 0.19s; }
+  .hero > :nth-child(5) { animation-delay: 0.26s; }
+  @keyframes rise { to { opacity: 1; transform: none; } }
 
-  footer { margin-top: 70px; border-top: 1px solid var(--hairline); padding-top: 22px; font-size: 13px; color: var(--faint); }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+  footer { text-align: center; font-size: 12px; color: var(--muted); padding: 18px; background: var(--paper); }
 </style>
 </head>
 <body>
-<main>
-  <header class="masthead">
-    <p class="eyebrow">schEDU · marketing kit · July 2026</p>
-    <h1>Grab an animation, grab a screen, <em>ship a post</em>.</h1>
-    <p class="lede">
-      Everything in this folder works offline — no accounts, no installs. Videos are ready-to-edit
-      MP4s, screenshots are real captures from the app, and the style guide keeps us all on brand.
-    </p>
-    <div class="steps">
-      <div class="step"><b>1 · Editing video?</b> Download the MP4s below, then open the <a href="kit.html#scenes">style guide</a> for each scene's beat sheet and export specs.</div>
-      <div class="step"><b>2 · Making statics?</b> Use the <a href="templates.html">ready-to-post templates</a> (type text → download PNG), or browse the <a href="screens/index.html">screenshot gallery</a> (113 captures).</div>
-      <div class="step"><b>3 · Not sure?</b> Read the three brand rules at the bottom of this page before you export anything.</div>
-    </div>
-  </header>
-
-  <section class="kit" id="animations">
-    <p class="kicker">Feature animations</p>
-    <h2>Five scenes, ready-to-edit MP4s</h2>
-    <p class="sub">
-      Each file is 1280×800, 30 fps, H.264 — two seamless loops per file, so you can cut anywhere in
-      the first loop and it repeats cleanly. Timing + easing details live in the style guide's beat
-      sheets if you're rebuilding at higher resolution.
-    </p>
-    <div class="vids">
-      <article class="vid">
-        <video controls loop muted playsinline preload="metadata" src="videos/scene-01.mp4"></video>
-        <div class="body">
-          <h3><span class="no">SCENE 01</span>A whole term, planned in one tap</h3>
-          <p>An empty week fills itself in teaching order; the exam lands last with a pulse. Lead with this everywhere.</p>
-          <div class="caps"><b>EN:</b> A whole term, planned in one tap. · <span class="tl">TL: Buong quarter, isang tap lang.</span></div>
-          <div class="row">
-            <a class="btn" href="videos/scene-01.mp4" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Download MP4</a>
-            <a class="btn ghost" href="scenes/scene-01.html" target="_blank" rel="noopener">Open loop full-screen</a>
-          </div>
-        </div>
-      </article>
-      <article class="vid">
-        <video controls loop muted playsinline preload="metadata" src="videos/scene-02.mp4"></video>
-        <div class="body">
-          <h3><span class="no">SCENE 02</span>Walang pasok? The plan absorbs it</h3>
-          <p>A suspension stamps out Wednesday; the week re-flows and the counter never moves. Our most defensible claim — give it the most airtime.</p>
-          <div class="caps"><b>EN:</b> Class suspended? Zero sessions lost. · <span class="tl">TL: Walang pasok? Walang nawawalang session.</span></div>
-          <div class="row">
-            <a class="btn" href="videos/scene-02.mp4" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Download MP4</a>
-            <a class="btn ghost" href="scenes/scene-02.html" target="_blank" rel="noopener">Open loop full-screen</a>
-          </div>
-        </div>
-      </article>
-      <article class="vid">
-        <video controls loop muted playsinline preload="metadata" src="videos/scene-03.mp4"></video>
-        <div class="body">
-          <h3><span class="no">SCENE 03</span>An activity writes itself</h3>
-          <p>A quiz assembles on printer-white paper, answer key pre-marked. Pair with the AI quota copy per tier.</p>
-          <div class="caps"><b>EN:</b> A quiz in seconds, not hours. · <span class="tl">TL: Quiz in seconds, hindi hours.</span></div>
-          <div class="row">
-            <a class="btn" href="videos/scene-03.mp4" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Download MP4</a>
-            <a class="btn ghost" href="scenes/scene-03.html" target="_blank" rel="noopener">Open loop full-screen</a>
-          </div>
-        </div>
-      </article>
-      <article class="vid">
-        <video controls loop muted playsinline preload="metadata" src="videos/scene-04.mp4"></video>
-        <div class="body">
-          <h3><span class="no">SCENE 04</span>Your whole load, at a glance</h3>
-          <p>The My Plan rings draw with counting numbers. Cleanest scene for square posts and the pricing page.</p>
-          <div class="caps"><b>EN:</b> Your whole load, at a glance. · <span class="tl">TL: Kita mo agad ang buong load mo.</span></div>
-          <div class="row">
-            <a class="btn" href="videos/scene-04.mp4" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Download MP4</a>
-            <a class="btn ghost" href="scenes/scene-04.html" target="_blank" rel="noopener">Open loop full-screen</a>
-          </div>
-        </div>
-      </article>
-      <article class="vid">
-        <video controls loop muted playsinline preload="metadata" src="videos/scene-05.mp4"></video>
-        <div class="body">
-          <h3><span class="no">SCENE 05</span>Every activity, shelved and searchable</h3>
-          <p>Covers fan into the library, then a subject filter answers instantly. The retention story — close previews with it.</p>
-          <div class="caps"><b>EN:</b> Generated today, shelved forever. · <span class="tl">TL: Ginawa ngayon, nandiyan pa rin bukas.</span></div>
-          <div class="row">
-            <a class="btn" href="videos/scene-05.mp4" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Download MP4</a>
-            <a class="btn ghost" href="scenes/scene-05.html" target="_blank" rel="noopener">Open loop full-screen</a>
-          </div>
-        </div>
-      </article>
+  <section class="hero">
+    <svg width="88" height="88" viewBox="0 0 200 200" role="img" aria-label="SCHEDU calendar logo">
+      <rect x="14" y="26" width="172" height="160" rx="20" fill="#fff" stroke="#E5E7EB" stroke-width="3"/>
+      <path d="M14 46 a20 20 0 0 1 20 -20 h132 a20 20 0 0 1 20 20 v26 H14 Z" fill="#00bf63"/>
+      <rect x="52" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
+      <rect x="134" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
+      <g fill="#EDEDED">
+        <rect x="32" y="86" width="30" height="16" rx="4"/><rect x="130" y="86" width="38" height="16" rx="4"/>
+        <rect x="32" y="130" width="24" height="16" rx="4"/><rect x="144" y="130" width="24" height="16" rx="4"/>
+        <rect x="32" y="158" width="38" height="16" rx="4"/><rect x="138" y="158" width="30" height="16" rx="4"/>
+      </g>
+      <g fill="#00bf63">
+        <rect x="62" y="88" width="76" height="18" rx="3"/>
+        <rect x="62" y="106" width="18" height="14" rx="3"/>
+        <rect x="62" y="120" width="76" height="18" rx="3"/>
+        <rect x="120" y="138" width="18" height="14" rx="3"/>
+        <rect x="62" y="152" width="76" height="18" rx="3"/>
+      </g>
+    </svg>
+    <h1 class="wordmark">SCH<em>EDU</em></h1>
+    <p class="tagline">your time belongs in a classroom</p>
+    <p class="kit-label">Marketing Kit</p>
+    <div class="actions">
+      <a class="btn primary" href="videos.html">Videos</a>
+      <a class="btn secondary" href="screens/index.html">Screenshots</a>
     </div>
   </section>
 
-  <section class="kit" id="stills">
-    <p class="kicker">Static assets</p>
-    <h2>Screenshots &amp; the full style guide</h2>
-    <div class="duo" style="margin-top:20px">
-      <div class="panel">
-        <h3>Screenshot gallery</h3>
-        <p class="meta">113 captures · 19 screens · light + dark · iPhone 16</p>
-        <p>Real app captures organized by screen — home, calendar, library, create funnels, My Plan, and more. Right-click any image to save it.</p>
-        <div class="warn">Personas and school data in these shots are fictional dev data — fine for ads and socials, but re-capture on a production build before App Store listings.</div>
-        <a class="btn" href="screens/index.html">Browse 113 screenshots</a>
-      </div>
-      <div class="panel">
-        <h3>Reactive post templates</h3>
-        <p class="meta">Walang Pasok day · Sunday-night carousel</p>
-        <p>Type the region, date, or headline — the artboards update live — then export social-ready PNGs (1:1, 9:16, 4:5). No design tools needed.</p>
-        <a class="btn" href="templates.html">Make a post now</a>
-      </div>
-      <div class="panel">
-        <h3>Style guide &amp; templates</h3>
-        <p class="meta">palette · type · beat sheets · post layouts · captions</p>
-        <p>The full reference: click-to-copy brand hexes, per-scene timing sheets for editors, 9:16 / 1:1 / 16:9 post layouts with safe margins, and the approved English/Taglish caption bank.</p>
-        <a class="btn" href="kit.html">Open the style guide</a>
+  <section class="guide">
+    <div class="guide-inner">
+      <h2>Also in this kit</h2>
+      <div class="guide-links">
+        <a class="glink" href="templates.html"><b>Post templates</b><span>Type the text, download the PNG. Walang Pasok day and the Sunday carousel.</span></a>
+        <a class="glink" href="kit.html"><b>Style guide</b><span>Beat sheets, export specs, captions, and usage rules for editors.</span></a>
+        <a class="glink" href="brand.html"><b>Brand styling</b><span>Logo, fonts, and colors. Start here before designing anything new.</span></a>
       </div>
     </div>
   </section>
-
-  <section class="kit" id="rules">
-    <p class="kicker">Before you export</p>
-    <h2>Three rules that keep us on brand</h2>
-    <div class="quick" style="margin-top:20px">
-      <div class="q yes"><b>Dark green on brand green</b>Any text or icon on the green (#22C55E) is dark green #07301A — never white. Buttons, badges, stickers, lower-thirds.</div>
-      <div class="q no"><b>No invented colors or gradients</b>Use only the palette in the style guide. The block colors mean something in the app (green = lesson, rose = exam) — never reshuffle them.</div>
-      <div class="q yes"><b>Claim only what's true</b>One exam per term, zero sessions lost on rebalance, and per-tier daily AI quotas are guaranteed. Anything beyond that needs sign-off first.</div>
-    </div>
-    <div class="pill-row" role="group" aria-label="Copy brand colors">
-      <button class="hexpill" data-hex="#22C55E"><i style="background:#22C55E"></i>#22C55E brand</button>
-      <button class="hexpill" data-hex="#16A34A"><i style="background:#16A34A"></i>#16A34A deep</button>
-      <button class="hexpill" data-hex="#07301A"><i style="background:#07301A"></i>#07301A on-green</button>
-      <button class="hexpill" data-hex="#111827"><i style="background:#111827"></i>#111827 ink</button>
-      <button class="hexpill" data-hex="#F4F6F8"><i style="background:#F4F6F8;border:1px solid #E5E7EB"></i>#F4F6F8 surface</button>
-    </div>
-  </section>
-
-  <footer>
-    schEDU marketing kit · assembled 2026-07-03 · works fully offline — keep the folder structure intact
-    (<span style="font-family:var(--mono)">videos/ · screens/ · scenes/ · kit.html</span>).
-    Questions or new asset requests → Aundreka.
-  </footer>
-</main>
-<script>
-  document.querySelectorAll(".hexpill").forEach(function (b) {
-    var label = b.childNodes[1];
-    var orig = label.textContent;
-    b.addEventListener("click", function () {
-      function done() {
-        label.textContent = " copied!";
-        setTimeout(function () { label.textContent = orig; }, 900);
-      }
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(b.dataset.hex).then(done, done);
-      } else { done(); }
-    });
-  });
-</script>
+  <footer>SCHEDU marketing kit · July 2026</footer>
 </body>
 </html>

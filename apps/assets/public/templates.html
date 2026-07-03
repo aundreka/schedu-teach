@@ -3,14 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>schEDU — Reactive Post Templates</title>
+<title>schEDU Reactive Post Templates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #FFFFFF; --surface-alt: #F4F6F8; --text: #111827; --muted: #6B7280;
     --faint: #9CA3AF; --border: #E5E7EB; --hairline: #EEF1F4;
     --tint: #22C55E; --tint-deep: #16A34A; --on-tint: #07301A;
-    --display: -apple-system, "SF Pro Display", system-ui, sans-serif;
-    --body: -apple-system, "SF Pro Text", system-ui, sans-serif;
+    --display: "Montserrat", -apple-system, system-ui, sans-serif;
+    --body: "Montserrat", -apple-system, system-ui, sans-serif;
     --mono: ui-monospace, "SF Mono", Menlo, monospace;
   }
   * { box-sizing: border-box; }
@@ -58,6 +61,10 @@
 
   .usage { background: var(--surface-alt); border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 18px; font-size: 13px; color: var(--muted); margin-top: 18px; max-width: 760px; }
   .usage b { color: var(--text); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -66,9 +73,9 @@
     <p class="eyebrow">schEDU · reactive post templates</p>
     <h1>Type the details, hit download, post.</h1>
     <p class="lede">
-      Edit the text fields — every artboard updates live. <b>Download PNG</b> exports at full
-      social resolution (1080 px wide). No design tools needed.
-      &nbsp;<a class="back" href="index.html">← Back to the kit</a>
+      Edit the text fields and the artboards update live. <b>Download PNG</b> exports at full
+      social resolution.
+      &nbsp;<a class="back" href="index.html">← Kit home</a>
     </p>
   </header>
 
@@ -95,7 +102,6 @@
         <label>CTA (story only)
           <input id="ty-cta" value="Try schEDU free" maxlength="20">
         </label>
-        <p class="hint">Keep the badge and grid as-is — they show the product's actual guarantee.</p>
       </div>
       <div class="boards">
         <figure class="art">
@@ -110,8 +116,8 @@
     </div>
     <div class="usage">
       <b>Playbook:</b> pre-fill the region the night a signal warning is raised; post within an hour
-      of the official announcement. Caption: the approved pair — "Class suspended? Zero sessions
-      lost." / "Walang pasok? Walang nawawalang session." — plus the local hashtag. Pair with the
+      of the official announcement. Use the approved caption pair ("Class suspended? Zero sessions lost." /
+      "Walang pasok? Walang nawawalang session.") plus the local hashtag. Pair with the
       Scene 02 MP4 as a follow-up reel.
     </div>
   </section>
@@ -122,7 +128,7 @@
     <h2>Sunday night, before &amp; after</h2>
     <p class="sub">
       Slide 1 is the feeling every teacher knows; slide 2 is the product answering it. Post as a
-      carousel — the swipe is the reveal. Best on Sunday evenings, 7–10 PM.
+      carousel; the swipe is the reveal. Best on Sunday evenings, 7–10 PM.
     </p>
     <div class="workbench">
       <div class="fields">
@@ -145,7 +151,6 @@
         <label>Slide 2 · headline line 2 (green)
           <input id="ba-h2b" value="plantsado ang quarter." maxlength="24">
         </label>
-        <p class="hint">English versions live in the style guide's caption bank — swap whole lines, don't mix languages mid-sentence.</p>
       </div>
       <div class="boards">
         <figure class="art">
@@ -159,7 +164,7 @@
       </div>
     </div>
     <div class="usage">
-      <b>Playbook:</b> upload both slides as one carousel (slide 1 first — the hook). Caption opens
+      <b>Playbook:</b> upload both slides as one carousel (slide 1 first). Caption opens
       with a question ("Sino pang gising?"), ends with the link. Re-run monthly; refresh only the
       clock time so it never goes stale.
     </div>

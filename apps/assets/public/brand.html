@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCHEDU Brand Styling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00bf63; --black: #000000; --paper: #f9f9f9;
+    --muted: #6B7280; --border: #E5E7EB;
+    --font: "Montserrat", -apple-system, system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--black); font-family: var(--font); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  main { max-width: 900px; margin: 0 auto; padding: 0 24px 90px; }
+  header.top { padding: 48px 0 8px; }
+  a.back { font-size: 13px; font-weight: 700; color: var(--green); text-decoration: none; }
+  a.back:hover { text-decoration: underline; }
+  h1 { font-size: clamp(28px, 4.5vw, 40px); font-weight: 800; margin: 14px 0 8px; }
+  .sub { color: var(--muted); max-width: 62ch; margin: 0 0 10px; font-size: 14.5px; }
+
+  section { margin-top: 52px; }
+  h2 { font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin: 0 0 16px; }
+
+  .logo-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .logo-card {
+    background: var(--paper); border: 1px solid var(--border); border-radius: 14px;
+    padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 14px;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .logo-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+  .logo-card .art { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 130px; }
+  .logo-card figcaption { font-size: 12px; font-weight: 700; color: var(--muted); }
+  .logo-card figure { margin: 0; display: contents; }
+  .lg-word { font-size: 24px; font-weight: 800; letter-spacing: 0.02em; }
+  .lg-word em { font-style: normal; color: var(--green); }
+  .lg-tag { font-size: 9.5px; color: var(--muted); margin-top: 2px; }
+
+  .fonts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .font-card { border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; }
+  .font-card .name { font-size: 20px; font-weight: 800; margin: 0 0 2px; }
+  .font-card .role { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; }
+  .font-card .sample { font-size: 15px; margin: 0; }
+  .font-card .note { font-size: 11.5px; color: var(--muted); margin: 10px 0 0; }
+
+  .colors { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+  .color {
+    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
+    background: #fff; cursor: pointer; text-align: left; padding: 0; font-family: var(--font);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .color:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.07); }
+  .color:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+  .color .well { height: 72px; }
+  .color .meta { padding: 10px 14px; display: flex; flex-direction: column; }
+  .color .meta b { font-size: 13px; }
+  .color .meta code { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .color:hover .meta code { color: var(--green); }
+
+  ul.identity { margin: 0; padding-left: 20px; font-size: 14.5px; }
+  ul.identity li { margin-bottom: 6px; }
+
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .rule { border: 1px solid var(--border); border-radius: 14px; padding: 15px 17px; font-size: 13px; color: var(--muted); }
+  .rule b { display: block; color: var(--black); font-size: 13px; margin-bottom: 4px; }
+
+  .note-box { background: var(--paper); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; font-size: 13px; color: var(--muted); margin-top: 16px; }
+  .note-box b { color: var(--black); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <a class="back" href="index.html">&larr; Kit home</a>
+    <h1>Brand styling</h1>
+    <p class="sub">The official SCHEDU identity. Use this for anything new; the app's in-product palette lives in the <a class="back" href="kit.html#brand">style guide</a>.</p>
+  </header>
+
+  <section id="logo">
+    <h2>Logo</h2>
+    <div class="logo-row">
+      <div class="logo-card">
+        <figure>
+          <span class="art">
+            <span style="display:flex;flex-direction:column;align-items:center;gap:10px">
+              <svg width="84" height="84" viewBox="0 0 200 200" role="img" aria-label="SCHEDU calendar mark">
+                <rect x="14" y="26" width="172" height="160" rx="20" fill="#fff" stroke="#E5E7EB" stroke-width="3"/>
+                <path d="M14 46 a20 20 0 0 1 20 -20 h132 a20 20 0 0 1 20 20 v26 H14 Z" fill="#00bf63"/>
+                <rect x="52" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
+                <rect x="134" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
+                <g fill="#EDEDED">
+                  <rect x="32" y="86" width="30" height="16" rx="4"/><rect x="130" y="86" width="38" height="16" rx="4"/>
+                  <rect x="32" y="130" width="24" height="16" rx="4"/><rect x="144" y="130" width="24" height="16" rx="4"/>
+                  <rect x="32" y="158" width="38" height="16" rx="4"/><rect x="138" y="158" width="30" height="16" rx="4"/>
+                </g>
+                <g fill="#00bf63">
+                  <rect x="62" y="88" width="76" height="18" rx="3"/>
+                  <rect x="62" y="106" width="18" height="14" rx="3"/>
+                  <rect x="62" y="120" width="76" height="18" rx="3"/>
+                  <rect x="120" y="138" width="18" height="14" rx="3"/>
+                  <rect x="62" y="152" width="76" height="18" rx="3"/>
+                </g>
+              </svg>
+              <span class="lg-word">SCH<em>EDU</em></span>
+            </span>
+          </span>
+          <figcaption>Portrait</figcaption>
+        </figure>
+      </div>
+      <div class="logo-card">
+        <figure>
+          <span class="art">
+            <span style="display:flex;align-items:center;gap:14px">
+              <svg width="64" height="64" viewBox="0 0 200 200" aria-hidden="true">
+                <rect x="14" y="26" width="172" height="160" rx="20" fill="#fff" stroke="#E5E7EB" stroke-width="3"/>
+                <path d="M14 46 a20 20 0 0 1 20 -20 h132 a20 20 0 0 1 20 20 v26 H14 Z" fill="#00bf63"/>
+                <rect x="52" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
+                <rect x="134" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
+                <g fill="#EDEDED">
+                  <rect x="32" y="86" width="30" height="16" rx="4"/><rect x="130" y="86" width="38" height="16" rx="4"/>
+                  <rect x="32" y="130" width="24" height="16" rx="4"/><rect x="144" y="130" width="24" height="16" rx="4"/>
+                  <rect x="32" y="158" width="38" height="16" rx="4"/><rect x="138" y="158" width="30" height="16" rx="4"/>
+                </g>
+                <g fill="#00bf63">
+                  <rect x="62" y="88" width="76" height="18" rx="3"/>
+                  <rect x="62" y="106" width="18" height="14" rx="3"/>
+                  <rect x="62" y="120" width="76" height="18" rx="3"/>
+                  <rect x="120" y="138" width="18" height="14" rx="3"/>
+                  <rect x="62" y="152" width="76" height="18" rx="3"/>
+                </g>
+              </svg>
+              <span style="text-align:left">
+                <span class="lg-word">SCH<em>EDU</em></span><br>
+                <span class="lg-tag">your time belongs in a classroom</span>
+              </span>
+            </span>
+          </span>
+          <figcaption>Landscape</figcaption>
+        </figure>
+      </div>
+      <div class="logo-card">
+        <figure>
+          <span class="art">
+            <svg width="80" height="80" viewBox="0 0 100 100" role="img" aria-label="SCHEDU S icon">
+              <g fill="#00bf63">
+                <rect x="14" y="16" width="72" height="17" rx="3"/>
+                <rect x="14" y="33" width="17" height="12" rx="3"/>
+                <rect x="14" y="45" width="72" height="17" rx="3"/>
+                <rect x="69" y="62" width="17" height="12" rx="3"/>
+                <rect x="14" y="74" width="72" height="17" rx="3"/>
+              </g>
+            </svg>
+          </span>
+          <figcaption>Icon V1</figcaption>
+        </figure>
+      </div>
+      <div class="logo-card">
+        <figure>
+          <span class="art">
+            <svg width="80" height="80" viewBox="0 0 200 200" role="img" aria-label="SCHEDU calendar icon">
+              <rect x="14" y="26" width="172" height="160" rx="20" fill="#fff" stroke="#E5E7EB" stroke-width="3"/>
+              <path d="M14 46 a20 20 0 0 1 20 -20 h132 a20 20 0 0 1 20 20 v26 H14 Z" fill="#00bf63"/>
+              <rect x="52" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
+              <rect x="134" y="10" width="14" height="30" rx="7" fill="#CFCFCF"/>
+              <g fill="#EDEDED">
+                <rect x="32" y="86" width="30" height="16" rx="4"/><rect x="130" y="86" width="38" height="16" rx="4"/>
+                <rect x="32" y="130" width="24" height="16" rx="4"/><rect x="144" y="130" width="24" height="16" rx="4"/>
+                <rect x="32" y="158" width="38" height="16" rx="4"/><rect x="138" y="158" width="30" height="16" rx="4"/>
+              </g>
+              <g fill="#00bf63">
+                <rect x="62" y="88" width="76" height="18" rx="3"/>
+                <rect x="62" y="106" width="18" height="14" rx="3"/>
+                <rect x="62" y="120" width="76" height="18" rx="3"/>
+                <rect x="120" y="138" width="18" height="14" rx="3"/>
+                <rect x="62" y="152" width="76" height="18" rx="3"/>
+              </g>
+            </svg>
+          </span>
+          <figcaption>Icon V2</figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="note-box"><b>Note:</b> these are vector recreations for reference. Use the original logo files from the design drive for print and high-res exports.</div>
+  </section>
+
+  <section id="fonts">
+    <h2>Fonts</h2>
+    <div class="fonts">
+      <div class="font-card">
+        <p class="name">Proxima Nova</p>
+        <p class="role">Headings</p>
+        <p class="sample" style="font-weight:800">A whole term, planned in one tap.</p>
+        <p class="note">Licensed font. Use from Adobe Fonts or the team license; Montserrat substitutes when unavailable.</p>
+      </div>
+      <div class="font-card">
+        <p class="name">Montserrat</p>
+        <p class="role">Body text</p>
+        <p class="sample">Set your subjects and class days once. SCHEDU plans the whole term for you.</p>
+        <p class="note">Free on Google Fonts. This page is set in it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="colors">
+    <h2>Colors</h2>
+    <div class="colors">
+      <button class="color" data-hex="#f9f9f9"><span class="well" style="background:#f9f9f9;border-bottom:1px solid #E5E7EB"></span><span class="meta"><b>Paper</b><code>#f9f9f9</code></span></button>
+      <button class="color" data-hex="#00bf63"><span class="well" style="background:#00bf63"></span><span class="meta"><b>SCHEDU Green</b><code>#00bf63</code></span></button>
+      <button class="color" data-hex="#000000"><span class="well" style="background:#000000"></span><span class="meta"><b>Black</b><code>#000000</code></span></button>
+    </div>
+    <div class="note-box"><b>Two greens exist on purpose.</b> Marketing materials use SCHEDU Green #00bf63. The app UI uses its own palette (#22C55E and the session-type colors), which appears inside screenshots and the animations. Don't recolor product artwork; put brand green on the chrome around it.</div>
+  </section>
+
+  <section id="identity">
+    <h2>Identity</h2>
+    <ul class="identity">
+      <li>Modern, professional, clean, vibrant</li>
+      <li>Think Duolingo, Notion, Canva</li>
+      <li>Mascot-driven marketing</li>
+    </ul>
+  </section>
+
+  <section id="rules">
+    <h2>Usage rules</h2>
+    <div class="rules">
+      <div class="rule"><b>Keep the wordmark split</b>SCH in black, EDU in green, always together, never re-spaced or outlined.</div>
+      <div class="rule"><b>One green per layer</b>Brand green for marketing chrome; the app palette stays inside product artwork.</div>
+      <div class="rule"><b>Claim only what's true</b>One exam per term, zero sessions lost on rebalance, per-tier daily AI quotas.</div>
+    </div>
+  </section>
+</main>
+<script>
+  document.querySelectorAll(".color").forEach(function (b) {
+    var code = b.querySelector("code");
+    var orig = code.textContent;
+    b.addEventListener("click", function () {
+      function done() { code.textContent = "copied!"; setTimeout(function () { code.textContent = orig; }, 900); }
+      if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(b.dataset.hex).then(done, done); } else { done(); }
+    });
+  });
+</script>
+</body>
+</html>

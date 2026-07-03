@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>schEDU — Motion & Content Kit</title>
+<title>schEDU Motion & Content Kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   /* ============ tokens (mirrors apps/teach/constants/colors.ts, light) ============ */
   :root {
@@ -30,8 +33,8 @@
     --cat-exam: #FB7185;        --cat-exam-soft: #FFE4E6;        --cat-exam-on: #BE123C;      --cat-exam-border: #FDA4AF;
     --cat-buffer: #94A3B8;      --cat-buffer-soft: #F1F5F9;      --cat-buffer-on: #475569;    --cat-buffer-border: #CBD5E1;
 
-    --display: -apple-system, "SF Pro Display", "Segoe UI Variable Display", system-ui, sans-serif;
-    --body: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    --display: "Montserrat", -apple-system, system-ui, sans-serif;
+    --body: "Montserrat", -apple-system, system-ui, sans-serif;
     --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
   }
 
@@ -190,7 +193,7 @@
   }
   .badge svg { display: block; }
 
-  /* ============ SCENE 1 — auto-plan (9 s) ============ */
+  /* ============ SCENE 1: auto-plan (9 s) ============ */
   .week { width: min(560px, 100%); }
   .week-days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 8px; }
   .week-days span { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: center; }
@@ -233,7 +236,7 @@
   }
   .s1 .badge { position: absolute; bottom: 20px; right: 20px; opacity: 0; animation: badgeIn 9s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite; }
 
-  /* ============ SCENE 2 — suspension & rebalance (10 s) ============ */
+  /* ============ SCENE 2: suspension & rebalance (10 s) ============ */
   .s2 .cell { height: 46px; }
   .suspend {
     position: absolute; inset: 0; border-radius: 12px;
@@ -286,7 +289,7 @@
   }
   .s2 .badge { position: absolute; bottom: 20px; right: 20px; opacity: 0; animation: zeroLost 10s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite; }
 
-  /* ============ SCENE 3 — AI generation (9 s) ============ */
+  /* ============ SCENE 3: AI generation (9 s) ============ */
   .paper {
     /* deliberate scheme-independent PAPER white, mirroring the app's printed-document previews */
     width: min(400px, 100%); background: #FFFFFF; border-radius: 14px;
@@ -343,7 +346,7 @@
   }
   .s3 .sweep { animation: sweepMove 9s linear infinite; }
 
-  /* ============ SCENE 4 — rings (8 s, JS clock) ============ */
+  /* ============ SCENE 4: rings (8 s, JS clock) ============ */
   .rings { display: flex; gap: clamp(18px, 4vw, 44px); flex-wrap: wrap; justify-content: center; }
   .ring-card { display: flex; flex-direction: column; align-items: center; gap: 10px; }
   .ring-wrap { position: relative; width: 132px; height: 132px; }
@@ -354,7 +357,7 @@
   .ring-num span { font-size: 10.5px; color: var(--faint); font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
   .ring-label { font-size: 13px; font-weight: 600; color: var(--muted); }
 
-  /* ============ SCENE 5 — library shelf (8 s) ============ */
+  /* ============ SCENE 5: library shelf (8 s) ============ */
   .shelf { width: min(560px, 100%); }
   .shelf-filter { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
   .fchip {
@@ -401,7 +404,7 @@
   /* ============ END-FRAME MODE (.still) ============
      Toggled per stage ("End frame" button) and applied globally under
      prefers-reduced-motion (via JS). Every scene rests on its resolved
-     final state — this is the freeze-frame static creators screenshot. */
+     final state, the freeze-frame static creators screenshot. */
   .stage.still .block, .stage.still .badge, .stage.still .suspend,
   .stage.still .lands, .stage.still .tally,
   .stage.still .choice, .stage.still .gen-badge,
@@ -467,6 +470,10 @@
   .note code { font-family: var(--mono); font-size: 12px; background: var(--surface-alt); border-radius: 5px; padding: 1px 5px; }
 
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -476,7 +483,7 @@
     <h1>Everything editors and creators need to <em>show the planner working</em>.</h1>
     <p class="lede">
       One reusable kit, two audiences. <strong>Video editors:</strong> five looping scenes, each with a
-      timestamped beat sheet, easing curves, and export specs — the CSS on this page is the timing
+      timestamped beat sheet, easing curves, and export specs. The CSS on this page is the timing
       reference. <strong>Static creators:</strong> click any scene's <em>End frame</em> for a
       screenshot-ready still, copy exact brand hexes below, and lay posts out on the templates at the
       bottom. Every color here is lifted verbatim from the app's design tokens.
@@ -493,10 +500,10 @@
   <!-- ================= BRAND ================= -->
   <section class="kit" id="brand" aria-labelledby="tb">
     <p class="kicker">Foundation</p>
-    <h2 id="tb">Brand basics — colors and type</h2>
+    <h2 id="tb">Brand basics: colors and type</h2>
     <p class="sub">
       Click a swatch to copy its hex. These come straight from <code>constants/colors.ts</code>;
-      don't invent tints, don't darken the green for "contrast" — use the pairings shown.
+      don't invent tints or darken the green for contrast; use the pairings shown.
     </p>
 
     <h3 class="mini">Core palette</h3>
@@ -511,7 +518,7 @@
       <button class="swatch" data-hex="#F59E0B"><span class="well" style="background:#F59E0B"></span><span class="meta"><b>Warning amber</b><code>#F59E0B</code></span></button>
     </div>
 
-    <h3 class="mini">Session-type ramp (calendar meaning — never decorative)</h3>
+    <h3 class="mini">Session-type ramp (calendar meaning, never decorative)</h3>
     <div class="swatches">
       <button class="swatch" data-hex="#22C55E"><span class="well" style="background:linear-gradient(135deg,#22C55E 50%,#DCFCE7 50%)"></span><span class="meta"><b>Lesson</b><code>#22C55E / #DCFCE7</code></span></button>
       <button class="swatch" data-hex="#F59E0B"><span class="well" style="background:linear-gradient(135deg,#F59E0B 50%,#FEF3C7 50%)"></span><span class="meta"><b>Written Work</b><code>#F59E0B / #FEF3C7</code></span></button>
@@ -521,7 +528,7 @@
     </div>
     <p class="ramp-note">
       <b>The one rule people get wrong:</b> text and icons on the brand green are the dark green
-      <code>#07301A</code>, never white — white on this green fails accessibility contrast. Every
+      <code>#07301A</code>, never white; white on this green fails contrast. Every
       badge and button in the app follows this; your thumbnails should too.
     </p>
 
@@ -529,7 +536,7 @@
     <div class="type-rows">
       <div class="type-row"><span class="role">display / headlines</span><span class="tx-display">A whole term, planned in one tap.</span></div>
       <div class="type-row"><span class="role">eyebrow / labels</span><span class="tx-eyebrow">Feature · Auto-planning</span></div>
-      <div class="type-row"><span class="role">body</span><span class="tx-body">Set your subjects and class days once — schEDU sequences every lesson, written work, performance task, and exam across the term.</span></div>
+      <div class="type-row"><span class="role">body</span><span class="tx-body">Set your subjects and class days once. schEDU sequences every lesson, written work, performance task, and exam across the term.</span></div>
       <div class="type-row"><span class="role">numbers</span><span class="tx-num">15 sessions · 0 lost</span></div>
       <div class="type-row"><span class="role">badge / CTA</span><span class="tx-badge">Term planned · 15 sessions</span></div>
     </div>
@@ -539,9 +546,9 @@
       <div class="rule yes"><b>Heavy, tight headlines</b>Weight 800, letter-spacing −0.02em, sentence case. The green goes on one word or phrase, not the whole line.</div>
       <div class="rule yes"><b>Tabular numbers everywhere</b>Counters, quotas, and timers use tabular numerals so digits never jitter between frames.</div>
       <div class="rule yes"><b>White ground, soft grey stage</b>Compositions sit on white; the demo area sits on #F4F6F8 with a hairline border and 20 px radius.</div>
-      <div class="rule no"><b>No white text on green</b>Use #07301A on any green fill — buttons, badges, stickers, lower-thirds.</div>
+      <div class="rule no"><b>No white text on green</b>Use #07301A on any green fill: buttons, badges, stickers, lower-thirds.</div>
       <div class="rule no"><b>No gradients, no drop-shadow text</b>The brand is flat soft-fills with colored borders. Depth comes from one soft shadow under cards, nothing else.</div>
-      <div class="rule no"><b>Don't recolor the ramp</b>Lesson is green, exam is rose, and so on — the colors mean something in the app. Never swap them for looks.</div>
+      <div class="rule no"><b>Don't recolor the ramp</b>Lesson is green, exam is rose, and so on. The colors mean something in the app. Never swap them for looks.</div>
     </div>
   </section>
 
@@ -550,7 +557,7 @@
     <p class="kicker">Motion library</p>
     <h2>The five scenes</h2>
     <p class="sub">
-      Each scene loops seamlessly and is built from real product moments — recreate them 1:1 in
+      Each scene loops seamlessly and is built from real product moments. Recreate them 1:1 in
       After Effects or Rive using the beat sheets. The <em>End frame</em> button freezes any scene on
       its resolved final state: that still <em>is</em> the static asset for posts and thumbnails.
     </p>
@@ -561,7 +568,7 @@
     <div class="scene-head"><span class="scene-no">SCENE 01</span><h2 id="t1">A whole term, planned in one tap</h2></div>
     <p class="scene-sub">
       The signature moment. An empty week fills itself: lessons land in sequence, assessments slot
-      between them, and the exam arrives last with a pulse — the scheduler guarantees exactly one per term.
+      between them, and the exam arrives last with a pulse; the scheduler guarantees exactly one per term.
     </p>
     <div class="board">
       <div class="stage s1" data-scene>
@@ -617,7 +624,7 @@
       </aside>
     </div>
     <details class="beats">
-      <summary>Beat sheet — Scene 01 (9.0 s loop)</summary>
+      <summary>Beat sheet · Scene 01 (9.0 s loop)</summary>
       <div class="beats-scroll"><table class="beat">
         <tr><th>Time</th><th>Event</th><th>Spec</th></tr>
         <tr><td>0:00.0</td><td>Empty dashed grid holds (breathing room)</td><td>static</td></tr>
@@ -635,7 +642,7 @@
     <div class="scene-head"><span class="scene-no">SCENE 02</span><h2 id="t2">Walang pasok? The plan absorbs it</h2></div>
     <p class="scene-sub">
       The scene only schEDU can show. A suspension stamps out Wednesday, its sessions lift away, and
-      the week re-flows them forward — while the session counter never moves. Zero sessions lost is
+      the week re-flows them forward while the session counter never moves. Zero sessions lost is
       the scheduler's actual guarantee, drawn on screen.
     </p>
     <div class="board">
@@ -695,14 +702,14 @@
       </aside>
     </div>
     <details class="beats">
-      <summary>Beat sheet — Scene 02 (10.0 s loop)</summary>
+      <summary>Beat sheet · Scene 02 (10.0 s loop)</summary>
       <div class="beats-scroll"><table class="beat">
         <tr><th>Time</th><th>Event</th><th>Spec</th></tr>
         <tr><td>0:00.0–0:02.2</td><td>Steady, fully-planned week; counter reads "15 sessions"</td><td>static hold</td></tr>
         <tr><td>0:02.2</td><td>"Class suspended" stamps over Wednesday</td><td>scale 1.25 → 1, 400 ms, amber stripes</td></tr>
         <tr><td>0:02.6–0:03.0</td><td>Wednesday's two blocks lift out</td><td>y 0 → −18px, fade, ease-in</td></tr>
         <tr><td>0:03.4–0:04.6</td><td>Five blocks re-land Thu → Fri in order</td><td>drop-in, 300 ms stagger</td></tr>
-        <tr><td>0:04.4</td><td>Counter nudges — value unchanged</td><td>scale 1 → 1.06 → 1, 400 ms</td></tr>
+        <tr><td>0:04.4</td><td>Counter nudges, value unchanged</td><td>scale 1 → 1.06 → 1, 400 ms</td></tr>
         <tr><td>0:05.2</td><td>Badge: "Rebalanced · 0 sessions lost"</td><td>y +8px → 0, 450 ms</td></tr>
         <tr><td>0:09.0–0:10.0</td><td>Fade to steady week for reloop</td><td>opacity → 0, 800 ms</td></tr>
       </table></div>
@@ -713,7 +720,7 @@
   <section class="scene" aria-labelledby="t3">
     <div class="scene-head"><span class="scene-no">SCENE 03</span><h2 id="t3">An activity writes itself</h2></div>
     <p class="scene-sub">
-      A green sweep reads the lesson, then the quiz assembles line by line — stems ink in, answer
+      A green sweep reads the lesson, then the quiz assembles line by line: stems ink in, answer
       choices pop, the key already marked. The paper is deliberately printer-white, exactly like the
       document previews in the app.
     </p>
@@ -723,7 +730,7 @@
           <button class="ctrl" data-still aria-pressed="false">End frame</button>
           <button class="ctrl" data-pause aria-pressed="false">Pause</button>
         </div>
-        <div class="paper" role="img" aria-label="Animation: a quiz sheet assembling itself — a scanning sweep passes over the page, question lines appear one by one with multiple-choice bubbles, and a Generated badge pops in.">
+        <div class="paper" role="img" aria-label="Animation: a quiz sheet assembling itself: a scanning sweep passes over the page, question lines appear one by one with multiple-choice bubbles, and a Generated badge pops in.">
           <div class="sweep"></div>
           <div class="paper-head"><b>Quiz 5 · Photosynthesis</b><span>SCIENCE 8 · Q2</span></div>
           <div class="qline"><span class="qnum">1.</span><div class="qbar" style="width:100%; --d:2.6s"></div></div>
@@ -753,11 +760,11 @@
           <dt>Easing</dt><dd>cubic-bezier(.3,0,.2,1) inks</dd>
           <dt>End frame</dt><dd>full quiz + badge</dd>
         </dl>
-        <p class="use"><strong>Deploy:</strong> mid-roll of previews; the AI section of the website. Pair with the real quota copy — "10 activities a day on Pro."</p>
+        <p class="use"><strong>Deploy:</strong> mid-roll of previews; the AI section of the website. Pair with the real quota copy: "10 activities a day on Pro."</p>
       </aside>
     </div>
     <details class="beats">
-      <summary>Beat sheet — Scene 03 (9.0 s loop)</summary>
+      <summary>Beat sheet · Scene 03 (9.0 s loop)</summary>
       <div class="beats-scroll"><table class="beat">
         <tr><th>Time</th><th>Event</th><th>Spec</th></tr>
         <tr><td>0:00.0–0:02.5</td><td>Green scan sweep crosses the blank sheet</td><td>linear, 10% opacity wash</td></tr>
@@ -775,7 +782,7 @@
   <section class="scene" aria-labelledby="t4">
     <div class="scene-head"><span class="scene-no">SCENE 04</span><h2 id="t4">Your whole load, at a glance</h2></div>
     <p class="scene-sub">
-      The My Plan rings draw themselves while the numbers count up in step — plans, subjects, and
+      The My Plan rings draw themselves while the numbers count up in step: plans, subjects, and
       today's AI generations. Quiet, confident, entirely tabular-numeric.
     </p>
     <div class="board">
@@ -830,13 +837,13 @@
       </aside>
     </div>
     <details class="beats">
-      <summary>Beat sheet — Scene 04 (8.0 s loop)</summary>
+      <summary>Beat sheet · Scene 04 (8.0 s loop)</summary>
       <div class="beats-scroll"><table class="beat">
         <tr><th>Time</th><th>Event</th><th>Spec</th></tr>
         <tr><td>0:00.0</td><td>Ring 1 (plans, green) starts drawing; counter counts with it</td><td>1.6 s, easeOutCubic</td></tr>
         <tr><td>0:00.2</td><td>Ring 2 (subjects, sky) starts</td><td>same, +200 ms</td></tr>
         <tr><td>0:00.4</td><td>Ring 3 (AI today, amber) starts</td><td>same, +200 ms</td></tr>
-        <tr><td>0:02.0–0:07.2</td><td>Hold on final values — this is the screenshot window</td><td>static hold</td></tr>
+        <tr><td>0:02.0–0:07.2</td><td>Hold on final values (screenshot window)</td><td>static hold</td></tr>
         <tr><td>0:07.2–0:08.0</td><td>Rings unwind to zero for reloop</td><td>reverse draw, 800 ms</td></tr>
       </table></div>
     </details>
@@ -846,7 +853,7 @@
   <section class="scene" aria-labelledby="t5">
     <div class="scene-head"><span class="scene-no">SCENE 05</span><h2 id="t5">Every activity, shelved and searchable</h2></div>
     <p class="scene-sub">
-      Generated activities don't vanish — they land on the shelf. Covers fan in with each subject's
+      Generated activities don't vanish; they land on the shelf. Covers fan in with each subject's
       identity color, then a filter chip flips and the shelf answers instantly.
     </p>
     <div class="board">
@@ -893,15 +900,15 @@
           <dt>Easing</dt><dd>cubic-bezier(.2,.9,.3,1.15)</dd>
           <dt>End frame</dt><dd>Science filter active</dd>
         </dl>
-        <p class="use"><strong>Deploy:</strong> closing beat of previews — generation is only half the story; the library is why teachers stay.</p>
+        <p class="use"><strong>Deploy:</strong> closing beat of previews. Generation is half the story; the library is why teachers stay.</p>
       </aside>
     </div>
     <details class="beats">
-      <summary>Beat sheet — Scene 05 (8.0 s loop)</summary>
+      <summary>Beat sheet · Scene 05 (8.0 s loop)</summary>
       <div class="beats-scroll"><table class="beat">
         <tr><th>Time</th><th>Event</th><th>Spec</th></tr>
         <tr><td>0:00.4–0:01.6</td><td>Six covers fan in, slight alternating tilt settling to 0°</td><td>200 ms stagger, ±2° → 0°</td></tr>
-        <tr><td>0:01.6–0:04.4</td><td>Shelf holds — full-library screenshot window</td><td>static hold</td></tr>
+        <tr><td>0:01.6–0:04.4</td><td>Shelf holds (screenshot window)</td><td>static hold</td></tr>
         <tr><td>0:04.8</td><td>"Science 8" chip flips on; "All" flips off</td><td>fill swap, 300 ms</td></tr>
         <tr><td>0:04.8–0:05.2</td><td>Non-matching covers dim; matches lift</td><td>opacity → 0.28 / y → −4px</td></tr>
         <tr><td>0:07.2–0:08.0</td><td>Shelf clears for reloop</td><td>fade + y +10px</td></tr>
@@ -914,7 +921,7 @@
     <p class="kicker">For static creators</p>
     <h2 id="tt">Post layouts</h2>
     <p class="sub">
-      Three fixed layouts cover every placement. The dashed line is the 6% safe margin — nothing
+      Three fixed layouts cover every placement. The dashed line is the 6% safe margin; nothing
       but background crosses it. The frame zone holds a scene end-frame (use the <em>End frame</em>
       button above and screenshot at 2×). Headline ink on white; one green phrase max; CTA pill is
       always green with dark-green text.
@@ -927,7 +934,7 @@
           <span class="t-cta">Try schEDU free</span>
           <span class="t-mark">schEDU</span>
         </div>
-        <figcaption><b>Story / Reel cover — 9:16</b> (1080×1920). Headline ≤ 2 lines, top third. Frame fills the middle; CTA sits above the platform UI zone.</figcaption>
+        <figcaption><b>Story / Reel cover · 9:16</b> (1080×1920). Headline ≤ 2 lines, top third. Frame fills the middle; CTA sits above the platform UI zone.</figcaption>
       </figure>
       <figure class="tmpl-card" style="margin:0">
         <div class="tmpl r11" role="img" aria-label="Feed layout: headline top, scene frame center, CTA pill bottom, wordmark bottom-right.">
@@ -936,7 +943,7 @@
           <span class="t-cta">Plan my term</span>
           <span class="t-mark">schEDU</span>
         </div>
-        <figcaption><b>Feed — 1:1</b> (1080×1080; use 1080×1350 4:5 where allowed). Same stack, tighter: headline ≤ 2 lines, frame ≥ 55% of height.</figcaption>
+        <figcaption><b>Feed · 1:1</b> (1080×1080; use 1080×1350 4:5 where allowed). Same stack, tighter: headline ≤ 2 lines, frame ≥ 55% of height.</figcaption>
       </figure>
       <figure class="tmpl-card" style="margin:0">
         <div class="tmpl r169" role="img" aria-label="Banner layout: text column on the left with headline and CTA, scene frame on the right.">
@@ -947,7 +954,7 @@
           <span class="t-frame">Scene 03 end-frame</span>
           <span class="t-mark">schEDU</span>
         </div>
-        <figcaption><b>Banner / cover — 16:9</b> (1920×1080; FB cover crop-safe center). Text column left, frame right — never overlay text on the frame.</figcaption>
+        <figcaption><b>Banner / cover · 16:9</b> (1920×1080; FB cover crop-safe center). Text column left, frame right; never overlay text on the frame.</figcaption>
       </figure>
     </div>
   </section>
@@ -958,7 +965,7 @@
     <h2 id="te">Export specs</h2>
     <p class="sub">
       Recreate scenes at production quality in After Effects → Lottie, or Rive. Take hexes verbatim
-      from the palette above; the beat sheets are the timing reference. Scenes loop seamlessly —
+      from the palette above; the beat sheets are the timing reference. Scenes loop seamlessly;
       never hard-cut a loop mid-beat.
     </p>
     <div class="tbl-scroll">
@@ -968,7 +975,7 @@
         <tr><td>Play Store promo video</td><td class="mono">1920×1080 · 16:9</td><td class="mono">≤ 30 s</td><td>Same sequence, landscape re-stage</td><td>Hosted on YouTube; add end-card with wordmark + CTA.</td></tr>
         <tr><td>Reels / TikTok / Shorts</td><td class="mono">1080×1920 · 9:16</td><td class="mono">6–15 s</td><td>One scene per post</td><td>Hook text in the first second (use the caption bank); loop twice max.</td></tr>
         <tr><td>Feed video</td><td class="mono">1080×1080 · 1:1</td><td class="mono">6–10 s</td><td>Single scene</td><td>Scene 4 works best square; keep the hold frame ≥ 2 s for readability.</td></tr>
-        <tr><td>Website hero / sections</td><td class="mono">Lottie or WebM</td><td class="mono">native loop</td><td>Scene 1 hero; 3 &amp; 4 in sections</td><td>Ship a static end-frame poster for reduced-motion users — same rule as the app.</td></tr>
+        <tr><td>Website hero / sections</td><td class="mono">Lottie or WebM</td><td class="mono">native loop</td><td>Scene 1 hero; 3 &amp; 4 in sections</td><td>Ship a static end-frame poster for reduced-motion users, same rule as the app.</td></tr>
       </table>
     </div>
   </section>
@@ -978,22 +985,21 @@
     <p class="kicker">Copy</p>
     <h2 id="tc">Caption bank</h2>
     <p class="sub">
-      Approved headline pairs per scene — English and Taglish carry the same meaning; pick per
-      channel, don't remix mid-sentence. Numbers in copy must match what's on screen.
+      Approved headline pairs per scene. English and Taglish carry the same meaning; pick one per channel. Numbers in copy must match what's on screen.
     </p>
     <div class="tbl-scroll">
       <table class="kit-tbl">
         <tr><th>Scene</th><th>English</th><th>Taglish</th><th>Support line</th></tr>
-        <tr><td>01 · Auto-plan</td><td>A whole term, planned in one tap.</td><td class="tl">Buong quarter, isang tap lang.</td><td>Lessons, quizzes, PTs, and the exam — sequenced for you.</td></tr>
+        <tr><td>01 · Auto-plan</td><td>A whole term, planned in one tap.</td><td class="tl">Buong quarter, isang tap lang.</td><td>Lessons, quizzes, PTs, and the exam, sequenced for you.</td></tr>
         <tr><td>02 · Suspension</td><td>Class suspended? Zero sessions lost.</td><td class="tl">Walang pasok? Walang nawawalang session.</td><td>schEDU re-flows your week the moment you mark it.</td></tr>
-        <tr><td>03 · AI activity</td><td>A quiz in seconds, not hours.</td><td class="tl">Quiz in seconds, hindi hours.</td><td>Generated from your own lesson — answer key included.</td></tr>
-        <tr><td>04 · My Plan</td><td>Your whole load, at a glance.</td><td class="tl">Kita mo agad ang buong load mo.</td><td>Plans, subjects, and today's generations — one screen.</td></tr>
+        <tr><td>03 · AI activity</td><td>A quiz in seconds, not hours.</td><td class="tl">Quiz in seconds, hindi hours.</td><td>Generated from your own lesson, answer key included.</td></tr>
+        <tr><td>04 · My Plan</td><td>Your whole load, at a glance.</td><td class="tl">Kita mo agad ang buong load mo.</td><td>Plans, subjects, and today's generations, one screen.</td></tr>
         <tr><td>05 · Library</td><td>Generated today, shelved forever.</td><td class="tl">Ginawa ngayon, nandiyan pa rin bukas.</td><td>Every activity filed by subject, ready to reuse.</td></tr>
       </table>
     </div>
 
     <div class="notes-grid">
-      <div class="note"><b>Voice</b>Confident, concrete, teacher-to-teacher. Name real things (quiz, quarter, session) — never "workflow", "solution", or "revolutionize".</div>
+      <div class="note"><b>Voice</b>Confident, concrete, teacher-to-teacher. Name real things (quiz, quarter, session), never "workflow" or "solution".</div>
       <div class="note"><b>Claims discipline</b>Only claim what the product guarantees: one exam per term, zero sessions lost on rebalance, daily generation quotas per tier. Nothing invented.</div>
       <div class="note"><b>Accessibility</b>Burn captions into all video; alt-text every static post (describe the scene, not the vibe); end-frames double as reduced-motion posters.</div>
       <div class="note"><b>Source of truth</b>Colors: <code>constants/colors.ts</code>. Motion vocabulary: <code>lib/motion.ts</code>. If this page and a screenshot of the app disagree, the app wins.</div>

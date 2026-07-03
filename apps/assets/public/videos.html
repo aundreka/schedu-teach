@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCHEDU Videos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #00bf63; --black: #000000; --paper: #f9f9f9;
+    --muted: #6B7280; --border: #E5E7EB; --hairline: #EEF1F4;
+    --font: "Montserrat", -apple-system, system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: var(--black); font-family: var(--font); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+  main { max-width: 1020px; margin: 0 auto; padding: 0 24px 90px; }
+  header.top { padding: 48px 0 8px; }
+  a.back { font-size: 13px; font-weight: 700; color: var(--green); text-decoration: none; }
+  a.back:hover { text-decoration: underline; }
+  h1 { font-size: clamp(28px, 4.5vw, 40px); font-weight: 800; letter-spacing: -0.01em; margin: 14px 0 8px; }
+  .sub { color: var(--muted); max-width: 62ch; margin: 0 0 28px; font-size: 14.5px; }
+
+  .vids { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .vids { grid-template-columns: 1fr; } }
+  .vid {
+    border: 1px solid var(--hairline); border-radius: 18px; overflow: hidden; background: #fff;
+    display: flex; flex-direction: column;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+  .vid:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(0,0,0,0.07); border-color: var(--border); }
+  .vid video { width: 100%; display: block; background: var(--paper); aspect-ratio: 16 / 10; }
+  .vid .body { padding: 15px 18px 17px; display: flex; flex-direction: column; gap: 8px; }
+  .vid h3 { margin: 0; font-size: 16px; font-weight: 800; }
+  .vid h3 .no { font-family: var(--mono); font-size: 11px; color: #9CA3AF; font-weight: 700; margin-right: 8px; letter-spacing: 0.06em; }
+  .vid p { margin: 0; font-size: 13px; color: var(--muted); }
+  .caps { background: var(--paper); border-radius: 10px; padding: 9px 12px; font-size: 12.5px; color: var(--muted); }
+  .caps b { color: var(--black); }
+  .caps .tl { color: var(--green); font-weight: 600; }
+  .vid .row { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--green); color: var(--black); font-size: 12.5px; font-weight: 700;
+    padding: 9px 15px; border-radius: 999px; text-decoration: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  }
+  .btn:hover { filter: brightness(0.96); transform: translateY(-1px); box-shadow: 0 6px 14px rgba(0,0,0,0.10); }
+  .btn:active { transform: translateY(0); box-shadow: none; }
+  .btn.ghost { background: #fff; color: var(--muted); border: 1px solid var(--border); }
+  .btn.ghost:hover { color: var(--black); border-color: #9CA3AF; }
+  .btn:focus-visible { outline: 3px solid var(--green); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <a class="back" href="index.html">&larr; Kit home</a>
+    <h1>Videos</h1>
+    <p class="sub">
+      Five feature animations. Each MP4 is 1280&times;800, 30 fps, H.264, with two seamless loops:
+      any cut in the first loop repeats cleanly. Timing and easing live in the
+      <a class="back" href="kit.html#scenes">style guide</a>.
+    </p>
+  </header>
+<div class="vids">
+      <article class="vid">
+        <video controls loop muted playsinline preload="metadata" src="videos/scene-01.mp4"></video>
+        <div class="body">
+          <h3><span class="no">SCENE 01</span>A whole term, planned in one tap</h3>
+          <p>An empty week fills itself in teaching order; the exam lands last with a pulse. Lead with this everywhere.</p>
+          <div class="caps"><b>EN:</b> A whole term, planned in one tap. · <span class="tl">TL: Buong quarter, isang tap lang.</span></div>
+          <div class="row">
+            <a class="btn" href="videos/scene-01.mp4" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Download MP4</a>
+            <a class="btn ghost" href="scenes/scene-01.html" target="_blank" rel="noopener">Open loop full-screen</a>
+          </div>
+        </div>
+      </article>
+      <article class="vid">
+        <video controls loop muted playsinline preload="metadata" src="videos/scene-02.mp4"></video>
+        <div class="body">
+          <h3><span class="no">SCENE 02</span>Walang pasok? The plan absorbs it</h3>
+          <p>A suspension stamps out Wednesday; the week re-flows and the counter never moves. Our most defensible claim; give it the most airtime.</p>
+          <div class="caps"><b>EN:</b> Class suspended? Zero sessions lost. · <span class="tl">TL: Walang pasok? Walang nawawalang session.</span></div>
+          <div class="row">
+            <a class="btn" href="videos/scene-02.mp4" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Download MP4</a>
+            <a class="btn ghost" href="scenes/scene-02.html" target="_blank" rel="noopener">Open loop full-screen</a>
+          </div>
+        </div>
+      </article>
+      <article class="vid">
+        <video controls loop muted playsinline preload="metadata" src="videos/scene-03.mp4"></video>
+        <div class="body">
+          <h3><span class="no">SCENE 03</span>An activity writes itself</h3>
+          <p>A quiz assembles on printer-white paper, answer key pre-marked. Pair with the AI quota copy per tier.</p>
+          <div class="caps"><b>EN:</b> A quiz in seconds, not hours. · <span class="tl">TL: Quiz in seconds, hindi hours.</span></div>
+          <div class="row">
+            <a class="btn" href="videos/scene-03.mp4" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Download MP4</a>
+            <a class="btn ghost" href="scenes/scene-03.html" target="_blank" rel="noopener">Open loop full-screen</a>
+          </div>
+        </div>
+      </article>
+      <article class="vid">
+        <video controls loop muted playsinline preload="metadata" src="videos/scene-04.mp4"></video>
+        <div class="body">
+          <h3><span class="no">SCENE 04</span>Your whole load, at a glance</h3>
+          <p>The My Plan rings draw with counting numbers. Cleanest scene for square posts and the pricing page.</p>
+          <div class="caps"><b>EN:</b> Your whole load, at a glance. · <span class="tl">TL: Kita mo agad ang buong load mo.</span></div>
+          <div class="row">
+            <a class="btn" href="videos/scene-04.mp4" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Download MP4</a>
+            <a class="btn ghost" href="scenes/scene-04.html" target="_blank" rel="noopener">Open loop full-screen</a>
+          </div>
+        </div>
+      </article>
+      <article class="vid">
+        <video controls loop muted playsinline preload="metadata" src="videos/scene-05.mp4"></video>
+        <div class="body">
+          <h3><span class="no">SCENE 05</span>Every activity, shelved and searchable</h3>
+          <p>Covers fan into the library, then a subject filter answers instantly. The retention story. Close previews with it.</p>
+          <div class="caps"><b>EN:</b> Generated today, shelved forever. · <span class="tl">TL: Ginawa ngayon, nandiyan pa rin bukas.</span></div>
+          <div class="row">
+            <a class="btn" href="videos/scene-05.mp4" download><svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Download MP4</a>
+            <a class="btn ghost" href="scenes/scene-05.html" target="_blank" rel="noopener">Open loop full-screen</a>
+          </div>
+        </div>
+      </article>
+    </div>
+  
+</main>
+</body>
+</html>
