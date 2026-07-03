@@ -71,3 +71,6 @@ supabase-token
 
 # Marketing kit zips are generated from apps/assets/public — keep them out of git
 marketing/*.zip
+
+# npm artifacts — this is a pnpm monorepo; a stray package-lock.json breaks Vercel install detection
+package-lock.json
