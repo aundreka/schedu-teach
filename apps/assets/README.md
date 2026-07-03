@@ -29,8 +29,12 @@ That already gives you a working private URL (`schedu-assets-*.vercel.app`).
 
 ## Updating the kit
 
-Edit files in `public/` (or drop new videos into `public/videos/`), then
-`npx vercel deploy --prod` again. To rotate the password:
+The project is git-connected with Root Directory `apps/assets`: **pushing to
+`main` deploys automatically.** For a manual CLI deploy, run
+`npx vercel deploy --prod` from the **repo root** (not from apps/assets — with
+a Root Directory configured, Vercel expects the whole repo and resolves
+`apps/assets` inside it; uploading the subfolder alone fails with
+"Root Directory does not exist"). To rotate the password:
 `npx vercel env rm ASSETS_PASS production && npx vercel env add ASSETS_PASS production`
 and redeploy.
 

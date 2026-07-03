@@ -8,6 +8,11 @@
 
 export const config = { matcher: "/(.*)" };
 
+// Vercel's edge runtime provides process.env at runtime, but this standalone
+// project has no @types/node — declare the shape we use so `vercel build`
+// type-checks cleanly.
+declare const process: { env: Record<string, string | undefined> };
+
 function timingSafeEqual(a: string, b: string): boolean {
   const enc = new TextEncoder();
   const ab = enc.encode(a);
