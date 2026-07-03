@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene 03 — An activity writes itself</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  html, body { margin: 0; min-height: 100vh; }
+  body { background: #F4F6F8; display: flex; align-items: center; justify-content: center; }
+  .stage { background: transparent; border: none; border-radius: 0; width: 680px; min-height: 0; padding: 44px; zoom: 1.45; }
+  .stage-tools { display: none; }
+  .week, .shelf { width: 592px; }
+  .paper { width: 400px; }
+</style>
+</head>
+<body>
+<div class="stage s3" data-scene>
+        <div class="stage-tools">
+          <button class="ctrl" data-still aria-pressed="false">End frame</button>
+          <button class="ctrl" data-pause aria-pressed="false">Pause</button>
+        </div>
+        <div class="paper" role="img" aria-label="Animation: a quiz sheet assembling itself — a scanning sweep passes over the page, question lines appear one by one with multiple-choice bubbles, and a Generated badge pops in.">
+          <div class="sweep"></div>
+          <div class="paper-head"><b>Quiz 5 · Photosynthesis</b><span>SCIENCE 8 · Q2</span></div>
+          <div class="qline"><span class="qnum">1.</span><div class="qbar" style="width:100%; --d:2.6s"></div></div>
+          <div class="choices">
+            <span class="choice" style="--d:3.0s">A</span><span class="choice key" style="--d:3.15s">B</span><span class="choice" style="--d:3.3s">C</span><span class="choice" style="--d:3.45s">D</span>
+          </div>
+          <div class="qline"><span class="qnum">2.</span><div class="qbar" style="--d:3.8s"></div></div>
+          <div class="choices">
+            <span class="choice key" style="--d:4.2s">A</span><span class="choice" style="--d:4.35s">B</span><span class="choice" style="--d:4.5s">C</span><span class="choice" style="--d:4.65s">D</span>
+          </div>
+          <div class="qline"><span class="qnum">3.</span><div class="qbar" style="--d:5.0s"></div></div>
+          <div class="choices">
+            <span class="choice" style="--d:5.4s">A</span><span class="choice" style="--d:5.55s">B</span><span class="choice" style="--d:5.7s">C</span><span class="choice key" style="--d:5.85s">D</span>
+          </div>
+          <span class="badge gen-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9L12 2z" fill="currentColor"/></svg>
+            Generated · ready to print
+          </span>
+        </div>
+      </div>
+
+</body>
+</html>

@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene 05 — Every activity, shelved and searchable</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  html, body { margin: 0; min-height: 100vh; }
+  body { background: #F4F6F8; display: flex; align-items: center; justify-content: center; }
+  .stage { background: transparent; border: none; border-radius: 0; width: 680px; min-height: 0; padding: 44px; zoom: 1.45; }
+  .stage-tools { display: none; }
+  .week, .shelf { width: 592px; }
+  .paper { width: 400px; }
+</style>
+</head>
+<body>
+<div class="stage s5" data-scene>
+        <div class="stage-tools">
+          <button class="ctrl" data-still aria-pressed="false">End frame</button>
+          <button class="ctrl" data-pause aria-pressed="false">Pause</button>
+        </div>
+        <div class="shelf" role="img" aria-label="Animation: six activity covers fan into a grid, then a Science filter chip activates and non-science covers dim while science covers lift.">
+          <div class="shelf-filter">
+            <span class="fchip will-off">All</span>
+            <span class="fchip will-on">Science 8</span>
+            <span class="fchip">Math 8</span>
+            <span class="fchip">Filipino</span>
+          </div>
+          <div class="shelf-grid">
+            <div class="cover hit" style="--d:0.4s; --tilt:-2deg">
+              <div class="cover-art" style="background:#14B8A6"></div><b>Quiz 5 · Photosynthesis</b><span>Science 8 · 10 items</span>
+            </div>
+            <div class="cover" style="--d:0.6s; --tilt:2deg">
+              <div class="cover-art" style="background:#0EA5E9"></div><b>Seatwork · Linear Equations</b><span>Math 8 · 8 items</span>
+            </div>
+            <div class="cover hit" style="--d:0.8s; --tilt:-1.5deg">
+              <div class="cover-art" style="background:#22C55E"></div><b>PT Rubric · Cell Model</b><span>Science 8 · rubric</span>
+            </div>
+            <div class="cover" style="--d:1.0s; --tilt:1.5deg">
+              <div class="cover-art" style="background:#A855F7"></div><b>Pagsusulit · Panitikan</b><span>Filipino · 15 items</span>
+            </div>
+            <div class="cover hit" style="--d:1.2s; --tilt:-2deg">
+              <div class="cover-art" style="background:#F97316"></div><b>Exam · 1st Quarter</b><span>Science 8 · 40 items</span>
+            </div>
+            <div class="cover" style="--d:1.4s; --tilt:2deg">
+              <div class="cover-art" style="background:#EAB308"></div><b>Drill · Fractions Review</b><span>Math 8 · 12 items</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+</body>
+</html>

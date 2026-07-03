@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scene 04 — Your whole load, at a glance</title>
+<link rel="stylesheet" href="kit.css">
+<style>
+  html, body { margin: 0; min-height: 100vh; }
+  body { background: #F4F6F8; display: flex; align-items: center; justify-content: center; }
+  .stage { background: transparent; border: none; border-radius: 0; width: 680px; min-height: 0; padding: 44px; zoom: 1.45; }
+  .stage-tools { display: none; }
+  .week, .shelf { width: 592px; }
+  .paper { width: 400px; }
+</style>
+</head>
+<body>
+<div class="stage s4" data-scene data-rings>
+        <div class="stage-tools">
+          <button class="ctrl" data-still aria-pressed="false">End frame</button>
+          <button class="ctrl" data-pause aria-pressed="false">Pause</button>
+        </div>
+        <div class="rings" role="img" aria-label="Animation: three progress rings drawing to 7 of 10 lesson plans, 4 of 5 subjects, and 6 of 10 AI generations, with numbers counting up.">
+          <div class="ring-card">
+            <div class="ring-wrap">
+              <svg width="132" height="132" viewBox="0 0 132 132" fill="none" aria-hidden="true">
+                <circle class="ring-track" cx="66" cy="66" r="56" stroke-width="11" fill="none"/>
+                <circle class="ring-val" data-frac="0.70" cx="66" cy="66" r="56" stroke="#22C55E" stroke-width="11" fill="none" stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="351.9"/>
+              </svg>
+              <div class="ring-num"><b><span data-count data-to="7">0</span>/10</b><span>plans</span></div>
+            </div>
+            <span class="ring-label">Lesson plans</span>
+          </div>
+          <div class="ring-card">
+            <div class="ring-wrap">
+              <svg width="132" height="132" viewBox="0 0 132 132" fill="none" aria-hidden="true">
+                <circle class="ring-track" cx="66" cy="66" r="56" stroke-width="11" fill="none"/>
+                <circle class="ring-val" data-frac="0.80" cx="66" cy="66" r="56" stroke="#38BDF8" stroke-width="11" fill="none" stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="351.9"/>
+              </svg>
+              <div class="ring-num"><b><span data-count data-to="4">0</span>/5</b><span>subjects</span></div>
+            </div>
+            <span class="ring-label">Subjects</span>
+          </div>
+          <div class="ring-card">
+            <div class="ring-wrap">
+              <svg width="132" height="132" viewBox="0 0 132 132" fill="none" aria-hidden="true">
+                <circle class="ring-track" cx="66" cy="66" r="56" stroke-width="11" fill="none"/>
+                <circle class="ring-val" data-frac="0.60" cx="66" cy="66" r="56" stroke="#F59E0B" stroke-width="11" fill="none" stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="351.9"/>
+              </svg>
+              <div class="ring-num"><b><span data-count data-to="6">0</span>/10</b><span>today</span></div>
+            </div>
+            <span class="ring-label">AI generations</span>
+          </div>
+        </div>
+      </div>
+
+<script>
+(function(){
+  var stage=document.querySelector("[data-rings]");
+  var rings=[].slice.call(stage.querySelectorAll(".ring-val"));
+  var counts=[].slice.call(stage.querySelectorAll("[data-count]"));
+  var CIRC=351.9,LOOP=8000,DRAW=1600,STAGGER=200,HOLD_END=7200;
+  function ease(t){return 1-Math.pow(1-t,3);}
+  var start=performance.now();
+  function frame(now){
+    var t=(now-start)%LOOP;
+    rings.forEach(function(r,i){
+      var frac=parseFloat(r.dataset.frac);
+      var local=Math.min(Math.max((t-i*STAGGER)/DRAW,0),1);
+      var p=t>HOLD_END?Math.max(0,1-(t-HOLD_END)/(LOOP-HOLD_END))*ease(local):ease(local);
+      r.setAttribute("stroke-dashoffset",String(CIRC*(1-frac*p)));
+    });
+    counts.forEach(function(c,i){
+      var to=parseInt(c.dataset.to,10);
+      var local=Math.min(Math.max((t-i*STAGGER)/DRAW,0),1);
+      c.textContent=String(t>HOLD_END?0:Math.round(to*ease(local)));
+    });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

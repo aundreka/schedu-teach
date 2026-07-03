@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>schEDU — Reactive Post Templates</title>
+<style>
+  :root {
+    --bg: #FFFFFF; --surface-alt: #F4F6F8; --text: #111827; --muted: #6B7280;
+    --faint: #9CA3AF; --border: #E5E7EB; --hairline: #EEF1F4;
+    --tint: #22C55E; --tint-deep: #16A34A; --on-tint: #07301A;
+    --display: -apple-system, "SF Pro Display", system-ui, sans-serif;
+    --body: -apple-system, "SF Pro Text", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--body); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  main { max-width: 1060px; margin: 0 auto; padding: 0 24px 90px; }
+
+  header.masthead { padding: 56px 0 6px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tint-deep); display: flex; align-items: center; gap: 10px; }
+  .eyebrow::before { content: ""; width: 26px; height: 3px; border-radius: 2px; background: var(--tint); }
+  h1 { font-family: var(--display); font-size: clamp(30px, 4.6vw, 44px); font-weight: 800; letter-spacing: -0.025em; line-height: 1.08; margin: 16px 0 12px; text-wrap: balance; }
+  .lede { max-width: 64ch; color: var(--muted); font-size: 16px; margin: 0; }
+  .lede b { color: var(--text); }
+  a.back { font-size: 13px; font-weight: 700; color: var(--tint-deep); text-decoration: none; }
+  a.back:hover { text-decoration: underline; }
+
+  section.tpl { margin-top: 70px; }
+  .kicker { font-size: 11.5px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--faint); margin: 0 0 8px; }
+  h2 { font-family: var(--display); font-size: clamp(22px, 3vw, 30px); font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+  .sub { color: var(--muted); max-width: 66ch; margin: 8px 0 20px; font-size: 14.5px; }
+
+  .workbench { display: grid; grid-template-columns: 250px 1fr; gap: 22px; align-items: start; }
+  @media (max-width: 780px) { .workbench { grid-template-columns: 1fr; } }
+  .fields { border: 1px solid var(--hairline); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; position: sticky; top: 16px; }
+  .fields h3 { margin: 0 0 2px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+  .fields label { font-size: 12px; font-weight: 700; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .fields input {
+    font: 600 13px/1.3 var(--body); color: var(--text);
+    border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; background: var(--bg);
+  }
+  .fields input:focus { outline: 2px solid var(--tint); outline-offset: 1px; border-color: var(--tint); }
+  .fields .hint { font-size: 11.5px; color: var(--faint); font-weight: 500; margin: 0; }
+
+  .boards { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  figure.art { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+  .art svg { display: block; border: 1px solid var(--hairline); border-radius: 14px; background: #fff; }
+  .art figcaption { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .art figcaption span { font-family: var(--mono); font-size: 11.5px; color: var(--faint); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px; border: none; cursor: pointer;
+    background: var(--tint); color: var(--on-tint); font-family: var(--body); font-size: 12.5px; font-weight: 800;
+    padding: 9px 15px; border-radius: 999px; text-decoration: none;
+  }
+  .btn:hover { background: var(--tint-deep); }
+  .btn:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+
+  .usage { background: var(--surface-alt); border: 1px solid var(--hairline); border-radius: 14px; padding: 14px 18px; font-size: 13px; color: var(--muted); margin-top: 18px; max-width: 760px; }
+  .usage b { color: var(--text); }
+</style>
+</head>
+<body>
+<main>
+  <header class="masthead">
+    <p class="eyebrow">schEDU · reactive post templates</p>
+    <h1>Type the details, hit download, post.</h1>
+    <p class="lede">
+      Edit the text fields — every artboard updates live. <b>Download PNG</b> exports at full
+      social resolution (1080 px wide). No design tools needed.
+      &nbsp;<a class="back" href="index.html">← Back to the kit</a>
+    </p>
+  </header>
+
+  <!-- ================= TYPHOON DAY ================= -->
+  <section class="tpl" id="typhoon">
+    <p class="kicker">Reactive · post the morning a suspension is announced</p>
+    <h2>Walang Pasok day</h2>
+    <p class="sub">
+      Update the region and date, export both sizes, and publish while teachers are at home
+      scrolling. The message: the storm cancels class, not the plan.
+    </p>
+    <div class="workbench">
+      <div class="fields">
+        <h3>Edit text</h3>
+        <label>Hashtag / region / date
+          <input id="ty-eyebrow" value="#WALANGPASOK · METRO MANILA · JUL 21" maxlength="44">
+        </label>
+        <label>Headline
+          <input id="ty-head" value="Walang pasok?" maxlength="18">
+        </label>
+        <label>Green line
+          <input id="ty-sub" value="Walang nawawalang session." maxlength="30">
+        </label>
+        <label>CTA (story only)
+          <input id="ty-cta" value="Try schEDU free" maxlength="20">
+        </label>
+        <p class="hint">Keep the badge and grid as-is — they show the product's actual guarantee.</p>
+      </div>
+      <div class="boards">
+        <figure class="art">
+          <svg id="ty-feed" viewBox="0 0 1080 1080" width="380" height="380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Walang Pasok feed post preview"></svg>
+          <figcaption><span>1080×1080 · FB / IG feed</span><button class="btn" data-dl="ty-feed" data-w="1080" data-h="1080" data-name="walangpasok-feed">Download PNG</button></figcaption>
+        </figure>
+        <figure class="art">
+          <svg id="ty-story" viewBox="0 0 1080 1920" width="270" height="480" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Walang Pasok story preview"></svg>
+          <figcaption><span>1080×1920 · story / reel cover</span><button class="btn" data-dl="ty-story" data-w="1080" data-h="1920" data-name="walangpasok-story">Download PNG</button></figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="usage">
+      <b>Playbook:</b> pre-fill the region the night a signal warning is raised; post within an hour
+      of the official announcement. Caption: the approved pair — "Class suspended? Zero sessions
+      lost." / "Walang pasok? Walang nawawalang session." — plus the local hashtag. Pair with the
+      Scene 02 MP4 as a follow-up reel.
+    </div>
+  </section>
+
+  <!-- ================= BEFORE / AFTER ================= -->
+  <section class="tpl" id="beforeafter">
+    <p class="kicker">Evergreen · 2-slide carousel</p>
+    <h2>Sunday night, before &amp; after</h2>
+    <p class="sub">
+      Slide 1 is the feeling every teacher knows; slide 2 is the product answering it. Post as a
+      carousel — the swipe is the reveal. Best on Sunday evenings, 7–10 PM.
+    </p>
+    <div class="workbench">
+      <div class="fields">
+        <h3>Edit text</h3>
+        <label>Slide 1 · time stamp
+          <input id="ba-clock" value="11:47 PM · LINGGO" maxlength="26">
+        </label>
+        <label>Slide 1 · headline line 1
+          <input id="ba-h1a" value="Lesson plans" maxlength="16">
+        </label>
+        <label>Slide 1 · headline line 2
+          <input id="ba-h1b" value="hanggang hatinggabi?" maxlength="22">
+        </label>
+        <label>Slide 2 · eyebrow
+          <input id="ba-eyebrow" value="LUNES, 6:00 AM · HANDA NA" maxlength="30">
+        </label>
+        <label>Slide 2 · headline line 1
+          <input id="ba-h2a" value="Isang tap," maxlength="16">
+        </label>
+        <label>Slide 2 · headline line 2 (green)
+          <input id="ba-h2b" value="plantsado ang quarter." maxlength="24">
+        </label>
+        <p class="hint">English versions live in the style guide's caption bank — swap whole lines, don't mix languages mid-sentence.</p>
+      </div>
+      <div class="boards">
+        <figure class="art">
+          <svg id="ba-1" viewBox="0 0 1080 1350" width="320" height="400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Before slide preview: late-night planning"></svg>
+          <figcaption><span>1080×1350 · slide 1 of 2</span><button class="btn" data-dl="ba-1" data-w="1080" data-h="1350" data-name="sunday-before">Download PNG</button></figcaption>
+        </figure>
+        <figure class="art">
+          <svg id="ba-2" viewBox="0 0 1080 1350" width="320" height="400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="After slide preview: planned week"></svg>
+          <figcaption><span>1080×1350 · slide 2 of 2</span><button class="btn" data-dl="ba-2" data-w="1080" data-h="1350" data-name="sunday-after">Download PNG</button></figcaption>
+        </figure>
+      </div>
+    </div>
+    <div class="usage">
+      <b>Playbook:</b> upload both slides as one carousel (slide 1 first — the hook). Caption opens
+      with a question ("Sino pang gising?"), ends with the link. Re-run monthly; refresh only the
+      clock time so it never goes stale.
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============ brand + type constants (from constants/colors.ts) ============ */
+  var F = "'Helvetica Neue', Arial, sans-serif";
+  var C = {
+    ink: "#111827", muted: "#6B7280", faint: "#9CA3AF", border: "#E5E7EB",
+    surface: "#F4F6F8", tint: "#22C55E", tintDeep: "#16A34A", onTint: "#07301A",
+    warn: "#F59E0B", warnSoft: "#FEF3C7", warnFg: "#B45309",
+    night: "#111827", nightCard: "#1F2937", nightLine: "#374151",
+    cat: {
+      lesson: { soft: "#DCFCE7", on: "#15803D", border: "#86EFAC" },
+      ww:     { soft: "#FEF3C7", on: "#B45309", border: "#FCD34D" },
+      pt:     { soft: "#E0F2FE", on: "#0369A1", border: "#7DD3FC" },
+      exam:   { soft: "#FFE4E6", on: "#BE123C", border: "#FDA4AF" },
+      buffer: { soft: "#F1F5F9", on: "#475569", border: "#CBD5E1" },
+    },
+  };
+
+  function esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  /* ============ shared pieces ============ */
+
+  // Rounded block with a type label + title.
+  function block(x, y, w, h, tone, label, title) {
+    var t = C.cat[tone];
+    return '<g>'
+      + '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="14" fill="' + t.soft + '" stroke="' + t.border + '" stroke-width="2"/>'
+      + '<text x="' + (x + 16) + '" y="' + (y + 30) + '" font-family="' + F + '" font-size="13" font-weight="700" letter-spacing="1.2" fill="' + t.on + '" opacity="0.8">' + esc(label.toUpperCase()) + '</text>'
+      + '<text x="' + (x + 16) + '" y="' + (y + 54) + '" font-family="' + F + '" font-size="19" font-weight="700" fill="' + t.on + '">' + esc(title) + '</text>'
+      + '</g>';
+  }
+
+  // 5-day week grid. variant: "suspended" (Wed stamped) | "planned" (full, exam last).
+  function weekGrid(ox, oy, scale, variant) {
+    var cw = 150, ch = 74, gap = 14;
+    var days = ["MON", "TUE", "WED", "THU", "FRI"];
+    var out = '<g transform="translate(' + ox + ',' + oy + ') scale(' + scale + ')">';
+    for (var d = 0; d < 5; d++) {
+      out += '<text x="' + (d * (cw + gap) + cw / 2) + '" y="0" text-anchor="middle" font-family="' + F + '" font-size="15" font-weight="700" letter-spacing="2" fill="' + C.faint + '">' + days[d] + '</text>';
+    }
+    var cells = variant === "suspended"
+      ? [
+          [["lesson", "Lesson 9", "Ecosystems"], ["ww", "Written Work", "Quiz 3"], ["lesson", "Lesson 12", "Food Webs"]],
+          [["lesson", "Lesson 10", "Biomes"], ["pt", "Perf. Task", "Field Guide"], ["buffer", "Buffer", "Catch-up"]],
+          null, // stamped
+          [["lesson", "Lesson 13", "Energy Flow"], ["lesson", "Lesson 11", "Cycles"], ["ww", "Written Work", "Quiz 4"]],
+          [["pt", "Perf. Task", "Eco Diorama"], ["lesson", "Lesson 14", "Review"], ["exam", "Exam", "2nd Quarter"]],
+        ]
+      : [
+          [["lesson", "Lesson 1", "Cell Structure"], ["lesson", "Lesson 5", "Mitosis"], ["buffer", "Buffer", "Catch-up"]],
+          [["lesson", "Lesson 2", "Organelles"], ["ww", "Written Work", "Quiz 2"], ["lesson", "Lesson 7", "Heredity"]],
+          [["ww", "Written Work", "Quiz 1"], ["lesson", "Lesson 6", "Meiosis"], ["pt", "Perf. Task", "Cell Model"]],
+          [["lesson", "Lesson 3", "Membranes"], ["lesson", "Lesson 4", "Transport"], ["lesson", "Lesson 8", "Punnett Sq."]],
+          [["buffer", "Buffer", "Review"], ["pt", "Perf. Task", "Lab Report"], ["exam", "Exam", "1st Quarter"]],
+        ];
+    for (var col = 0; col < 5; col++) {
+      var x = col * (cw + gap);
+      if (cells[col] === null) {
+        var gh = 3 * ch + 2 * gap;
+        out += '<defs><pattern id="stripes" width="22" height="22" patternTransform="rotate(135)" patternUnits="userSpaceOnUse">'
+          + '<rect width="22" height="22" fill="' + C.warnSoft + '"/><rect width="11" height="22" fill="#FDE8B8"/></pattern></defs>'
+          + '<rect x="' + x + '" y="14" width="' + cw + '" height="' + gh + '" rx="14" fill="url(#stripes)" stroke="' + C.warn + '" stroke-width="3"/>'
+          + '<text x="' + (x + cw / 2) + '" y="' + (14 + gh / 2 - 8) + '" text-anchor="middle" font-family="' + F + '" font-size="16" font-weight="800" letter-spacing="2" fill="' + C.warnFg + '">CLASS</text>'
+          + '<text x="' + (x + cw / 2) + '" y="' + (14 + gh / 2 + 16) + '" text-anchor="middle" font-family="' + F + '" font-size="16" font-weight="800" letter-spacing="2" fill="' + C.warnFg + '">SUSPENDED</text>';
+      } else {
+        for (var r = 0; r < 3; r++) {
+          var c = cells[col][r];
+          out += block(x, 14 + r * (ch + gap), cw, ch, c[0], c[1], c[2]);
+        }
+      }
+    }
+    out += "</g>";
+    return out;
+  }
+
+  // Green pill badge with a check mark. Width auto-ish via approximate char width.
+  function badge(x, y, text, size) {
+    size = size || 30;
+    var padX = size * 0.9, h = size * 2.1;
+    var w = padX * 2 + size * 0.95 + text.length * size * 0.56;
+    return '<g>'
+      + '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + h / 2 + '" fill="' + C.tint + '"/>'
+      + '<path transform="translate(' + (x + padX) + ',' + (y + h / 2 - size * 0.42) + ') scale(' + size / 28 + ')" d="M4 14.5 11 21.5 24 7" stroke="' + C.onTint + '" stroke-width="4.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+      + '<text x="' + (x + padX + size * 1.15) + '" y="' + (y + h / 2 + size * 0.36) + '" font-family="' + F + '" font-size="' + size + '" font-weight="800" fill="' + C.onTint + '">' + esc(text) + '</text>'
+      + '</g>';
+  }
+
+  function wordmark(x, y, size, color) {
+    return '<text x="' + x + '" y="' + y + '" text-anchor="end" font-family="' + F + '" font-size="' + size + '" font-weight="800" letter-spacing="-0.5" fill="' + (color || C.faint) + '">schEDU</text>';
+  }
+
+  /* ============ typhoon artboards ============ */
+  function drawTyphoon() {
+    var eyebrow = document.getElementById("ty-eyebrow").value;
+    var head = document.getElementById("ty-head").value;
+    var sub = document.getElementById("ty-sub").value;
+    var cta = document.getElementById("ty-cta").value;
+
+    // ---- 1080×1080 feed ----
+    var M = 76;
+    var s = '<rect width="1080" height="1080" fill="#FFFFFF"/>';
+    var chipW = 40 + eyebrow.length * 12.4;
+    s += '<rect x="' + M + '" y="' + (M + 6) + '" width="' + chipW + '" height="52" rx="26" fill="' + C.warnSoft + '"/>'
+      + '<text x="' + (M + 20) + '" y="' + (M + 40) + '" font-family="' + F + '" font-size="21" font-weight="800" letter-spacing="2" fill="' + C.warnFg + '">' + esc(eyebrow) + '</text>';
+    s += '<text x="' + M + '" y="272" font-family="' + F + '" font-size="108" font-weight="800" letter-spacing="-3" fill="' + C.ink + '">' + esc(head) + '</text>';
+    s += '<text x="' + M + '" y="352" font-family="' + F + '" font-size="52" font-weight="800" letter-spacing="-1" fill="' + C.tintDeep + '">' + esc(sub) + '</text>';
+    s += weekGrid(M, 470, 1.135, "suspended");
+    s += badge(M, 928, "Rebalanced · 0 sessions lost", 28);
+    s += wordmark(1080 - M, 978, 40);
+    document.getElementById("ty-feed").innerHTML = s;
+
+    // ---- 1080×1920 story ----
+    var t = '<rect width="1080" height="1920" fill="#FFFFFF"/>';
+    t += '<rect x="' + M + '" y="206" width="' + chipW + '" height="52" rx="26" fill="' + C.warnSoft + '"/>'
+      + '<text x="' + (M + 20) + '" y="240" font-family="' + F + '" font-size="21" font-weight="800" letter-spacing="2" fill="' + C.warnFg + '">' + esc(eyebrow) + '</text>';
+    t += '<text x="' + M + '" y="436" font-family="' + F + '" font-size="122" font-weight="800" letter-spacing="-3.5" fill="' + C.ink + '">' + esc(head) + '</text>';
+    t += '<text x="' + M + '" y="524" font-family="' + F + '" font-size="54" font-weight="800" letter-spacing="-1" fill="' + C.tintDeep + '">' + esc(sub) + '</text>';
+    t += weekGrid(M, 680, 1.135, "suspended");
+    t += badge(M, 1140, "Rebalanced · 0 sessions lost", 28);
+    var ctaW = 120 + cta.length * 24;
+    t += '<rect x="' + (540 - ctaW / 2) + '" y="1518" width="' + ctaW + '" height="104" rx="52" fill="' + C.tint + '"/>'
+      + '<text x="540" y="1584" text-anchor="middle" font-family="' + F + '" font-size="42" font-weight="800" fill="' + C.onTint + '">' + esc(cta) + '</text>';
+    t += '<text x="540" y="1730" text-anchor="middle" font-family="' + F + '" font-size="30" font-weight="600" fill="' + C.faint + '">schedu.ph</text>';
+    t += wordmark(1080 - M, 1836, 40);
+    document.getElementById("ty-story").innerHTML = t;
+  }
+
+  /* ============ before / after artboards ============ */
+  function drawBeforeAfter() {
+    var clock = document.getElementById("ba-clock").value;
+    var h1a = document.getElementById("ba-h1a").value;
+    var h1b = document.getElementById("ba-h1b").value;
+    var eyebrow = document.getElementById("ba-eyebrow").value;
+    var h2a = document.getElementById("ba-h2a").value;
+    var h2b = document.getElementById("ba-h2b").value;
+    var M = 76;
+
+    // ---- slide 1: BEFORE (night) ----
+    var s = '<rect width="1080" height="1350" fill="' + C.night + '"/>';
+    s += '<text x="' + M + '" y="150" font-family="' + F + '" font-size="26" font-weight="800" letter-spacing="4" fill="#94A3B8">' + esc(clock) + '</text>';
+    s += '<text x="' + M + '" y="286" font-family="' + F + '" font-size="96" font-weight="800" letter-spacing="-2.5" fill="#F9FAFB">' + esc(h1a) + '</text>';
+    s += '<text x="' + M + '" y="390" font-family="' + F + '" font-size="96" font-weight="800" letter-spacing="-2.5" fill="#F9FAFB">' + esc(h1b) + '</text>';
+    // messy planner card
+    s += '<g transform="translate(' + M + ',480) rotate(-1.4 464 280)">'
+      + '<rect width="928" height="560" rx="24" fill="' + C.nightCard + '" stroke="' + C.nightLine + '" stroke-width="2"/>';
+    var rows = [
+      { w: 640, cross: false }, { w: 780, cross: true }, { w: 540, cross: false },
+      { w: 820, cross: true }, { w: 600, cross: false }, { w: 700, cross: false },
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      var ry = 66 + i * 82, rot = (i % 2 ? 0.7 : -0.6);
+      s += '<rect x="56" y="' + ry + '" width="' + rows[i].w + '" height="26" rx="13" fill="' + C.nightLine + '" transform="rotate(' + rot + ' 56 ' + ry + ')"/>';
+      if (rows[i].cross) {
+        s += '<line x1="48" y1="' + (ry + 13) + '" x2="' + (72 + rows[i].w) + '" y2="' + (ry + 9) + '" stroke="#F87171" stroke-width="7" stroke-linecap="round" opacity="0.85"/>';
+      }
+    }
+    s += '</g>';
+    s += '<text x="' + M + '" y="1230" font-family="' + F + '" font-size="34" font-weight="700" fill="#64748B">May mas madali pa…</text>';
+    s += '<text x="' + (1080 - M) + '" y="1230" text-anchor="end" font-family="' + F + '" font-size="34" font-weight="800" fill="#94A3B8">swipe →</text>';
+    document.getElementById("ba-1").innerHTML = s;
+
+    // ---- slide 2: AFTER (morning) ----
+    var t = '<rect width="1080" height="1350" fill="#FFFFFF"/>';
+    t += '<text x="' + M + '" y="150" font-family="' + F + '" font-size="26" font-weight="800" letter-spacing="4" fill="' + C.tintDeep + '">' + esc(eyebrow) + '</text>';
+    t += '<text x="' + M + '" y="286" font-family="' + F + '" font-size="96" font-weight="800" letter-spacing="-2.5" fill="' + C.ink + '">' + esc(h2a) + '</text>';
+    t += '<text x="' + M + '" y="390" font-family="' + F + '" font-size="96" font-weight="800" letter-spacing="-2.5" fill="' + C.tintDeep + '">' + esc(h2b) + '</text>';
+    t += weekGrid(M, 520, 1.135, "planned");
+    t += badge(M, 1000, "Term planned · 15 sessions", 28);
+    t += '<text x="' + M + '" y="1240" font-family="' + F + '" font-size="34" font-weight="800" fill="' + C.tintDeep + '">Start free → schedu.ph</text>';
+    t += wordmark(1080 - M, 1240, 40);
+    document.getElementById("ba-2").innerHTML = t;
+  }
+
+  /* ============ live binding + PNG export ============ */
+  function redraw() { drawTyphoon(); drawBeforeAfter(); }
+  document.querySelectorAll(".fields input").forEach(function (inp) {
+    inp.addEventListener("input", redraw);
+  });
+  redraw();
+
+  document.querySelectorAll("[data-dl]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var svg = document.getElementById(btn.dataset.dl);
+      var w = parseInt(btn.dataset.w, 10), h = parseInt(btn.dataset.h, 10);
+      var clone = svg.cloneNode(true);
+      clone.setAttribute("width", w);
+      clone.setAttribute("height", h);
+      var xml = new XMLSerializer().serializeToString(clone);
+      var url = URL.createObjectURL(new Blob([xml], { type: "image/svg+xml;charset=utf-8" }));
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(function (blob) {
+          var a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = btn.dataset.name + "-" + w + "x" + h + ".png";
+          a.click();
+          setTimeout(function () { URL.revokeObjectURL(a.href); }, 3000);
+        }, "image/png");
+      };
+      img.src = url;
+    });
+  });
+})();
+</script>
+</body>
+</html>

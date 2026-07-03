@@ -1,0 +1,1096 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>schEDU — Motion & Content Kit</title>
+<style>
+  /* ============ tokens (mirrors apps/teach/constants/colors.ts, light) ============ */
+  :root {
+    --bg: #FFFFFF;
+    --surface-alt: #F4F6F8;
+    --text: #111827;
+    --muted: #6B7280;
+    --faint: #9CA3AF;
+    --border: #E5E7EB;
+    --hairline: #EEF1F4;
+    --tint: #22C55E;
+    --tint-deep: #16A34A;
+    --tint-soft: #E7F8EE;
+    --on-tint: #07301A;
+    --warning: #F59E0B;
+    --warning-soft: #FEF3C7;
+    --warning-fg: #B45309;
+    --danger: #DC2626;
+    --shadow: 15, 23, 42;
+
+    --cat-lesson: #22C55E;      --cat-lesson-soft: #DCFCE7;      --cat-lesson-on: #15803D;    --cat-lesson-border: #86EFAC;
+    --cat-ww: #F59E0B;          --cat-ww-soft: #FEF3C7;          --cat-ww-on: #B45309;        --cat-ww-border: #FCD34D;
+    --cat-pt: #38BDF8;          --cat-pt-soft: #E0F2FE;          --cat-pt-on: #0369A1;        --cat-pt-border: #7DD3FC;
+    --cat-exam: #FB7185;        --cat-exam-soft: #FFE4E6;        --cat-exam-on: #BE123C;      --cat-exam-border: #FDA4AF;
+    --cat-buffer: #94A3B8;      --cat-buffer-soft: #F1F5F9;      --cat-buffer-on: #475569;    --cat-buffer-border: #CBD5E1;
+
+    --display: -apple-system, "SF Pro Display", "Segoe UI Variable Display", system-ui, sans-serif;
+    --body: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: var(--body); line-height: 1.55; margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { max-width: 1060px; margin: 0 auto; padding: 0 24px 96px; }
+
+  /* ============ masthead & nav ============ */
+  header.masthead { padding: 64px 0 8px; }
+  .eyebrow {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--tint-deep); display: flex; align-items: center; gap: 10px;
+  }
+  .eyebrow::before { content: ""; width: 26px; height: 3px; border-radius: 2px; background: var(--tint); }
+  h1 {
+    font-family: var(--display); font-size: clamp(34px, 5.4vw, 54px);
+    font-weight: 800; letter-spacing: -0.025em; line-height: 1.06;
+    margin: 18px 0 16px; text-wrap: balance;
+  }
+  h1 em { font-style: normal; color: var(--tint-deep); }
+  .lede { max-width: 64ch; color: var(--muted); font-size: 17px; margin: 0 0 22px; }
+  nav.kit-nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 6px 0 10px; }
+  nav.kit-nav a {
+    font-size: 12.5px; font-weight: 700; text-decoration: none; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 7px 14px; background: var(--bg);
+  }
+  nav.kit-nav a:hover { color: var(--text); border-color: var(--faint); }
+  nav.kit-nav a:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+
+  /* ============ section scaffolding ============ */
+  section.kit { margin-top: 76px; }
+  .kicker {
+    font-size: 11.5px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase;
+    color: var(--faint); margin: 0 0 8px;
+  }
+  h2 {
+    font-family: var(--display); font-size: clamp(24px, 3.2vw, 32px);
+    font-weight: 800; letter-spacing: -0.02em; margin: 0; text-wrap: balance;
+  }
+  .sub { color: var(--muted); max-width: 66ch; margin: 10px 0 24px; }
+
+  /* ============ palette ============ */
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .swatch {
+    border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden;
+    background: var(--bg); cursor: pointer; text-align: left; padding: 0; font-family: var(--body);
+  }
+  .swatch:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+  .swatch .well { height: 46px; }
+  .swatch .meta { padding: 8px 11px 9px; display: flex; flex-direction: column; gap: 1px; }
+  .swatch .meta b { font-size: 12px; letter-spacing: 0.01em; }
+  .swatch .meta code { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .swatch:hover .meta code { color: var(--tint-deep); }
+  .swatch.copied .meta code { color: var(--tint-deep); font-weight: 700; }
+  .ramp-note { font-size: 13px; color: var(--muted); margin: 18px 0 0; max-width: 66ch; }
+  .ramp-note b { color: var(--text); }
+
+  h3.mini {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase;
+    color: var(--faint); margin: 28px 0 12px;
+  }
+
+  /* ============ type specimens ============ */
+  .type-rows { display: flex; flex-direction: column; border-top: 1px solid var(--hairline); }
+  .type-row {
+    display: grid; grid-template-columns: 190px 1fr; gap: 20px; align-items: baseline;
+    padding: 16px 0; border-bottom: 1px solid var(--hairline);
+  }
+  @media (max-width: 640px) { .type-row { grid-template-columns: 1fr; gap: 4px; } }
+  .type-row .role { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .tx-display { font-family: var(--display); font-size: 32px; font-weight: 800; letter-spacing: -0.02em; }
+  .tx-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--tint-deep); }
+  .tx-body { font-size: 15px; color: var(--text); max-width: 58ch; }
+  .tx-num { font-family: var(--display); font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .tx-badge {
+    display: inline-flex; align-items: center; gap: 7px; background: var(--tint); color: var(--on-tint);
+    font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px;
+  }
+
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; margin-top: 8px; }
+  .rule { border: 1px solid var(--hairline); border-radius: 14px; padding: 15px 17px; font-size: 13.5px; color: var(--muted); }
+  .rule b { display: block; color: var(--text); font-size: 13px; margin-bottom: 4px; }
+  .rule.no b::before { content: "✗ "; color: var(--danger); }
+  .rule.yes b::before { content: "✓ "; color: var(--tint-deep); }
+
+  /* ============ scene scaffolding ============ */
+  .scene { margin-top: 76px; }
+  .scene-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 6px; }
+  .scene-no { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--faint); letter-spacing: 0.08em; }
+  .scene-sub { color: var(--muted); max-width: 64ch; margin: 8px 0 20px; }
+
+  .board { display: grid; grid-template-columns: minmax(0, 1fr) 264px; gap: 20px; align-items: stretch; }
+  @media (max-width: 820px) { .board { grid-template-columns: 1fr; } }
+
+  .stage {
+    position: relative; background: var(--surface-alt);
+    border: 1px solid var(--hairline); border-radius: 20px;
+    padding: 28px; min-height: 380px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .stage-tools { position: absolute; top: 14px; right: 14px; display: flex; gap: 8px; z-index: 5; }
+  .ctrl {
+    font: 600 12px/1 var(--body); color: var(--muted);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 13px; cursor: pointer;
+  }
+  .ctrl:hover { color: var(--text); border-color: var(--faint); }
+  .ctrl:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+  .ctrl[aria-pressed="true"] { background: var(--tint-soft); color: var(--tint-deep); border-color: var(--tint); }
+
+  .rail {
+    border: 1px solid var(--hairline); border-radius: 20px; padding: 22px;
+    display: flex; flex-direction: column; gap: 14px; background: var(--bg);
+  }
+  .rail h3 { margin: 0; font-size: 11.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+  .spec { display: grid; grid-template-columns: 86px 1fr; gap: 3px 12px; font-size: 13px; }
+  .spec dt { color: var(--muted); font-weight: 600; margin: 0; }
+  .spec dd { margin: 0; font-family: var(--mono); font-size: 12.5px; color: var(--text); }
+  .rail p.use { margin: 0; font-size: 13px; color: var(--muted); border-top: 1px solid var(--hairline); padding-top: 14px; }
+  .rail p.use strong { color: var(--text); }
+
+  /* beat sheet */
+  details.beats { margin-top: 14px; border: 1px solid var(--hairline); border-radius: 14px; overflow: hidden; }
+  details.beats summary {
+    cursor: pointer; padding: 13px 18px; font-size: 13px; font-weight: 700; color: var(--text);
+    list-style: none; display: flex; justify-content: space-between; align-items: center; background: var(--bg);
+  }
+  details.beats summary::after { content: "+"; font-family: var(--mono); color: var(--faint); font-size: 15px; }
+  details.beats[open] summary::after { content: "–"; }
+  details.beats summary:focus-visible { outline: 2px solid var(--tint); outline-offset: -2px; }
+  .beats-scroll { overflow-x: auto; }
+  table.beat {
+    width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 560px;
+  }
+  table.beat th {
+    text-align: left; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--faint); font-weight: 700; padding: 8px 18px; border-top: 1px solid var(--hairline);
+    background: var(--surface-alt);
+  }
+  table.beat td { padding: 8px 18px; border-top: 1px solid var(--hairline); vertical-align: top; }
+  table.beat td:first-child { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--tint-deep); font-weight: 600; }
+  table.beat td:last-child { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+
+  /* ============ shared in-scene bits ============ */
+  .badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--tint); color: var(--on-tint);
+    font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 8px 20px rgba(var(--shadow), 0.12);
+  }
+  .badge svg { display: block; }
+
+  /* ============ SCENE 1 — auto-plan (9 s) ============ */
+  .week { width: min(560px, 100%); }
+  .week-days { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 8px; }
+  .week-days span { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: center; }
+  .week-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .cell { height: 52px; border-radius: 12px; border: 1.5px dashed var(--border); background: var(--bg); position: relative; }
+  .block {
+    position: absolute; inset: 0; border-radius: 12px;
+    display: flex; flex-direction: column; justify-content: center; padding: 0 10px;
+    border: 1px solid; font-size: 11px; font-weight: 700; line-height: 1.25; letter-spacing: 0.01em;
+  }
+  .block small { font-weight: 600; font-size: 9.5px; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.07em; }
+  .b-lesson { background: var(--cat-lesson-soft); color: var(--cat-lesson-on); border-color: var(--cat-lesson-border); }
+  .b-ww     { background: var(--cat-ww-soft);     color: var(--cat-ww-on);     border-color: var(--cat-ww-border); }
+  .b-pt     { background: var(--cat-pt-soft);     color: var(--cat-pt-on);     border-color: var(--cat-pt-border); }
+  .b-exam   { background: var(--cat-exam-soft);   color: var(--cat-exam-on);   border-color: var(--cat-exam-border); }
+  .b-buffer { background: var(--cat-buffer-soft); color: var(--cat-buffer-on); border-color: var(--cat-buffer-border); }
+
+  @keyframes dropIn {
+    0%   { opacity: 0; transform: translateY(-14px) scale(0.96); }
+    4%   { opacity: 1; transform: translateY(0) scale(1); }
+    88%  { opacity: 1; transform: translateY(0) scale(1); }
+    97%, 100% { opacity: 0; }
+  }
+  .s1 .block { opacity: 0; animation: dropIn 9s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite; animation-delay: var(--d); }
+  @keyframes examPulse {
+    0%, 1% { box-shadow: 0 0 0 0 rgba(251, 113, 133, 0.55); }
+    9%     { box-shadow: 0 0 0 14px rgba(251, 113, 133, 0); }
+    100%   { box-shadow: 0 0 0 0 rgba(251, 113, 133, 0); }
+  }
+  .s1 .block.b-exam::after {
+    content: ""; position: absolute; inset: -1px; border-radius: 12px; pointer-events: none;
+    animation: examPulse 9s ease-out infinite; animation-delay: calc(var(--d) + 0.35s);
+  }
+  @keyframes badgeIn {
+    0%, 68% { opacity: 0; transform: translateY(8px) scale(0.94); }
+    73%     { opacity: 1; transform: translateY(0) scale(1); }
+    88%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .s1 .badge { position: absolute; bottom: 20px; right: 20px; opacity: 0; animation: badgeIn 9s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite; }
+
+  /* ============ SCENE 2 — suspension & rebalance (10 s) ============ */
+  .s2 .cell { height: 46px; }
+  .suspend {
+    position: absolute; inset: 0; border-radius: 12px;
+    background: repeating-linear-gradient(135deg, var(--warning-soft) 0 8px, #FDE8B8 8px 16px);
+    border: 1.5px solid var(--warning);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--warning-fg); font-size: 9.5px; font-weight: 800;
+    letter-spacing: 0.1em; text-transform: uppercase; text-align: center; line-height: 1.3;
+    opacity: 0; z-index: 2;
+  }
+  @keyframes stampIn {
+    0%, 18% { opacity: 0; transform: scale(1.25); }
+    22%     { opacity: 1; transform: scale(1); }
+    90%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .s2 .suspend { animation: stampIn 10s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite; }
+  @keyframes liftOut {
+    0%, 22% { opacity: 1; transform: translateY(0); }
+    30%     { opacity: 0; transform: translateY(-18px); }
+    100%    { opacity: 0; transform: translateY(-18px); }
+  }
+  .s2 .goes { animation: liftOut 10s ease-in infinite; }
+  @keyframes settleIn {
+    0%, 34% { opacity: 0; transform: translateY(-14px) scale(0.96); }
+    42%     { opacity: 1; transform: translateY(0) scale(1); }
+    90%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .s2 .lands { opacity: 0; animation: settleIn 10s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite; animation-delay: var(--d, 0s); }
+  .s2 .tally {
+    position: absolute; top: 18px; left: 20px;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 999px;
+    font-size: 13px; font-weight: 700; padding: 8px 14px;
+    font-variant-numeric: tabular-nums; z-index: 3;
+  }
+  .s2 .tally i { width: 8px; height: 8px; border-radius: 999px; background: var(--tint); }
+  @keyframes tallyNudge {
+    0%, 40% { transform: scale(1); }
+    44%     { transform: scale(1.06); }
+    48%, 100% { transform: scale(1); }
+  }
+  .s2 .tally { animation: tallyNudge 10s ease-out infinite; }
+  @keyframes zeroLost {
+    0%, 46% { opacity: 0; transform: translateY(8px); }
+    52%     { opacity: 1; transform: translateY(0); }
+    90%     { opacity: 1; }
+    97%, 100% { opacity: 0; }
+  }
+  .s2 .badge { position: absolute; bottom: 20px; right: 20px; opacity: 0; animation: zeroLost 10s cubic-bezier(0.2, 0.9, 0.3, 1.2) infinite; }
+
+  /* ============ SCENE 3 — AI generation (9 s) ============ */
+  .paper {
+    /* deliberate scheme-independent PAPER white, mirroring the app's printed-document previews */
+    width: min(400px, 100%); background: #FFFFFF; border-radius: 14px;
+    border: 1px solid var(--border);
+    box-shadow: 0 18px 44px rgba(var(--shadow), 0.10);
+    padding: 26px 26px 22px; position: relative;
+  }
+  .paper-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--hairline); padding-bottom: 12px; margin-bottom: 16px; }
+  .paper-head b { font-size: 14.5px; letter-spacing: -0.01em; }
+  .paper-head span { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+  .qline { display: flex; gap: 10px; margin-bottom: 13px; align-items: baseline; }
+  .qnum { font-family: var(--mono); font-size: 11px; color: var(--faint); min-width: 16px; }
+  .qbar { height: 9px; border-radius: 5px; background: var(--surface-alt); position: relative; overflow: hidden; flex: 1; }
+  .qbar::after { content: ""; position: absolute; inset: 0; border-radius: 5px; background: #E2E8F0; transform-origin: left; transform: scaleX(0); }
+  @keyframes inkIn {
+    0%      { transform: scaleX(0); }
+    6%      { transform: scaleX(1); }
+    88%     { transform: scaleX(1); }
+    96%, 100% { transform: scaleX(0); }
+  }
+  .s3 .qbar::after { animation: inkIn 9s cubic-bezier(0.3, 0, 0.2, 1) infinite; animation-delay: var(--d, 0s); }
+  .choices { display: flex; gap: 8px; margin: 2px 0 15px 26px; }
+  .choice {
+    width: 22px; height: 22px; border-radius: 999px; border: 1.5px solid var(--border);
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    display: inline-flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5);
+  }
+  @keyframes popIn {
+    0%   { opacity: 0; transform: scale(0.5); }
+    3.5% { opacity: 1; transform: scale(1); }
+    88%  { opacity: 1; transform: scale(1); }
+    96%, 100% { opacity: 0; transform: scale(0.5); }
+  }
+  .s3 .choice { animation: popIn 9s cubic-bezier(0.2, 0.9, 0.3, 1.4) infinite; animation-delay: var(--d); }
+  .s3 .choice.key { border-color: var(--tint); background: var(--tint-soft); color: var(--tint-deep); }
+  .gen-badge { position: absolute; bottom: -16px; right: 22px; opacity: 0; }
+  @keyframes genIn {
+    0%, 60% { opacity: 0; transform: translateY(10px) scale(0.9); }
+    66%     { opacity: 1; transform: translateY(0) scale(1); }
+    88%     { opacity: 1; }
+    96%, 100% { opacity: 0; }
+  }
+  .s3 .gen-badge { animation: genIn 9s cubic-bezier(0.2, 0.9, 0.3, 1.3) infinite; }
+  .sweep {
+    position: absolute; inset: 0; border-radius: 14px; pointer-events: none;
+    background: linear-gradient(100deg, transparent 30%, rgba(34, 197, 94, 0.10) 50%, transparent 70%);
+    background-size: 250% 100%; opacity: 0;
+  }
+  @keyframes sweepMove {
+    0%   { opacity: 1; background-position: 120% 0; }
+    28%  { opacity: 1; background-position: -60% 0; }
+    34%, 100% { opacity: 0; background-position: -60% 0; }
+  }
+  .s3 .sweep { animation: sweepMove 9s linear infinite; }
+
+  /* ============ SCENE 4 — rings (8 s, JS clock) ============ */
+  .rings { display: flex; gap: clamp(18px, 4vw, 44px); flex-wrap: wrap; justify-content: center; }
+  .ring-card { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .ring-wrap { position: relative; width: 132px; height: 132px; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-track { stroke: var(--border); }
+  .ring-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-num b { font-family: var(--display); font-size: 26px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .ring-num span { font-size: 10.5px; color: var(--faint); font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; }
+  .ring-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+
+  /* ============ SCENE 5 — library shelf (8 s) ============ */
+  .shelf { width: min(560px, 100%); }
+  .shelf-filter { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .fchip {
+    font-size: 12px; font-weight: 700; padding: 6px 13px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted); background: var(--bg);
+  }
+  @keyframes chipCycle {
+    0%, 55%  { background: var(--bg); color: var(--muted); border-color: var(--border); }
+    60%, 90% { background: var(--tint); color: var(--on-tint); border-color: var(--tint); }
+    96%, 100% { background: var(--bg); color: var(--muted); border-color: var(--border); }
+  }
+  .s5 .fchip.will-on { animation: chipCycle 8s ease infinite; }
+  @keyframes chipOff {
+    0%, 55%  { background: var(--tint); color: var(--on-tint); border-color: var(--tint); }
+    60%, 90% { background: var(--bg); color: var(--muted); border-color: var(--border); }
+    96%, 100% { background: var(--tint); color: var(--on-tint); border-color: var(--tint); }
+  }
+  .s5 .fchip.will-off { animation: chipOff 8s ease infinite; }
+  .shelf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .cover {
+    border-radius: 14px; border: 1px solid var(--hairline); background: var(--bg);
+    padding: 12px; display: flex; flex-direction: column; gap: 8px; opacity: 0;
+  }
+  .cover-art { height: 54px; border-radius: 9px; position: relative; overflow: hidden; }
+  .cover-art::after {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(90px 42px at 18% 110%, rgba(255,255,255,0.55), transparent 60%),
+      radial-gradient(70px 36px at 88% -10%, rgba(255,255,255,0.35), transparent 55%);
+  }
+  .cover b { font-size: 12px; letter-spacing: -0.01em; }
+  .cover span { font-size: 10.5px; color: var(--faint); font-weight: 600; }
+  @keyframes fanIn {
+    0%   { opacity: 0; transform: translateY(16px) rotate(var(--tilt, 0deg)) scale(0.94); }
+    5%   { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+    52%  { opacity: 1; transform: none; }
+    60%  { opacity: var(--match, 0.28); transform: translateY(var(--lift, 0px)); }
+    90%  { opacity: var(--match, 0.28); transform: translateY(var(--lift, 0px)); }
+    97%, 100% { opacity: 0; transform: translateY(10px); }
+  }
+  .s5 .cover { animation: fanIn 8s cubic-bezier(0.2, 0.9, 0.3, 1.15) infinite; animation-delay: var(--d); }
+  .s5 .cover.hit { --match: 1; --lift: -4px; }
+
+  /* ============ END-FRAME MODE (.still) ============
+     Toggled per stage ("End frame" button) and applied globally under
+     prefers-reduced-motion (via JS). Every scene rests on its resolved
+     final state — this is the freeze-frame static creators screenshot. */
+  .stage.still .block, .stage.still .badge, .stage.still .suspend,
+  .stage.still .lands, .stage.still .tally,
+  .stage.still .choice, .stage.still .gen-badge,
+  .stage.still .fchip.will-on, .stage.still .fchip.will-off,
+  .stage.still .cover { animation: none; opacity: 1; transform: none; }
+  .stage.still .block.b-exam::after { animation: none; box-shadow: none; }
+  .stage.still .goes { animation: none; opacity: 0; }
+  .stage.still .qbar::after { animation: none; transform: scaleX(1); }
+  .stage.still .sweep { animation: none; opacity: 0; }
+  .stage.still .fchip.will-on { background: var(--tint); color: var(--on-tint); border-color: var(--tint); }
+  .stage.still .fchip.will-off { background: var(--bg); color: var(--muted); border-color: var(--border); }
+  .stage.still .cover { --match: 1; --lift: 0px; }
+  .stage.still .cover:not(.hit) { opacity: 0.28; }
+  .stage.paused *:not(.stage-tools):not(.ctrl) { animation-play-state: paused !important; }
+
+  /* ============ static templates ============ */
+  .tmpl-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 18px; align-items: start; }
+  .tmpl-card { display: flex; flex-direction: column; gap: 10px; }
+  .tmpl {
+    position: relative; border-radius: 14px; background: var(--surface-alt);
+    border: 1px solid var(--hairline); overflow: hidden;
+    display: flex; flex-direction: column; justify-content: space-between; padding: 7%;
+  }
+  .tmpl::after { /* safe-margin guide */
+    content: ""; position: absolute; inset: 6%; border: 1.5px dashed rgba(148, 163, 184, 0.55);
+    border-radius: 8px; pointer-events: none;
+  }
+  .tmpl.r916 { aspect-ratio: 9 / 16; }
+  .tmpl.r11  { aspect-ratio: 1 / 1; }
+  .tmpl.r169 { aspect-ratio: 16 / 9; }
+  .tmpl .t-head { font-family: var(--display); font-weight: 800; letter-spacing: -0.02em; font-size: clamp(13px, 1.8vw, 17px); line-height: 1.15; }
+  .tmpl .t-frame {
+    flex: 1; margin: 8% 0; border-radius: 10px; background: var(--bg);
+    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    color: var(--faint); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    text-align: center; padding: 8px;
+  }
+  .tmpl.r169 { flex-direction: row; align-items: center; gap: 6%; }
+  .tmpl.r169 .t-frame { margin: 0; height: 74%; flex: 1.1; }
+  .tmpl.r169 .t-side { flex: 1; display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+  .tmpl .t-cta {
+    display: inline-flex; background: var(--tint); color: var(--on-tint);
+    font-size: 10.5px; font-weight: 800; padding: 6px 12px; border-radius: 999px; align-self: flex-start;
+  }
+  .tmpl .t-mark { position: absolute; bottom: 8%; right: 8%; font-family: var(--display); font-weight: 800; font-size: 11px; color: var(--faint); letter-spacing: -0.01em; }
+  .tmpl-card figcaption { font-size: 12.5px; color: var(--muted); }
+  .tmpl-card figcaption b { color: var(--text); }
+
+  /* ============ tables (export specs, copy bank) ============ */
+  .tbl-scroll { overflow-x: auto; border: 1px solid var(--hairline); border-radius: 14px; }
+  table.kit-tbl { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 620px; }
+  table.kit-tbl th {
+    text-align: left; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--faint); font-weight: 700; padding: 11px 16px; background: var(--surface-alt);
+  }
+  table.kit-tbl td { padding: 11px 16px; border-top: 1px solid var(--hairline); vertical-align: top; }
+  table.kit-tbl td.mono { font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+  table.kit-tbl td.tl { font-style: normal; color: var(--tint-deep); font-weight: 600; }
+
+  .notes-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 22px; margin-top: 18px; }
+  .note { font-size: 13.5px; color: var(--muted); }
+  .note b { color: var(--text); display: block; margin-bottom: 5px; font-size: 13px; }
+  .note code { font-family: var(--mono); font-size: 12px; background: var(--surface-alt); border-radius: 5px; padding: 1px 5px; }
+
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="masthead">
+    <p class="eyebrow">schEDU · motion & content kit</p>
+    <h1>Everything editors and creators need to <em>show the planner working</em>.</h1>
+    <p class="lede">
+      One reusable kit, two audiences. <strong>Video editors:</strong> five looping scenes, each with a
+      timestamped beat sheet, easing curves, and export specs — the CSS on this page is the timing
+      reference. <strong>Static creators:</strong> click any scene's <em>End frame</em> for a
+      screenshot-ready still, copy exact brand hexes below, and lay posts out on the templates at the
+      bottom. Every color here is lifted verbatim from the app's design tokens.
+    </p>
+    <nav class="kit-nav" aria-label="Kit sections">
+      <a href="#brand">Brand basics</a>
+      <a href="#scenes">The five scenes</a>
+      <a href="#templates">Static templates</a>
+      <a href="#exports">Export specs</a>
+      <a href="#copybank">Caption bank</a>
+    </nav>
+  </header>
+
+  <!-- ================= BRAND ================= -->
+  <section class="kit" id="brand" aria-labelledby="tb">
+    <p class="kicker">Foundation</p>
+    <h2 id="tb">Brand basics — colors and type</h2>
+    <p class="sub">
+      Click a swatch to copy its hex. These come straight from <code>constants/colors.ts</code>;
+      don't invent tints, don't darken the green for "contrast" — use the pairings shown.
+    </p>
+
+    <h3 class="mini">Core palette</h3>
+    <div class="swatches">
+      <button class="swatch" data-hex="#22C55E"><span class="well" style="background:#22C55E"></span><span class="meta"><b>Brand green · tint</b><code>#22C55E</code></span></button>
+      <button class="swatch" data-hex="#16A34A"><span class="well" style="background:#16A34A"></span><span class="meta"><b>Deep green</b><code>#16A34A</code></span></button>
+      <button class="swatch" data-hex="#07301A"><span class="well" style="background:#07301A"></span><span class="meta"><b>On-green text</b><code>#07301A</code></span></button>
+      <button class="swatch" data-hex="#E7F8EE"><span class="well" style="background:#E7F8EE"></span><span class="meta"><b>Green wash</b><code>#E7F8EE</code></span></button>
+      <button class="swatch" data-hex="#111827"><span class="well" style="background:#111827"></span><span class="meta"><b>Ink</b><code>#111827</code></span></button>
+      <button class="swatch" data-hex="#6B7280"><span class="well" style="background:#6B7280"></span><span class="meta"><b>Muted</b><code>#6B7280</code></span></button>
+      <button class="swatch" data-hex="#F4F6F8"><span class="well" style="background:#F4F6F8; border-bottom:1px solid #E5E7EB"></span><span class="meta"><b>Surface</b><code>#F4F6F8</code></span></button>
+      <button class="swatch" data-hex="#F59E0B"><span class="well" style="background:#F59E0B"></span><span class="meta"><b>Warning amber</b><code>#F59E0B</code></span></button>
+    </div>
+
+    <h3 class="mini">Session-type ramp (calendar meaning — never decorative)</h3>
+    <div class="swatches">
+      <button class="swatch" data-hex="#22C55E"><span class="well" style="background:linear-gradient(135deg,#22C55E 50%,#DCFCE7 50%)"></span><span class="meta"><b>Lesson</b><code>#22C55E / #DCFCE7</code></span></button>
+      <button class="swatch" data-hex="#F59E0B"><span class="well" style="background:linear-gradient(135deg,#F59E0B 50%,#FEF3C7 50%)"></span><span class="meta"><b>Written Work</b><code>#F59E0B / #FEF3C7</code></span></button>
+      <button class="swatch" data-hex="#38BDF8"><span class="well" style="background:linear-gradient(135deg,#38BDF8 50%,#E0F2FE 50%)"></span><span class="meta"><b>Performance Task</b><code>#38BDF8 / #E0F2FE</code></span></button>
+      <button class="swatch" data-hex="#FB7185"><span class="well" style="background:linear-gradient(135deg,#FB7185 50%,#FFE4E6 50%)"></span><span class="meta"><b>Exam</b><code>#FB7185 / #FFE4E6</code></span></button>
+      <button class="swatch" data-hex="#94A3B8"><span class="well" style="background:linear-gradient(135deg,#94A3B8 50%,#F1F5F9 50%)"></span><span class="meta"><b>Buffer</b><code>#94A3B8 / #F1F5F9</code></span></button>
+    </div>
+    <p class="ramp-note">
+      <b>The one rule people get wrong:</b> text and icons on the brand green are the dark green
+      <code>#07301A</code>, never white — white on this green fails accessibility contrast. Every
+      badge and button in the app follows this; your thumbnails should too.
+    </p>
+
+    <h3 class="mini">Type roles</h3>
+    <div class="type-rows">
+      <div class="type-row"><span class="role">display / headlines</span><span class="tx-display">A whole term, planned in one tap.</span></div>
+      <div class="type-row"><span class="role">eyebrow / labels</span><span class="tx-eyebrow">Feature · Auto-planning</span></div>
+      <div class="type-row"><span class="role">body</span><span class="tx-body">Set your subjects and class days once — schEDU sequences every lesson, written work, performance task, and exam across the term.</span></div>
+      <div class="type-row"><span class="role">numbers</span><span class="tx-num">15 sessions · 0 lost</span></div>
+      <div class="type-row"><span class="role">badge / CTA</span><span class="tx-badge">Term planned · 15 sessions</span></div>
+    </div>
+
+    <h3 class="mini">Fast rules</h3>
+    <div class="rules">
+      <div class="rule yes"><b>Heavy, tight headlines</b>Weight 800, letter-spacing −0.02em, sentence case. The green goes on one word or phrase, not the whole line.</div>
+      <div class="rule yes"><b>Tabular numbers everywhere</b>Counters, quotas, and timers use tabular numerals so digits never jitter between frames.</div>
+      <div class="rule yes"><b>White ground, soft grey stage</b>Compositions sit on white; the demo area sits on #F4F6F8 with a hairline border and 20 px radius.</div>
+      <div class="rule no"><b>No white text on green</b>Use #07301A on any green fill — buttons, badges, stickers, lower-thirds.</div>
+      <div class="rule no"><b>No gradients, no drop-shadow text</b>The brand is flat soft-fills with colored borders. Depth comes from one soft shadow under cards, nothing else.</div>
+      <div class="rule no"><b>Don't recolor the ramp</b>Lesson is green, exam is rose, and so on — the colors mean something in the app. Never swap them for looks.</div>
+    </div>
+  </section>
+
+  <!-- ================= SCENES ================= -->
+  <section class="kit" id="scenes" style="margin-bottom:-40px">
+    <p class="kicker">Motion library</p>
+    <h2>The five scenes</h2>
+    <p class="sub">
+      Each scene loops seamlessly and is built from real product moments — recreate them 1:1 in
+      After Effects or Rive using the beat sheets. The <em>End frame</em> button freezes any scene on
+      its resolved final state: that still <em>is</em> the static asset for posts and thumbnails.
+    </p>
+  </section>
+
+  <!-- SCENE 1 -->
+  <section class="scene" aria-labelledby="t1">
+    <div class="scene-head"><span class="scene-no">SCENE 01</span><h2 id="t1">A whole term, planned in one tap</h2></div>
+    <p class="scene-sub">
+      The signature moment. An empty week fills itself: lessons land in sequence, assessments slot
+      between them, and the exam arrives last with a pulse — the scheduler guarantees exactly one per term.
+    </p>
+    <div class="board">
+      <div class="stage s1" data-scene>
+        <div class="stage-tools">
+          <button class="ctrl" data-still aria-pressed="false">End frame</button>
+          <button class="ctrl" data-pause aria-pressed="false">Pause</button>
+        </div>
+        <div class="week" role="img" aria-label="Animation: colored session blocks dropping one by one into a Monday-to-Friday schedule grid, finishing with an exam block and a Term planned badge.">
+          <div class="week-days"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>
+          <div class="week-grid">
+            <div class="col">
+              <div class="cell"><div class="block b-lesson" style="--d:0.5s"><small>Lesson 1</small>Cell Structure</div></div>
+              <div class="cell"><div class="block b-lesson" style="--d:2.1s"><small>Lesson 5</small>Mitosis</div></div>
+              <div class="cell"><div class="block b-buffer" style="--d:4.1s"><small>Buffer</small>Catch-up</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-lesson" style="--d:0.9s"><small>Lesson 2</small>Organelles</div></div>
+              <div class="cell"><div class="block b-ww" style="--d:2.5s"><small>Written Work</small>Quiz 2</div></div>
+              <div class="cell"><div class="block b-lesson" style="--d:4.5s"><small>Lesson 7</small>Heredity</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-ww" style="--d:1.3s"><small>Written Work</small>Quiz 1</div></div>
+              <div class="cell"><div class="block b-lesson" style="--d:2.9s"><small>Lesson 6</small>Meiosis</div></div>
+              <div class="cell"><div class="block b-pt" style="--d:4.9s"><small>Perf. Task</small>Cell Model</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-lesson" style="--d:1.7s"><small>Lesson 3</small>Membranes</div></div>
+              <div class="cell"><div class="block b-lesson" style="--d:3.3s"><small>Lesson 4</small>Transport</div></div>
+              <div class="cell"><div class="block b-lesson" style="--d:5.3s"><small>Lesson 8</small>Punnett Squares</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-buffer" style="--d:3.7s"><small>Buffer</small>Review</div></div>
+              <div class="cell"><div class="block b-pt" style="--d:5.7s"><small>Perf. Task</small>Lab Report</div></div>
+              <div class="cell"><div class="block b-exam" style="--d:6.1s"><small>Exam</small>1st Quarter</div></div>
+            </div>
+          </div>
+        </div>
+        <span class="badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Term planned · 15 sessions
+        </span>
+      </div>
+      <aside class="rail">
+        <h3>Production spec</h3>
+        <dl class="spec">
+          <dt>Loop</dt><dd>9.0 s seamless</dd>
+          <dt>Stagger</dt><dd>400 ms / block</dd>
+          <dt>Block in</dt><dd>y −14 px, 360 ms</dd>
+          <dt>Easing</dt><dd>cubic-bezier(.2,.9,.3,1.2)</dd>
+          <dt>End frame</dt><dd>full grid + badge</dd>
+        </dl>
+        <p class="use"><strong>Deploy:</strong> website hero, opening 10 s of app-store previews, thumbnail base for "how it works" posts.</p>
+      </aside>
+    </div>
+    <details class="beats">
+      <summary>Beat sheet — Scene 01 (9.0 s loop)</summary>
+      <div class="beats-scroll"><table class="beat">
+        <tr><th>Time</th><th>Event</th><th>Spec</th></tr>
+        <tr><td>0:00.0</td><td>Empty dashed grid holds (breathing room)</td><td>static</td></tr>
+        <tr><td>0:00.5</td><td>First lesson drops (Mon slot 1)</td><td>y −14px → 0, 360 ms, overshoot 1.2</td></tr>
+        <tr><td>0:00.5–0:05.7</td><td>13 blocks land left-to-right in teaching order</td><td>stagger 400 ms</td></tr>
+        <tr><td>0:06.1</td><td>Exam lands (Fri, last slot)</td><td>same drop + rose ring pulse 800 ms</td></tr>
+        <tr><td>0:06.6</td><td>Badge: "Term planned · 15 sessions"</td><td>y +8px → 0, 450 ms</td></tr>
+        <tr><td>0:07.9–0:09.0</td><td>Everything fades for seamless reloup</td><td>opacity → 0, 800 ms</td></tr>
+      </table></div>
+    </details>
+  </section>
+
+  <!-- SCENE 2 -->
+  <section class="scene" aria-labelledby="t2">
+    <div class="scene-head"><span class="scene-no">SCENE 02</span><h2 id="t2">Walang pasok? The plan absorbs it</h2></div>
+    <p class="scene-sub">
+      The scene only schEDU can show. A suspension stamps out Wednesday, its sessions lift away, and
+      the week re-flows them forward — while the session counter never moves. Zero sessions lost is
+      the scheduler's actual guarantee, drawn on screen.
+    </p>
+    <div class="board">
+      <div class="stage s2" data-scene>
+        <div class="stage-tools">
+          <button class="ctrl" data-still aria-pressed="false">End frame</button>
+          <button class="ctrl" data-pause aria-pressed="false">Pause</button>
+        </div>
+        <div class="week" role="img" aria-label="Animation: a class-suspension banner covers Wednesday, its two session blocks lift out and re-land later in the week, and a badge announces zero sessions lost while the session counter stays at 15.">
+          <span class="tally"><i></i>15 sessions</span>
+          <div style="height:40px"></div>
+          <div class="week-days"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span></div>
+          <div class="week-grid">
+            <div class="col">
+              <div class="cell"><div class="block b-lesson"><small>Lesson 9</small>Ecosystems</div></div>
+              <div class="cell"><div class="block b-ww"><small>Written Work</small>Quiz 3</div></div>
+              <div class="cell"><div class="block b-lesson"><small>Lesson 12</small>Food Webs</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-lesson"><small>Lesson 10</small>Biomes</div></div>
+              <div class="cell"><div class="block b-pt"><small>Perf. Task</small>Field Guide</div></div>
+              <div class="cell"><div class="block b-buffer"><small>Buffer</small>Catch-up</div></div>
+            </div>
+            <div class="col" style="position:relative">
+              <div class="cell"><div class="block b-lesson goes"><small>Lesson 11</small>Cycles</div></div>
+              <div class="cell"><div class="block b-ww goes"><small>Written Work</small>Quiz 4</div></div>
+              <div class="cell"></div>
+              <div class="suspend" role="presentation">Class<br>suspended</div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-lesson"><small>Lesson 13</small>Energy Flow</div></div>
+              <div class="cell"><div class="block b-lesson lands" style="--d:0s"><small>Lesson 11</small>Cycles</div></div>
+              <div class="cell"><div class="block b-ww lands" style="--d:0.3s"><small>Written Work</small>Quiz 4</div></div>
+            </div>
+            <div class="col">
+              <div class="cell"><div class="block b-pt lands" style="--d:0.6s"><small>Perf. Task</small>Eco Diorama</div></div>
+              <div class="cell"><div class="block b-lesson lands" style="--d:0.9s"><small>Lesson 14</small>Review</div></div>
+              <div class="cell"><div class="block b-exam lands" style="--d:1.2s"><small>Exam</small>2nd Quarter</div></div>
+            </div>
+          </div>
+        </div>
+        <span class="badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12.5 9.5 18 20 6.5" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Rebalanced · 0 sessions lost
+        </span>
+      </div>
+      <aside class="rail">
+        <h3>Production spec</h3>
+        <dl class="spec">
+          <dt>Loop</dt><dd>10.0 s seamless</dd>
+          <dt>Stamp</dt><dd>scale 1.25 → 1, 400 ms</dd>
+          <dt>Re-flow</dt><dd>5 lands, 300 ms stagger</dd>
+          <dt>Easing</dt><dd>ease-in lifts, spring lands</dd>
+          <dt>End frame</dt><dd>stamp + reflowed week + badge</dd>
+        </dl>
+        <p class="use"><strong>Deploy:</strong> emotional peak of the app-store preview; a stand-alone 1:1 cut for typhoon season. No competitor can show this honestly.</p>
+      </aside>
+    </div>
+    <details class="beats">
+      <summary>Beat sheet — Scene 02 (10.0 s loop)</summary>
+      <div class="beats-scroll"><table class="beat">
+        <tr><th>Time</th><th>Event</th><th>Spec</th></tr>
+        <tr><td>0:00.0–0:02.2</td><td>Steady, fully-planned week; counter reads "15 sessions"</td><td>static hold</td></tr>
+        <tr><td>0:02.2</td><td>"Class suspended" stamps over Wednesday</td><td>scale 1.25 → 1, 400 ms, amber stripes</td></tr>
+        <tr><td>0:02.6–0:03.0</td><td>Wednesday's two blocks lift out</td><td>y 0 → −18px, fade, ease-in</td></tr>
+        <tr><td>0:03.4–0:04.6</td><td>Five blocks re-land Thu → Fri in order</td><td>drop-in, 300 ms stagger</td></tr>
+        <tr><td>0:04.4</td><td>Counter nudges — value unchanged</td><td>scale 1 → 1.06 → 1, 400 ms</td></tr>
+        <tr><td>0:05.2</td><td>Badge: "Rebalanced · 0 sessions lost"</td><td>y +8px → 0, 450 ms</td></tr>
+        <tr><td>0:09.0–0:10.0</td><td>Fade to steady week for reloop</td><td>opacity → 0, 800 ms</td></tr>
+      </table></div>
+    </details>
+  </section>
+
+  <!-- SCENE 3 -->
+  <section class="scene" aria-labelledby="t3">
+    <div class="scene-head"><span class="scene-no">SCENE 03</span><h2 id="t3">An activity writes itself</h2></div>
+    <p class="scene-sub">
+      A green sweep reads the lesson, then the quiz assembles line by line — stems ink in, answer
+      choices pop, the key already marked. The paper is deliberately printer-white, exactly like the
+      document previews in the app.
+    </p>
+    <div class="board">
+      <div class="stage s3" data-scene>
+        <div class="stage-tools">
+          <button class="ctrl" data-still aria-pressed="false">End frame</button>
+          <button class="ctrl" data-pause aria-pressed="false">Pause</button>
+        </div>
+        <div class="paper" role="img" aria-label="Animation: a quiz sheet assembling itself — a scanning sweep passes over the page, question lines appear one by one with multiple-choice bubbles, and a Generated badge pops in.">
+          <div class="sweep"></div>
+          <div class="paper-head"><b>Quiz 5 · Photosynthesis</b><span>SCIENCE 8 · Q2</span></div>
+          <div class="qline"><span class="qnum">1.</span><div class="qbar" style="width:100%; --d:2.6s"></div></div>
+          <div class="choices">
+            <span class="choice" style="--d:3.0s">A</span><span class="choice key" style="--d:3.15s">B</span><span class="choice" style="--d:3.3s">C</span><span class="choice" style="--d:3.45s">D</span>
+          </div>
+          <div class="qline"><span class="qnum">2.</span><div class="qbar" style="--d:3.8s"></div></div>
+          <div class="choices">
+            <span class="choice key" style="--d:4.2s">A</span><span class="choice" style="--d:4.35s">B</span><span class="choice" style="--d:4.5s">C</span><span class="choice" style="--d:4.65s">D</span>
+          </div>
+          <div class="qline"><span class="qnum">3.</span><div class="qbar" style="--d:5.0s"></div></div>
+          <div class="choices">
+            <span class="choice" style="--d:5.4s">A</span><span class="choice" style="--d:5.55s">B</span><span class="choice" style="--d:5.7s">C</span><span class="choice key" style="--d:5.85s">D</span>
+          </div>
+          <span class="badge gen-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2l1.9 6.1L20 10l-6.1 1.9L12 18l-1.9-6.1L4 10l6.1-1.9L12 2z" fill="currentColor"/></svg>
+            Generated · ready to print
+          </span>
+        </div>
+      </div>
+      <aside class="rail">
+        <h3>Production spec</h3>
+        <dl class="spec">
+          <dt>Loop</dt><dd>9.0 s seamless</dd>
+          <dt>Sweep</dt><dd>2.5 s, 10% green wash</dd>
+          <dt>Choice pop</dt><dd>150 ms stagger, overshoot 1.4</dd>
+          <dt>Easing</dt><dd>cubic-bezier(.3,0,.2,1) inks</dd>
+          <dt>End frame</dt><dd>full quiz + badge</dd>
+        </dl>
+        <p class="use"><strong>Deploy:</strong> mid-roll of previews; the AI section of the website. Pair with the real quota copy — "10 activities a day on Pro."</p>
+      </aside>
+    </div>
+    <details class="beats">
+      <summary>Beat sheet — Scene 03 (9.0 s loop)</summary>
+      <div class="beats-scroll"><table class="beat">
+        <tr><th>Time</th><th>Event</th><th>Spec</th></tr>
+        <tr><td>0:00.0–0:02.5</td><td>Green scan sweep crosses the blank sheet</td><td>linear, 10% opacity wash</td></tr>
+        <tr><td>0:02.6</td><td>Q1 stem inks in</td><td>scaleX 0 → 1 from left, 540 ms</td></tr>
+        <tr><td>0:03.0–0:03.5</td><td>Q1 choices pop; correct answer pre-marked green</td><td>150 ms stagger, overshoot 1.4</td></tr>
+        <tr><td>0:03.8–0:04.7</td><td>Q2 stem + choices</td><td>same pattern</td></tr>
+        <tr><td>0:05.0–0:05.9</td><td>Q3 stem + choices</td><td>same pattern</td></tr>
+        <tr><td>0:05.9</td><td>Badge: "Generated · ready to print"</td><td>y +10px → 0 + scale 0.9 → 1, 500 ms</td></tr>
+        <tr><td>0:07.9–0:09.0</td><td>Sheet clears for reloop</td><td>reverse ink, 700 ms</td></tr>
+      </table></div>
+    </details>
+  </section>
+
+  <!-- SCENE 4 -->
+  <section class="scene" aria-labelledby="t4">
+    <div class="scene-head"><span class="scene-no">SCENE 04</span><h2 id="t4">Your whole load, at a glance</h2></div>
+    <p class="scene-sub">
+      The My Plan rings draw themselves while the numbers count up in step — plans, subjects, and
+      today's AI generations. Quiet, confident, entirely tabular-numeric.
+    </p>
+    <div class="board">
+      <div class="stage s4" data-scene data-rings>
+        <div class="stage-tools">
+          <button class="ctrl" data-still aria-pressed="false">End frame</button>
+          <button class="ctrl" data-pause aria-pressed="false">Pause</button>
+        </div>
+        <div class="rings" role="img" aria-label="Animation: three progress rings drawing to 7 of 10 lesson plans, 4 of 5 subjects, and 6 of 10 AI generations, with numbers counting up.">
+          <div class="ring-card">
+            <div class="ring-wrap">
+              <svg width="132" height="132" viewBox="0 0 132 132" fill="none" aria-hidden="true">
+                <circle class="ring-track" cx="66" cy="66" r="56" stroke-width="11" fill="none"/>
+                <circle class="ring-val" data-frac="0.70" cx="66" cy="66" r="56" stroke="#22C55E" stroke-width="11" fill="none" stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="351.9"/>
+              </svg>
+              <div class="ring-num"><b><span data-count data-to="7">0</span>/10</b><span>plans</span></div>
+            </div>
+            <span class="ring-label">Lesson plans</span>
+          </div>
+          <div class="ring-card">
+            <div class="ring-wrap">
+              <svg width="132" height="132" viewBox="0 0 132 132" fill="none" aria-hidden="true">
+                <circle class="ring-track" cx="66" cy="66" r="56" stroke-width="11" fill="none"/>
+                <circle class="ring-val" data-frac="0.80" cx="66" cy="66" r="56" stroke="#38BDF8" stroke-width="11" fill="none" stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="351.9"/>
+              </svg>
+              <div class="ring-num"><b><span data-count data-to="4">0</span>/5</b><span>subjects</span></div>
+            </div>
+            <span class="ring-label">Subjects</span>
+          </div>
+          <div class="ring-card">
+            <div class="ring-wrap">
+              <svg width="132" height="132" viewBox="0 0 132 132" fill="none" aria-hidden="true">
+                <circle class="ring-track" cx="66" cy="66" r="56" stroke-width="11" fill="none"/>
+                <circle class="ring-val" data-frac="0.60" cx="66" cy="66" r="56" stroke="#F59E0B" stroke-width="11" fill="none" stroke-linecap="round" stroke-dasharray="351.9" stroke-dashoffset="351.9"/>
+              </svg>
+              <div class="ring-num"><b><span data-count data-to="6">0</span>/10</b><span>today</span></div>
+            </div>
+            <span class="ring-label">AI generations</span>
+          </div>
+        </div>
+      </div>
+      <aside class="rail">
+        <h3>Production spec</h3>
+        <dl class="spec">
+          <dt>Loop</dt><dd>8.0 s seamless</dd>
+          <dt>Draw</dt><dd>1.6 s, 200 ms ring stagger</dd>
+          <dt>Numbers</dt><dd>count-up locked to draw</dd>
+          <dt>Easing</dt><dd>easeOutCubic (draw + count)</dd>
+          <dt>End frame</dt><dd>7/10 · 4/5 · 6/10</dd>
+        </dl>
+        <p class="use"><strong>Deploy:</strong> pricing page, animating each tier card's real limits; also the cleanest scene for quick stat-style social posts.</p>
+      </aside>
+    </div>
+    <details class="beats">
+      <summary>Beat sheet — Scene 04 (8.0 s loop)</summary>
+      <div class="beats-scroll"><table class="beat">
+        <tr><th>Time</th><th>Event</th><th>Spec</th></tr>
+        <tr><td>0:00.0</td><td>Ring 1 (plans, green) starts drawing; counter counts with it</td><td>1.6 s, easeOutCubic</td></tr>
+        <tr><td>0:00.2</td><td>Ring 2 (subjects, sky) starts</td><td>same, +200 ms</td></tr>
+        <tr><td>0:00.4</td><td>Ring 3 (AI today, amber) starts</td><td>same, +200 ms</td></tr>
+        <tr><td>0:02.0–0:07.2</td><td>Hold on final values — this is the screenshot window</td><td>static hold</td></tr>
+        <tr><td>0:07.2–0:08.0</td><td>Rings unwind to zero for reloop</td><td>reverse draw, 800 ms</td></tr>
+      </table></div>
+    </details>
+  </section>
+
+  <!-- SCENE 5 -->
+  <section class="scene" aria-labelledby="t5">
+    <div class="scene-head"><span class="scene-no">SCENE 05</span><h2 id="t5">Every activity, shelved and searchable</h2></div>
+    <p class="scene-sub">
+      Generated activities don't vanish — they land on the shelf. Covers fan in with each subject's
+      identity color, then a filter chip flips and the shelf answers instantly.
+    </p>
+    <div class="board">
+      <div class="stage s5" data-scene>
+        <div class="stage-tools">
+          <button class="ctrl" data-still aria-pressed="false">End frame</button>
+          <button class="ctrl" data-pause aria-pressed="false">Pause</button>
+        </div>
+        <div class="shelf" role="img" aria-label="Animation: six activity covers fan into a grid, then a Science filter chip activates and non-science covers dim while science covers lift.">
+          <div class="shelf-filter">
+            <span class="fchip will-off">All</span>
+            <span class="fchip will-on">Science 8</span>
+            <span class="fchip">Math 8</span>
+            <span class="fchip">Filipino</span>
+          </div>
+          <div class="shelf-grid">
+            <div class="cover hit" style="--d:0.4s; --tilt:-2deg">
+              <div class="cover-art" style="background:#14B8A6"></div><b>Quiz 5 · Photosynthesis</b><span>Science 8 · 10 items</span>
+            </div>
+            <div class="cover" style="--d:0.6s; --tilt:2deg">
+              <div class="cover-art" style="background:#0EA5E9"></div><b>Seatwork · Linear Equations</b><span>Math 8 · 8 items</span>
+            </div>
+            <div class="cover hit" style="--d:0.8s; --tilt:-1.5deg">
+              <div class="cover-art" style="background:#22C55E"></div><b>PT Rubric · Cell Model</b><span>Science 8 · rubric</span>
+            </div>
+            <div class="cover" style="--d:1.0s; --tilt:1.5deg">
+              <div class="cover-art" style="background:#A855F7"></div><b>Pagsusulit · Panitikan</b><span>Filipino · 15 items</span>
+            </div>
+            <div class="cover hit" style="--d:1.2s; --tilt:-2deg">
+              <div class="cover-art" style="background:#F97316"></div><b>Exam · 1st Quarter</b><span>Science 8 · 40 items</span>
+            </div>
+            <div class="cover" style="--d:1.4s; --tilt:2deg">
+              <div class="cover-art" style="background:#EAB308"></div><b>Drill · Fractions Review</b><span>Math 8 · 12 items</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <aside class="rail">
+        <h3>Production spec</h3>
+        <dl class="spec">
+          <dt>Loop</dt><dd>8.0 s seamless</dd>
+          <dt>Fan-in</dt><dd>200 ms stagger, ±2° settle</dd>
+          <dt>Filter beat</dt><dd>at 4.8 s: dim 0.28 / lift −4 px</dd>
+          <dt>Easing</dt><dd>cubic-bezier(.2,.9,.3,1.15)</dd>
+          <dt>End frame</dt><dd>Science filter active</dd>
+        </dl>
+        <p class="use"><strong>Deploy:</strong> closing beat of previews — generation is only half the story; the library is why teachers stay.</p>
+      </aside>
+    </div>
+    <details class="beats">
+      <summary>Beat sheet — Scene 05 (8.0 s loop)</summary>
+      <div class="beats-scroll"><table class="beat">
+        <tr><th>Time</th><th>Event</th><th>Spec</th></tr>
+        <tr><td>0:00.4–0:01.6</td><td>Six covers fan in, slight alternating tilt settling to 0°</td><td>200 ms stagger, ±2° → 0°</td></tr>
+        <tr><td>0:01.6–0:04.4</td><td>Shelf holds — full-library screenshot window</td><td>static hold</td></tr>
+        <tr><td>0:04.8</td><td>"Science 8" chip flips on; "All" flips off</td><td>fill swap, 300 ms</td></tr>
+        <tr><td>0:04.8–0:05.2</td><td>Non-matching covers dim; matches lift</td><td>opacity → 0.28 / y → −4px</td></tr>
+        <tr><td>0:07.2–0:08.0</td><td>Shelf clears for reloop</td><td>fade + y +10px</td></tr>
+      </table></div>
+    </details>
+  </section>
+
+  <!-- ================= STATIC TEMPLATES ================= -->
+  <section class="kit" id="templates" aria-labelledby="tt">
+    <p class="kicker">For static creators</p>
+    <h2 id="tt">Post layouts</h2>
+    <p class="sub">
+      Three fixed layouts cover every placement. The dashed line is the 6% safe margin — nothing
+      but background crosses it. The frame zone holds a scene end-frame (use the <em>End frame</em>
+      button above and screenshot at 2×). Headline ink on white; one green phrase max; CTA pill is
+      always green with dark-green text.
+    </p>
+    <div class="tmpl-row">
+      <figure class="tmpl-card" style="margin:0">
+        <div class="tmpl r916" role="img" aria-label="Story layout: headline top, scene frame center, CTA pill bottom, wordmark bottom-right.">
+          <span class="t-head">Walang pasok?<br><span style="color:var(--tint-deep)">0 sessions lost.</span></span>
+          <span class="t-frame">Scene 02 end-frame</span>
+          <span class="t-cta">Try schEDU free</span>
+          <span class="t-mark">schEDU</span>
+        </div>
+        <figcaption><b>Story / Reel cover — 9:16</b> (1080×1920). Headline ≤ 2 lines, top third. Frame fills the middle; CTA sits above the platform UI zone.</figcaption>
+      </figure>
+      <figure class="tmpl-card" style="margin:0">
+        <div class="tmpl r11" role="img" aria-label="Feed layout: headline top, scene frame center, CTA pill bottom, wordmark bottom-right.">
+          <span class="t-head">A whole term,<br><span style="color:var(--tint-deep)">one tap.</span></span>
+          <span class="t-frame">Scene 01 end-frame</span>
+          <span class="t-cta">Plan my term</span>
+          <span class="t-mark">schEDU</span>
+        </div>
+        <figcaption><b>Feed — 1:1</b> (1080×1080; use 1080×1350 4:5 where allowed). Same stack, tighter: headline ≤ 2 lines, frame ≥ 55% of height.</figcaption>
+      </figure>
+      <figure class="tmpl-card" style="margin:0">
+        <div class="tmpl r169" role="img" aria-label="Banner layout: text column on the left with headline and CTA, scene frame on the right.">
+          <span class="t-side">
+            <span class="t-head">Quiz in seconds,<br><span style="color:var(--tint-deep)">hindi hours.</span></span>
+            <span class="t-cta">Generate one</span>
+          </span>
+          <span class="t-frame">Scene 03 end-frame</span>
+          <span class="t-mark">schEDU</span>
+        </div>
+        <figcaption><b>Banner / cover — 16:9</b> (1920×1080; FB cover crop-safe center). Text column left, frame right — never overlay text on the frame.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= EXPORT SPECS ================= -->
+  <section class="kit" id="exports" aria-labelledby="te">
+    <p class="kicker">For video editors</p>
+    <h2 id="te">Export specs</h2>
+    <p class="sub">
+      Recreate scenes at production quality in After Effects → Lottie, or Rive. Take hexes verbatim
+      from the palette above; the beat sheets are the timing reference. Scenes loop seamlessly —
+      never hard-cut a loop mid-beat.
+    </p>
+    <div class="tbl-scroll">
+      <table class="kit-tbl">
+        <tr><th>Placement</th><th>Size / aspect</th><th>Length</th><th>Cut</th><th>Notes</th></tr>
+        <tr><td>App Store preview (iOS)</td><td class="mono">886×1920 · 9:16</td><td class="mono">25–30 s</td><td>Scenes 1 → 2 → 3 → 5</td><td>Scene 2 gets the most screen time; captions burned in (previews autoplay muted).</td></tr>
+        <tr><td>Play Store promo video</td><td class="mono">1920×1080 · 16:9</td><td class="mono">≤ 30 s</td><td>Same sequence, landscape re-stage</td><td>Hosted on YouTube; add end-card with wordmark + CTA.</td></tr>
+        <tr><td>Reels / TikTok / Shorts</td><td class="mono">1080×1920 · 9:16</td><td class="mono">6–15 s</td><td>One scene per post</td><td>Hook text in the first second (use the caption bank); loop twice max.</td></tr>
+        <tr><td>Feed video</td><td class="mono">1080×1080 · 1:1</td><td class="mono">6–10 s</td><td>Single scene</td><td>Scene 4 works best square; keep the hold frame ≥ 2 s for readability.</td></tr>
+        <tr><td>Website hero / sections</td><td class="mono">Lottie or WebM</td><td class="mono">native loop</td><td>Scene 1 hero; 3 &amp; 4 in sections</td><td>Ship a static end-frame poster for reduced-motion users — same rule as the app.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= CAPTION BANK ================= -->
+  <section class="kit" id="copybank" aria-labelledby="tc">
+    <p class="kicker">Copy</p>
+    <h2 id="tc">Caption bank</h2>
+    <p class="sub">
+      Approved headline pairs per scene — English and Taglish carry the same meaning; pick per
+      channel, don't remix mid-sentence. Numbers in copy must match what's on screen.
+    </p>
+    <div class="tbl-scroll">
+      <table class="kit-tbl">
+        <tr><th>Scene</th><th>English</th><th>Taglish</th><th>Support line</th></tr>
+        <tr><td>01 · Auto-plan</td><td>A whole term, planned in one tap.</td><td class="tl">Buong quarter, isang tap lang.</td><td>Lessons, quizzes, PTs, and the exam — sequenced for you.</td></tr>
+        <tr><td>02 · Suspension</td><td>Class suspended? Zero sessions lost.</td><td class="tl">Walang pasok? Walang nawawalang session.</td><td>schEDU re-flows your week the moment you mark it.</td></tr>
+        <tr><td>03 · AI activity</td><td>A quiz in seconds, not hours.</td><td class="tl">Quiz in seconds, hindi hours.</td><td>Generated from your own lesson — answer key included.</td></tr>
+        <tr><td>04 · My Plan</td><td>Your whole load, at a glance.</td><td class="tl">Kita mo agad ang buong load mo.</td><td>Plans, subjects, and today's generations — one screen.</td></tr>
+        <tr><td>05 · Library</td><td>Generated today, shelved forever.</td><td class="tl">Ginawa ngayon, nandiyan pa rin bukas.</td><td>Every activity filed by subject, ready to reuse.</td></tr>
+      </table>
+    </div>
+
+    <div class="notes-grid">
+      <div class="note"><b>Voice</b>Confident, concrete, teacher-to-teacher. Name real things (quiz, quarter, session) — never "workflow", "solution", or "revolutionize".</div>
+      <div class="note"><b>Claims discipline</b>Only claim what the product guarantees: one exam per term, zero sessions lost on rebalance, daily generation quotas per tier. Nothing invented.</div>
+      <div class="note"><b>Accessibility</b>Burn captions into all video; alt-text every static post (describe the scene, not the vibe); end-frames double as reduced-motion posters.</div>
+      <div class="note"><b>Source of truth</b>Colors: <code>constants/colors.ts</code>. Motion vocabulary: <code>lib/motion.ts</code>. If this page and a screenshot of the app disagree, the app wins.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+  (function () {
+    "use strict";
+    var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    /* ---- copy hex on swatch click ---- */
+    document.querySelectorAll(".swatch").forEach(function (sw) {
+      var code = sw.querySelector("code");
+      var original = code.textContent;
+      sw.addEventListener("click", function () {
+        var hex = sw.dataset.hex;
+        function done() {
+          sw.classList.add("copied");
+          code.textContent = "copied!";
+          setTimeout(function () { sw.classList.remove("copied"); code.textContent = original; }, 1200);
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(hex).then(done, done);
+        } else { done(); }
+      });
+    });
+
+    /* ---- reduced motion: rest every scene on its end frame ---- */
+    if (reduced) {
+      document.querySelectorAll("[data-scene]").forEach(function (st) { st.classList.add("still"); });
+    }
+
+    /* ---- per-stage controls ---- */
+    document.querySelectorAll("[data-pause]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var stage = btn.closest("[data-scene]");
+        var paused = stage.classList.toggle("paused");
+        btn.textContent = paused ? "Play" : "Pause";
+        btn.setAttribute("aria-pressed", String(paused));
+      });
+    });
+    document.querySelectorAll("[data-still]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var stage = btn.closest("[data-scene]");
+        var still = stage.classList.toggle("still");
+        btn.textContent = still ? "Animate" : "End frame";
+        btn.setAttribute("aria-pressed", String(still));
+      });
+    });
+
+    /* ---- scene 4: rings + counters on a shared 8 s clock ---- */
+    var stage = document.querySelector("[data-rings]");
+    if (!stage) return;
+    var rings = Array.prototype.slice.call(stage.querySelectorAll(".ring-val"));
+    var counts = Array.prototype.slice.call(stage.querySelectorAll("[data-count]"));
+    var CIRC = 351.9, LOOP = 8000, DRAW = 1600, STAGGER = 200, HOLD_END = 7200;
+
+    function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+    function setFinal() {
+      rings.forEach(function (r) {
+        r.setAttribute("stroke-dashoffset", String(CIRC * (1 - parseFloat(r.dataset.frac))));
+      });
+      counts.forEach(function (c) { c.textContent = c.dataset.to; });
+    }
+
+    var start = performance.now(), pausedAt = null, pausedTotal = 0;
+    new MutationObserver(function () {
+      var isPaused = stage.classList.contains("paused");
+      if (isPaused && pausedAt === null) pausedAt = performance.now();
+      if (!isPaused && pausedAt !== null) { pausedTotal += performance.now() - pausedAt; pausedAt = null; }
+    }).observe(stage, { attributes: true, attributeFilter: ["class"] });
+
+    function frame(now) {
+      if (stage.classList.contains("still")) {
+        setFinal();
+      } else if (pausedAt === null) {
+        var t = (now - start - pausedTotal) % LOOP;
+        rings.forEach(function (r, i) {
+          var frac = parseFloat(r.dataset.frac);
+          var local = Math.min(Math.max((t - i * STAGGER) / DRAW, 0), 1);
+          var p = t > HOLD_END ? Math.max(0, 1 - (t - HOLD_END) / (LOOP - HOLD_END)) * easeOutCubic(local) : easeOutCubic(local);
+          r.setAttribute("stroke-dashoffset", String(CIRC * (1 - frac * p)));
+        });
+        counts.forEach(function (c, i) {
+          var to = parseInt(c.dataset.to, 10);
+          var local = Math.min(Math.max((t - i * STAGGER) / DRAW, 0), 1);
+          var v = t > HOLD_END ? 0 : Math.round(to * easeOutCubic(local));
+          c.textContent = String(v);
+        });
+      }
+      requestAnimationFrame(frame);
+    }
+    if (reduced) { setFinal(); } else { requestAnimationFrame(frame); }
+  })();
+</script>
+
+</body>
+</html>
