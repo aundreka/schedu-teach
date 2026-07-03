@@ -20,7 +20,8 @@ jobs:
           version: 11.6.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # pnpm 11 needs newer Node builtins than 20 provides; match local dev (24).
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Scoped to the app: the Next.js apps (website, teach-web) still use the
