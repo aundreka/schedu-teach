@@ -246,11 +246,18 @@ export default function SubscriptionScreen() {
                 style={StyleSheet.absoluteFill}
               />
               <View style={styles.heroInner}>
-                <Badge label={TIER_SHORT[sub.tier]} tone={TIER_BADGE_TONE[sub.tier]} />
-                <Text style={[Typography.h1, { color: c.text }]}>{TIER_NAMES[sub.tier]}</Text>
-                {planMeta ? (
-                  <Text style={[Typography.bodySm, { color: c.mutedText }]}>{planMeta}</Text>
-                ) : null}
+                <Badge
+                  label={sub.earlyAccess ? "EARLY ACCESS" : TIER_SHORT[sub.tier]}
+                  tone={sub.earlyAccess ? "max" : TIER_BADGE_TONE[sub.tier]}
+                />
+                <Text style={[Typography.h1, { color: c.text }]}>
+                  {sub.earlyAccess ? "Early Access" : TIER_NAMES[sub.tier]}
+                </Text>
+                <Text style={[Typography.bodySm, { color: c.mutedText }]}>
+                  {sub.earlyAccess
+                    ? "Every feature is free while SCHEDU is in early access. We'll give plenty of notice before plans launch, and early teachers get founder perks."
+                    : planMeta}
+                </Text>
               </View>
             </Card>
 
@@ -277,7 +284,9 @@ export default function SubscriptionScreen() {
               />
             </Card>
 
-            {/* Plans */}
+            {/* Plans: hidden during early access; checkout opens when plans launch. */}
+            {sub.earlyAccess ? null : (
+            <>
             <SectionHeader title="Plans" />
             <View style={styles.tierGrid}>
               <TierCard
@@ -309,6 +318,8 @@ export default function SubscriptionScreen() {
               Prices shown in {pricing.currency} based on your region.
               {"\n"}Billed monthly. Cancel anytime.
             </Text>
+            </>
+            )}
 
             {/* Billing history */}
             <SectionHeader title="Billing history" />

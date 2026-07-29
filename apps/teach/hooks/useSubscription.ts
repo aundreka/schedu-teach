@@ -7,6 +7,7 @@ export type SubscriptionStatus = "active" | "canceled" | "past_due" | "expired";
 export type SubscriptionState = {
   tier: SubscriptionTier;
   status: SubscriptionStatus;
+  earlyAccess: boolean;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   lessonPlansUsed: number;
@@ -27,6 +28,7 @@ export type SubscriptionState = {
 const DEFAULTS: Omit<SubscriptionState, "refetch"> = {
   tier: "free",
   status: "active",
+  earlyAccess: false,
   currentPeriodEnd: null,
   cancelAtPeriodEnd: false,
   lessonPlansUsed: 0,
@@ -62,6 +64,7 @@ export function useSubscription(): SubscriptionState {
       setState({
         tier:               (d.tier as SubscriptionTier)     ?? "free",
         status:             (d.status as SubscriptionStatus) ?? "active",
+        earlyAccess:        Boolean(d.early_access),
         currentPeriodEnd:   (d.current_period_end as string) ?? null,
         cancelAtPeriodEnd:  Boolean(d.cancel_at_period_end),
         lessonPlansUsed:    lpUsed,

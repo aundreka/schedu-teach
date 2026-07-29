@@ -7,12 +7,14 @@ import { useAppTheme } from "../context/theme";
 import { useSubscriptionContext } from "../context/subscription";
 import type { SubscriptionTier } from "../hooks/useSubscription";
 
-function TierBadge({ tier }: { tier: SubscriptionTier }) {
+function TierBadge({ tier, earlyAccess }: { tier: SubscriptionTier; earlyAccess: boolean }) {
   const { colors: c } = useAppTheme();
-  const label = tier === "free" ? "FREE" : tier === "tier1" ? "PRO" : "MAX";
-  const bg    = tier === "free" ? c.border : tier === "tier1" ? c.tierProBg : c.tierMaxBg;
-  const color = tier === "free" ? c.mutedText : tier === "tier1" ? c.tierProFg : c.tierMaxFg;
-  const planLabel = tier === "free" ? "Free plan" : tier === "tier1" ? "Pro plan" : "Max plan";
+  const label = earlyAccess ? "EARLY ACCESS" : tier === "free" ? "FREE" : tier === "tier1" ? "PRO" : "MAX";
+  const bg    = earlyAccess ? c.tierMaxBg : tier === "free" ? c.border : tier === "tier1" ? c.tierProBg : c.tierMaxBg;
+  const color = earlyAccess ? c.tierMaxFg : tier === "free" ? c.mutedText : tier === "tier1" ? c.tierProFg : c.tierMaxFg;
+  const planLabel = earlyAccess
+    ? "Early access, all features free"
+    : tier === "free" ? "Free plan" : tier === "tier1" ? "Pro plan" : "Max plan";
   return (
     <View style={[badgeStyles.pill, { backgroundColor: bg }]}>
       <Text accessibilityLabel={planLabel} style={[badgeStyles.label, { color }]}>
@@ -50,7 +52,7 @@ export default function AppHeader() {
             accessibilityRole="button"
             accessibilityLabel="View plan details"
           >
-            <TierBadge tier={sub.tier} />
+            <TierBadge tier={sub.tier} earlyAccess={sub.earlyAccess} />
           </Pressable>
           <Pressable
             onPress={() => router.push("/profile")}
