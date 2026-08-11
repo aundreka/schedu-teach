@@ -7,8 +7,8 @@ app-store requirements, and what remains before/after launch.
 
 | Item | Where | Status |
 | --- | --- | --- |
-| Privacy Policy | `apps/website/app/privacy` → https://schedu.ph/privacy | Live. References DPA, lists data collected, third-party processors (hosting, payments, error monitoring, AI providers), retention, and user rights. |
-| Terms of Service | `apps/website/app/terms` → https://schedu.ph/terms | Live. |
+| Privacy Policy | `apps/website/app/privacy` → https://www.scheduhq.com/privacy | Live. References DPA, lists data collected, third-party processors (hosting, payments, error monitoring, AI providers), retention, and user rights. |
+| Terms of Service | `apps/website/app/terms` → https://www.scheduhq.com/terms | Live. |
 | In-app legal pages | `apps/teach/app/legal/{privacy,terms}` | Linked from sign-in, sign-up, and Settings. |
 | Account deletion | Settings → Delete account → `delete-account` edge function (deployed on prod) | Permanently deletes account + data. Satisfies Play's deletion requirement and DPA erasure right. |
 | Consent at signup | Sign-up screen links Terms + Privacy | Creating an account = acceptance. |
@@ -48,10 +48,9 @@ app-store requirements, and what remains before/after launch.
 
 ## Google Play requirements
 
-- **Privacy policy URL:** `https://schedu.ph/privacy` (must be live before listing —
-  it is, pending DNS cutover; the vercel.app URL works meanwhile).
+- **Privacy policy URL:** `https://www.scheduhq.com/privacy` (live now).
 - **Account deletion:** in-app deletion exists. Play also wants a **web link** for
-  deletion requests — use `https://schedu.ph/privacy` (the policy documents both
+  deletion requests — use `https://www.scheduhq.com/privacy` (the policy documents both
   the in-app flow and the email route). If review pushes back, add a tiny
   `/delete-account` page with the same instructions.
 - **Data safety form answers** (fill exactly this):
@@ -61,7 +60,7 @@ app-store requirements, and what remains before/after launch.
   - Encrypted in transit: Yes. Deletion mechanism: Yes.
   - No ads, no location, no financial data collected by the app itself.
 - **In-app purchases:** none during early access; when billing launches inside the
-  app it must use Play Billing (web checkout stays on schedu.ph and is never
+  app it must use Play Billing (web checkout stays on scheduhq.com and is never
   linked from inside the app).
 
 ## Early access notes
@@ -77,15 +76,19 @@ app-store requirements, and what remains before/after launch.
 
 1. **Custom SMTP for auth emails (blocker at any volume).** Prod uses Supabase's
    built-in sender: a few emails/hour, spam-prone. Create a Resend (or Brevo)
-   account, verify the schedu.ph domain, and set SMTP in Supabase Auth settings.
+   account, verify the scheduhq.com domain, and set SMTP in Supabase Auth settings.
    Until then, signup confirmations will throttle.
-2. **DNS cutover for schedu.ph.** Domain is attached to the Vercel project and
-   the site is deployed/public. At the registrar: point `schedu.ph` A record to
-   `76.76.21.21` and `www` CNAME to `cname.vercel-dns.com`. (Currently points at
-   an old Linode IP.)
-3. **Supabase free-plan pause risk.** Free projects pause after ~1 week without
-   traffic and the org is capped at 2 active projects (dev is currently paused to
-   keep prod active). Real launch traffic prevents pausing, but the safe play for
-   production is the Pro plan; decide before promoting the app publicly.
-4. Auth `site_url` and redirect allow-list fixed to `https://schedu.ph` +
+2. **Domains.** The website is LIVE at https://www.scheduhq.com (apex redirects
+   to www; DNS was already on Vercel via Squarespace). `schedu.ph` — printed on
+   every video end card — is **unregistered and available**: buying it
+   (~₱2,000–3,000/yr at dot.ph) and redirecting to scheduhq.com keeps all
+   marketing assets accurate. Decide before the videos go out, or re-render the
+   end cards/captions to say scheduhq.com.
+3. **Supabase free-plan pause risk.** Free projects pause after ~1 week idle and
+   the org is capped at 2 active projects (dev is paused so prod can run). A
+   daily keep-alive ping runs via GitHub Actions (.github/workflows/keepalive.yml).
+   NOTE: on July 29 the platform paused ALL org projects at once (not idle-based) —
+   check the Supabase account email for the pause notice; if it recurs, the org
+   likely tripped a free-tier usage limit and Pro becomes non-optional.
+4. Auth `site_url` and redirect allow-list fixed to `https://www.scheduhq.com` +
    `schedu://**` (was localhost). Done during this audit.

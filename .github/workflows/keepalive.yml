@@ -1,0 +1,19 @@
+# Pings prod Supabase daily so the free-tier idle pause (7 quiet days) can
+# never take the production database down between launch traffic. The anon
+# key is public by design (it ships inside the app bundle); RLS protects data.
+name: keep prod awake
+on:
+  schedule:
+    - cron: "0 22 * * *" # 06:00 PH time daily
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: query prod
+        run: |
+          curl -sf "https://rlaqermqpykxazfyfnpq.supabase.co/rest/v1/schools?select=school_id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" > /dev/null
+        env:
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsYXFlcm1xcHlreGF6ZnlmbnBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4OTkwOTcsImV4cCI6MjA5ODQ3NTA5N30.nHYTawlRVAbZV8vsflH4oedcd8285jJAp-hTVn8eQvI
